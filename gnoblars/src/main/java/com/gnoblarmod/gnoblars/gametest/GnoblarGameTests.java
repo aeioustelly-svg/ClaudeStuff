@@ -195,6 +195,30 @@ public class GnoblarGameTests {
     }
 
     @GameTest(templateNamespace = Gnoblars.MODID, template = TEMPLATE)
+    public static void aRidingGnoblarCannotSuffocateDrownOrFall(GameTestHelper helper) {
+        GnoblarEntity gnoblar = spawn(helper);
+        Player owner = player(helper);
+        tame(gnoblar, owner);
+        owner.setShiftKeyDown(true);
+        give(gnoblar, owner, ItemStack.EMPTY);
+        helper.assertTrue(gnoblar.isPassenger(), "The gnoblar should be riding");
+        float health = gnoblar.getHealth();
+        gnoblar.hurt(helper.getLevel().damageSources().inWall(), 4.0F);
+        gnoblar.hurt(helper.getLevel().damageSources().drown(), 4.0F);
+        gnoblar.hurt(helper.getLevel().damageSources().fall(), 4.0F);
+        helper.assertTrue(gnoblar.getHealth() == health, "A riding gnoblar took damage that its owner's movement should not cause");
+        gnoblar.fallDistance = 30.0F;
+        gnoblar.setAirSupply(0);
+        gnoblar.rideTick();
+        helper.assertTrue(gnoblar.fallDistance == 0.0F && gnoblar.getAirSupply() == gnoblar.getMaxAirSupply(),
+                "Riding should reset the fall and the air");
+        GnoblarEntity.putDownPassengers(owner);
+        helper.assertTrue(gnoblar.hurt(helper.getLevel().damageSources().inWall(), 1.0F) || gnoblar.getHealth() <= health,
+                "Once down, a gnoblar is an ordinary mob again");
+        helper.succeed();
+    }
+
+    @GameTest(templateNamespace = Gnoblars.MODID, template = TEMPLATE)
     public static void strangersCannotCarryAFriend(GameTestHelper helper) {
         GnoblarEntity gnoblar = spawn(helper);
         Player owner = player(helper);

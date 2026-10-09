@@ -2,6 +2,10 @@
 
 A wolf-headed flying serpent inspired by the Dacian Draco battle standard. Read this before changing anything.
 
+**Making a new mod? Read `MODDING_NOTES.md` first.** It holds what carries over from both mods: how to work with this user, the build and
+preview pipeline, model and texture rules (including the flat-parts method copied from the vanilla chicken, z-fighting, painting by 3D
+position and variants), entity, networking and GameTest pitfalls, and world generation.
+
 **Other mods in this repository:** `gnoblars/` is a separate mod (own Gradle project, own `CLAUDE.md`). Run its commands from inside that folder. Nothing in this project depends on it.
 
 ## Stack

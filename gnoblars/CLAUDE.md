@@ -49,7 +49,11 @@ Do not use `runServer` or `runClient` in the sandbox (EULA and no display).
 - **Riding:** sneak and click your own gnoblar to carry it piggyback (too big for a shoulder). It becomes a passenger of the player
   (`startRiding`), `rideTick` places it 0.4 behind and 0.9 above them in their body direction (the player's own passenger offset
   would put it inside them), and the model shows the `ride` pose (`entity.isPassenger()`). Sneak and use a block with an empty hand to
-  put it down (`GnoblarEvents`, `putDownPassengers`). A player can carry one. The mounted gnoblar cannot be clicked from the player's
+  put it down (`GnoblarEvents`, `putDownPassengers`). A player can carry one. **The carrier's own client is never told about a passenger by
+  vanilla** (`ServerEntity` uses `broadcast`, which skips the entity's own player), so riding first looked broken: the gnoblar stayed
+  frozen where it mounted. `GnoblarEntity.startRiding` and `stopRiding` therefore send `ClientboundSetPassengersPacket` to the carrier by
+  hand. A rider is also invulnerable to wall, drowning and fall damage, with `fallDistance` and the air supply reset each tick, because
+  it is carried through walls and water. None of this can be tested headlessly (no real `ServerPlayer`), so the fix is unseen in a client. The mounted gnoblar cannot be clicked from the player's
   view (it is behind them), which is why putting it down is a block click and not an entity click.
 - **Pacifism check:** nothing needs killing. Every gift and every loot entry has a peaceful source (fishing, farming, crafting,
   finding). Death drops nothing except what the gnoblar was carrying.

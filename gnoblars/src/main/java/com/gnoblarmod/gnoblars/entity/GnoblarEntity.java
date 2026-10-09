@@ -25,6 +25,7 @@ import net.minecraft.tags.ItemTags;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.game.ClientboundSetPassengersPacket;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
@@ -37,6 +38,7 @@ import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.AgeableMob;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
@@ -508,11 +510,50 @@ public class GnoblarEntity extends TamableAnimal {
         return any;
     }
 
+    /**
+     * Vanilla never tells a player's own client that the player has a passenger: ServerEntity sends the passengers packet with
+     * broadcast(), which skips the entity's own player (ChunkMap.TrackedEntity.updatePlayer ignores the entity itself). Every other
+     * player sees the rider, but the carrier's client would leave it frozen where it climbed on. So send the packet by hand
+     * whenever a gnoblar mounts or leaves a player, however it leaves.
+     */
+    private static void syncPassengers(Entity vehicle) {
+        if (vehicle instanceof ServerPlayer carrier && carrier.connection != null) {
+            carrier.connection.send(new ClientboundSetPassengersPacket(carrier));
+        }
+    }
+
+    @Override
+    public boolean startRiding(Entity vehicle, boolean force) {
+        boolean mounted = super.startRiding(vehicle, force);
+        if (mounted) {
+            syncPassengers(vehicle);
+        }
+        return mounted;
+    }
+
+    @Override
+    public void stopRiding() {
+        Entity vehicle = getVehicle();
+        super.stopRiding();
+        if (vehicle != null) {
+            syncPassengers(vehicle);
+        }
+    }
+
+    /** A rider is carried through walls and water by its owner, so it cannot suffocate, drown or fall. */
+    @Override
+    public boolean isInvulnerableTo(DamageSource source) {
+        return super.isInvulnerableTo(source) || (isPassenger()
+                && (source.is(DamageTypes.IN_WALL) || source.is(DamageTypes.DROWN) || source.is(DamageTypes.FALL)));
+    }
+
     /** While on its owner's back it sits behind them, facing the same way, and does not wander off. */
     @Override
     public void rideTick() {
         super.rideTick();
         if (getVehicle() instanceof LivingEntity vehicle) {
+            fallDistance = 0.0F;
+            setAirSupply(getMaxAirSupply());
             double yaw = Math.toRadians(vehicle.yBodyRot);
             double back = 0.4D;
             setPos(vehicle.getX() + Math.sin(yaw) * back, vehicle.getY() + (vehicle.isShiftKeyDown() ? 0.7D : 0.9D),
