@@ -21,7 +21,7 @@ public class ModEntities {
 
     public static final RegistryObject<EntityType<CannonboltEntity>> CANNONBOLT = ENTITIES.register("cannonbolt",
             () -> EntityType.Builder.of(CannonboltEntity::new, MobCategory.CREATURE)
-                    .sized(1.6F, 1.8F)
+                    .sized(1.6F, 1.6F)
                     .clientTrackingRange(10)
                     .build(AlienFauna.MODID + ":cannonbolt"));
 

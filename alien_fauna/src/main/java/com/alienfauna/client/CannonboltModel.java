@@ -16,13 +16,18 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 
 /**
- * Vanilla-style Cannonbolt. Standing it is one tall white torso with the face on its front
- * (no separate head), a big yellow plate on each shoulder and armadillo-style bands across the back, long one-box arms, short one-box legs,
- * yellow plates on the outside of arms and legs and flat claws. Curled up it is a rounded yellow ball built from three
- * crossing bars, and it spins by the distance rolled.
+ * Vanilla-style Cannonbolt, built from the references and the character description.
  *
- * Texture is 128x128 and painted by tools/paint_cannonbolt.py, which mirrors the boxes below.
- * Keep the two in step when changing a box.
+ * Standing: one wide white torso that carries the face (no separate head and no neck), a rounded
+ * yellow dome on each shoulder, three yellow bands across the upper back like an armadillo's
+ * shell, long one-box arms with a round yellow plate on the outside of the forearm, short
+ * one-box legs with a round plate on the outside of the thigh, and flat claws on hands and toes.
+ * Curled up it is a rounded yellow ball built from three crossing bars that spins by the
+ * distance rolled.
+ *
+ * The round plates are thin slabs painted as discs with a thick black border and transparent
+ * corners. Texture is 128x128 and painted by tools/paint_cannonbolt.py, which mirrors the boxes
+ * below. Keep the two in step when changing a box.
  */
 public class CannonboltModel<T extends CannonboltEntity> extends EntityModel<T> {
     public static final ModelLayerLocation LAYER_LOCATION =
@@ -32,10 +37,10 @@ public class CannonboltModel<T extends CannonboltEntity> extends EntityModel<T> 
 
     public CannonboltModel(ModelPart root) {
         this.body = root.getChild("body");
-        this.rightDome = body.getChild("right_dome");
-        this.leftDome = body.getChild("left_dome");
         this.rightArm = body.getChild("right_arm");
         this.leftArm = body.getChild("left_arm");
+        this.rightDome = body.getChild("right_dome");
+        this.leftDome = body.getChild("left_dome");
         this.rightLeg = root.getChild("right_leg");
         this.leftLeg = root.getChild("left_leg");
         this.ball = root.getChild("ball");
@@ -45,50 +50,48 @@ public class CannonboltModel<T extends CannonboltEntity> extends EntityModel<T> 
         MeshDefinition mesh = new MeshDefinition();
         PartDefinition root = mesh.getRoot();
 
-        // Feet are at y = 24. The hips are at y = 16, the shoulders at y = 6.
-        // One tall white torso carries the face (there is no separate head, as on the character).
+        // Feet are at y = 24, the hips at y = 17, the shoulders at y = 6.
         PartDefinition body = root.addOrReplaceChild("body",
-                CubeListBuilder.create().texOffs(0, 72).addBox(-7.0F, -15.0F, -4.0F, 14, 15, 8)
-                        // three yellow bands across the back with a gap between them, like an armadillo's shell
-                        .texOffs(72, 0).addBox(-7.0F, -14.0F, 4.0F, 14, 4, 2)
-                        .texOffs(72, 0).addBox(-7.0F, -9.0F, 4.0F, 14, 4, 2)
-                        .texOffs(72, 0).addBox(-7.0F, -4.0F, 4.0F, 14, 4, 2),
-                PartPose.offset(0.0F, 16.0F, 0.0F));
+                CubeListBuilder.create().texOffs(0, 72).addBox(-8.0F, -14.0F, -5.0F, 16, 14, 10)
+                        // three bands across the upper back with a gap between each
+                        .texOffs(92, 72).addBox(-8.0F, -14.0F, 5.0F, 16, 4, 2)
+                        .texOffs(92, 72).addBox(-8.0F, -9.0F, 5.0F, 16, 4, 2)
+                        .texOffs(92, 72).addBox(-8.0F, -4.0F, 5.0F, 16, 4, 2),
+                PartPose.offset(0.0F, 17.0F, 0.0F));
 
-        // The yellow shoulder plates: one box each, resting against the torso and over the arm, and
-        // tilted slightly outwards about their inner bottom corner so they never cut into the torso.
-        // The left one mirrors the right.
+        // Shoulder domes: one box each, resting on the arm and against the torso, tilted slightly
+        // outwards about the inner bottom corner so they never cut into the torso.
         body.addOrReplaceChild("right_dome",
-                CubeListBuilder.create().texOffs(68, 72).addBox(-8.0F, -6.0F, -4.0F, 8, 6, 8),
-                PartPose.offsetAndRotation(-7.0F, -12.0F, 0.0F, 0.0F, 0.0F, -0.12F));
+                CubeListBuilder.create().texOffs(56, 72).addBox(-9.0F, -6.0F, -4.0F, 9, 6, 8),
+                PartPose.offsetAndRotation(-8.0F, -12.0F, 0.0F, 0.0F, 0.0F, -0.15F));
         body.addOrReplaceChild("left_dome",
-                CubeListBuilder.create().mirror().texOffs(68, 72).addBox(0.0F, -6.0F, -4.0F, 8, 6, 8),
-                PartPose.offsetAndRotation(7.0F, -12.0F, 0.0F, 0.0F, 0.0F, 0.12F));
+                CubeListBuilder.create().mirror().texOffs(56, 72).addBox(0.0F, -6.0F, -4.0F, 9, 6, 8),
+                PartPose.offsetAndRotation(8.0F, -12.0F, 0.0F, 0.0F, 0.0F, 0.15F));
 
-        // Arms: one long box from the shoulder down to the knees, a yellow plate on the outside
-        // and a flat card of three claws hanging flush from the front of the hand.
+        // Arms: one long box from the shoulder, a round plate on the outside of the forearm and a
+        // flat card of three claws hanging flush from the front of the hand.
         body.addOrReplaceChild("right_arm",
-                CubeListBuilder.create().texOffs(0, 96).addBox(-3.0F, -1.0F, -3.0F, 6, 17, 6)
-                        .texOffs(0, 120).addBox(-4.0F, 16.0F, -3.0F, 8, 3, 0)
-                        .texOffs(48, 96).addBox(-5.0F, 4.0F, -3.0F, 2, 6, 6),
-                PartPose.offset(-10.0F, -12.0F, 0.0F));
+                CubeListBuilder.create().texOffs(0, 98).addBox(-3.0F, -1.0F, -3.0F, 6, 15, 6)
+                        .texOffs(0, 120).addBox(-4.0F, 14.0F, -3.0F, 8, 3, 0)
+                        .texOffs(56, 88).addBox(-5.0F, 5.0F, -4.0F, 2, 8, 8),
+                PartPose.offset(-11.0F, -11.0F, 0.0F));
         body.addOrReplaceChild("left_arm",
-                CubeListBuilder.create().mirror().texOffs(0, 96).addBox(-3.0F, -1.0F, -3.0F, 6, 17, 6)
-                        .texOffs(0, 120).addBox(-4.0F, 16.0F, -3.0F, 8, 3, 0)
-                        .texOffs(48, 96).addBox(3.0F, 4.0F, -3.0F, 2, 6, 6),
-                PartPose.offset(10.0F, -12.0F, 0.0F));
+                CubeListBuilder.create().mirror().texOffs(0, 98).addBox(-3.0F, -1.0F, -3.0F, 6, 15, 6)
+                        .texOffs(0, 120).addBox(-4.0F, 14.0F, -3.0F, 8, 3, 0)
+                        .texOffs(56, 88).addBox(3.0F, 5.0F, -4.0F, 2, 8, 8),
+                PartPose.offset(11.0F, -11.0F, 0.0F));
 
-        // Legs: one box from the hip, a plate on the outside of the thigh, flat claws on the toes.
+        // Legs: one box from the hip, a round plate on the outside of the thigh, flat claws on the toes.
         root.addOrReplaceChild("right_leg",
-                CubeListBuilder.create().texOffs(24, 96).addBox(-3.0F, 0.0F, -3.0F, 6, 8, 6)
-                        .texOffs(20, 120).addBox(-3.0F, 8.0F, -5.0F, 6, 0, 2)
-                        .texOffs(68, 90).addBox(-4.0F, 1.0F, -2.0F, 1, 5, 4),
-                PartPose.offset(-4.0F, 16.0F, 0.0F));
+                CubeListBuilder.create().texOffs(24, 98).addBox(-3.0F, 0.0F, -3.0F, 6, 7, 6)
+                        .texOffs(20, 120).addBox(-3.0F, 7.0F, -5.0F, 6, 0, 2)
+                        .texOffs(80, 88).addBox(-5.0F, 0.0F, -3.0F, 2, 6, 6),
+                PartPose.offset(-4.0F, 17.0F, 0.0F));
         root.addOrReplaceChild("left_leg",
-                CubeListBuilder.create().mirror().texOffs(24, 96).addBox(-3.0F, 0.0F, -3.0F, 6, 8, 6)
-                        .texOffs(20, 120).addBox(-3.0F, 8.0F, -5.0F, 6, 0, 2)
-                        .texOffs(68, 90).addBox(3.0F, 1.0F, -2.0F, 1, 5, 4),
-                PartPose.offset(4.0F, 16.0F, 0.0F));
+                CubeListBuilder.create().mirror().texOffs(24, 98).addBox(-3.0F, 0.0F, -3.0F, 6, 7, 6)
+                        .texOffs(20, 120).addBox(-3.0F, 7.0F, -5.0F, 6, 0, 2)
+                        .texOffs(80, 88).addBox(3.0F, 0.0F, -3.0F, 2, 6, 6),
+                PartPose.offset(4.0F, 17.0F, 0.0F));
 
         // The ball: three bars crossing at the centre, which together make a cube with chamfered
         // edges, 20 pixels across. Each pair of bars has different cross-sections, so no two faces
