@@ -170,13 +170,18 @@ def body(face, x, y, W, H, tx, ty):
 
 
 def plate_mid(face, x, y, W, H, tx, ty):
-    """The middle column of a round limb plate. Its outer face is yellow with black along the top
-    and bottom (the outline); everything else is black, including the faces the missing corners
-    expose, so there is nothing hollow to see into. The face against the limb is left empty."""
+    """The middle column of a round limb plate: all black (the outline). The yellow sits on top of
+    it as a separate raised box. The face against the limb is left empty."""
+    return None if face == "left" else BLACK
+
+
+def bulge(face, x, y, W, H, tx, ty):
+    """The yellow part of a limb plate, raised exactly one pixel out of the black: a shaded yellow
+    face with dark amber sides."""
     if face == "left":
         return None
-    if face != "right" or y in (0, H - 1):
-        return BLACK
+    if face != "right":
+        return YELLOW[0]
     lit = (x - W / 2.0) + (y - H / 2.0)
     return YELLOW[2] if lit < -W * 0.2 else (YELLOW[0] if lit > W * 0.25 else YELLOW[1])
 
@@ -249,9 +254,11 @@ BOXES = {
     "arm": (0, 102, 6, 20, 6, arm),
     "arm_plate_mid": (48, 102, 1, 6, 4, plate_mid),
     "arm_plate_side": (58, 102, 1, 4, 1, plate_side),
+    "arm_bulge": (48, 112, 1, 4, 4, bulge),
     "leg": (24, 102, 6, 8, 6, leg),
     "knee_plate_mid": (68, 90, 1, 5, 2, plate_mid),
     "knee_plate_side": (74, 90, 1, 3, 1, plate_side),
+    "knee_bulge": (74, 95, 1, 3, 2, bulge),
     "foot_claws": (28, 120, 6, 0, 2, claws_forward),
     "ball_x_bar": (0, 34, 20, 16, 14, ball_bar(0)),
     "ball_y_bar": (68, 34, 14, 20, 16, ball_bar(1)),

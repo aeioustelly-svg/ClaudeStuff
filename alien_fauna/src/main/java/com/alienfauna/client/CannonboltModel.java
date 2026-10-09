@@ -70,18 +70,21 @@ public class CannonboltModel<T extends CannonboltEntity> extends EntityModel<T> 
 
         // Arms: one long box from the shoulder down to the knees and a round yellow plate on the
         // outside of the forearm. The plate is three boxes (a middle column and two short sides), so its
-        // cut corners are real faces and nothing hollow shows through them. The fingers are faint lines painted on the hand, with no claw geometry.
+        // cut corners are real faces and nothing hollow shows through them. A yellow box sits on the black
+        // plate and sticks out exactly one pixel beyond it, which gives the plate its shape. The fingers are faint lines painted on the hand, with no claw geometry.
         body.addOrReplaceChild("right_arm",
                 CubeListBuilder.create().texOffs(0, 102).addBox(-3.0F, -1.0F, -3.0F, 6, 20, 6)
                         .texOffs(48, 102).addBox(-4.0F, 6.0F, -2.0F, 1, 6, 4)
                         .texOffs(58, 102).addBox(-4.0F, 7.0F, -3.0F, 1, 4, 1)
-                        .texOffs(58, 102).addBox(-4.0F, 7.0F, 2.0F, 1, 4, 1),
+                        .texOffs(58, 102).addBox(-4.0F, 7.0F, 2.0F, 1, 4, 1)
+                        .texOffs(48, 112).addBox(-5.0F, 7.0F, -2.0F, 1, 4, 4),
                 PartPose.offset(-10.0F, -15.0F, 0.0F));
         body.addOrReplaceChild("left_arm",
                 CubeListBuilder.create().mirror().texOffs(0, 102).addBox(-3.0F, -1.0F, -3.0F, 6, 20, 6)
                         .texOffs(48, 102).addBox(3.0F, 6.0F, -2.0F, 1, 6, 4)
                         .texOffs(58, 102).addBox(3.0F, 7.0F, -3.0F, 1, 4, 1)
-                        .texOffs(58, 102).addBox(3.0F, 7.0F, 2.0F, 1, 4, 1),
+                        .texOffs(58, 102).addBox(3.0F, 7.0F, 2.0F, 1, 4, 1)
+                        .texOffs(48, 112).addBox(4.0F, 7.0F, -2.0F, 1, 4, 4),
                 PartPose.offset(10.0F, -15.0F, 0.0F));
 
         // Legs: one box from the hip, a plate on the outside of the thigh, flat claws on the toes.
@@ -90,14 +93,16 @@ public class CannonboltModel<T extends CannonboltEntity> extends EntityModel<T> 
                         .texOffs(28, 120).addBox(-3.0F, 8.0F, -5.0F, 6, 0, 2)
                         .texOffs(68, 90).addBox(-4.0F, 1.0F, -1.0F, 1, 5, 2)
                         .texOffs(74, 90).addBox(-4.0F, 2.0F, -2.0F, 1, 3, 1)
-                        .texOffs(74, 90).addBox(-4.0F, 2.0F, 1.0F, 1, 3, 1),
+                        .texOffs(74, 90).addBox(-4.0F, 2.0F, 1.0F, 1, 3, 1)
+                        .texOffs(74, 95).addBox(-5.0F, 2.0F, -1.0F, 1, 3, 2),
                 PartPose.offset(-4.0F, 16.0F, 0.0F));
         root.addOrReplaceChild("left_leg",
                 CubeListBuilder.create().mirror().texOffs(24, 102).addBox(-3.0F, 0.0F, -3.0F, 6, 8, 6)
                         .texOffs(28, 120).addBox(-3.0F, 8.0F, -5.0F, 6, 0, 2)
                         .texOffs(68, 90).addBox(3.0F, 1.0F, -1.0F, 1, 5, 2)
                         .texOffs(74, 90).addBox(3.0F, 2.0F, -2.0F, 1, 3, 1)
-                        .texOffs(74, 90).addBox(3.0F, 2.0F, 1.0F, 1, 3, 1),
+                        .texOffs(74, 90).addBox(3.0F, 2.0F, 1.0F, 1, 3, 1)
+                        .texOffs(74, 95).addBox(4.0F, 2.0F, -1.0F, 1, 3, 2),
                 PartPose.offset(4.0F, 16.0F, 0.0F));
 
         // The ball: three bars crossing at the centre, which together make a cube with chamfered
