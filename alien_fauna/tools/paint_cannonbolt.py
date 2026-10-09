@@ -137,8 +137,8 @@ def body(face, x, y, W, H, tx, ty):
         # the centre stripe carries on under the body, so it loops all the way round
         return BLACK if W // 2 - 1 <= x <= W // 2 else STEEL[0]
     if face in ("left", "right"):
-        if y < 6:
-            return BLACK
+        if y < 3:
+            return BLACK                            # same depth as the hood on the front and back
         return fur(face, x, y, W, H, tx, ty)
     if y < 2:
         return BLACK
