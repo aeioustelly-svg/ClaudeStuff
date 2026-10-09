@@ -205,3 +205,23 @@ publishing {
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8' // Use the UTF-8 charset for Java compilation
 }
+
+// Dev-only tooling (not part of the mod jar): bakes the real model and dumps its geometry to JSON
+// so tools/paint_texture.py and tools/render_preview.py can work without launching Minecraft.
+sourceSets {
+    preview {
+        java.srcDir 'src/preview/java'
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += output + sourceSets.main.output + sourceSets.main.runtimeClasspath
+    }
+}
+
+tasks.register('dumpModel', JavaExec) {
+    group = 'tools'
+    description = 'Writes build/preview/model.json with the baked Draco model geometry for several poses.'
+    dependsOn 'previewClasses'
+    classpath = sourceSets.preview.runtimeClasspath
+    mainClass = 'com.dacianmod.draco.preview.ModelDump'
+    args = [layout.buildDirectory.file('preview/model.json').get().asFile.absolutePath]
+    javaLauncher = javaToolchains.launcherFor(java.toolchain)
+}

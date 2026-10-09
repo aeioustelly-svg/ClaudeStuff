@@ -29,7 +29,7 @@ public class DracoModel<T extends DracoEntity> extends EntityModel<T> {
             new ModelLayerLocation(new ResourceLocation(DacianDraco.MODID, "draco"), "main");
 
     private final ModelPart root;
-    private final ModelPart neck1, neck2, head, jaw;
+    private final ModelPart neck1, neck2, head;
     private final ModelPart body, seg1, seg2, seg3, seg4, cloth1, cloth2, cloth3, cloth4;
     /** Front to back, so index grows towards the tail. */
     private final ModelPart[] chain;
@@ -40,7 +40,6 @@ public class DracoModel<T extends DracoEntity> extends EntityModel<T> {
         this.neck1 = body.getChild("neck1");
         this.neck2 = neck1.getChild("neck2");
         this.head = neck2.getChild("head");
-        this.jaw = head.getChild("jaw");
         this.seg1 = body.getChild("seg1");
         this.seg2 = seg1.getChild("seg2");
         this.seg3 = seg2.getChild("seg3");
@@ -93,25 +92,18 @@ public class DracoModel<T extends DracoEntity> extends EntityModel<T> {
                 CubeListBuilder.create().texOffs(26, 13).addBox(-2.5F, -2.5F, -6.0F, 5, 5, 6),
                 PartPose.offset(0.0F, 0.0F, -3.5F));
         PartDefinition neck2 = neck1.addOrReplaceChild("neck2",
-                CubeListBuilder.create()
-                        .texOffs(48, 13).addBox(-2.0F, -2.0F, -5.0F, 4, 4, 5)
-                        .texOffs(66, 13).addBox(-4.0F, -3.5F, -4.0F, 8, 7, 4), // fur ruff
+                CubeListBuilder.create().texOffs(48, 13).addBox(-2.5F, -2.5F, -5.0F, 5, 5, 5),
                 PartPose.offset(0.0F, 0.0F, -6.0F));
 
-        // Wolf-like head, longer and heavier than the vanilla wolf's, with big ears and fangs.
-        PartDefinition head = neck2.addOrReplaceChild("head",
+        // Wolf-derived head: like the vanilla wolf it is a skull, a snout and two ears, but
+        // longer, with taller ears. Eyes, nose, teeth and mouth line are painted on the texture.
+        neck2.addOrReplaceChild("head",
                 CubeListBuilder.create()
-                        .texOffs(90, 13).addBox(-3.5F, -3.0F, -6.0F, 7, 6, 6)    // skull
-                        .texOffs(0, 25).addBox(-2.0F, -0.5F, -11.0F, 4, 3, 5)    // snout
-                        .texOffs(18, 25).addBox(-1.0F, -0.5F, -12.0F, 2, 2, 1)   // nose
-                        .texOffs(24, 25).addBox(-3.5F, -6.0F, -2.0F, 2, 3, 1)    // ear
-                        .texOffs(24, 25).addBox(1.5F, -6.0F, -2.0F, 2, 3, 1)     // ear
-                        .texOffs(30, 25).addBox(-1.75F, 2.5F, -10.5F, 1, 2, 1)   // fang
-                        .texOffs(30, 25).addBox(0.75F, 2.5F, -10.5F, 1, 2, 1),   // fang
+                        .texOffs(70, 13).addBox(-3.0F, -3.0F, -5.0F, 6, 6, 5)    // skull
+                        .texOffs(92, 13).addBox(-2.0F, -0.5F, -9.0F, 4, 3, 4)    // snout
+                        .texOffs(108, 13).addBox(-3.0F, -6.0F, -2.0F, 2, 3, 1)   // ear
+                        .texOffs(108, 13).addBox(1.0F, -6.0F, -2.0F, 2, 3, 1),   // ear
                 PartPose.offset(0.0F, 0.0F, -5.0F));
-        head.addOrReplaceChild("jaw",
-                CubeListBuilder.create().texOffs(34, 25).addBox(-2.0F, 0.0F, -7.0F, 4, 2, 7),
-                PartPose.offset(0.0F, 2.5F, -4.0F));
 
         return LayerDefinition.create(mesh, 128, 128);
     }
@@ -119,12 +111,15 @@ public class DracoModel<T extends DracoEntity> extends EntityModel<T> {
     @Override
     public void setupAnim(T entity, float limbSwing, float limbSwingAmount, float ageInTicks,
                           float netHeadYaw, float headPitch) {
-        root.getAllParts().forEach(ModelPart::resetPose);
-
         float partialTick = ageInTicks - entity.tickCount;
-        float howl = entity.getHowlAnim(partialTick);
-        float dive = entity.getDiveAnim(partialTick);
-        float lash = entity.getLashAnim(partialTick);
+        applyPose(limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch,
+                entity.getHowlAnim(partialTick), entity.getDiveAnim(partialTick), entity.getLashAnim(partialTick));
+    }
+
+    /** Pure function of its inputs so the preview tool can pose the model without an entity. */
+    public void applyPose(float limbSwing, float limbSwingAmount, float ageInTicks,
+                          float netHeadYaw, float headPitch, float howl, float dive, float lash) {
+        root.getAllParts().forEach(ModelPart::resetPose);
 
         // Serpentine wave: the faster it flies the wider the wave, and a dive straightens the body.
         float amplitude = (0.12F + 0.16F * Math.min(1.0F, limbSwingAmount)) * (1.0F - 0.7F * dive);
@@ -148,12 +143,11 @@ public class DracoModel<T extends DracoEntity> extends EntityModel<T> {
         neck2.xRot += pitch * 0.4F;
         head.xRot += pitch * 0.5F;
 
-        // Howl: head thrown back, jaw wide. Dive: jaw half open, head tucked down.
-        neck1.xRot -= howl * 0.35F;
-        head.xRot -= howl * 0.45F;
+        // Howl: neck arched and head thrown back. Dive: head tucked down.
+        neck1.xRot -= howl * 0.5F;
+        neck2.xRot -= howl * 0.3F;
+        head.xRot -= howl * 0.6F;
         head.xRot += dive * 0.35F;
-        float jawOpen = Math.max(howl, dive * 0.7F);
-        jaw.xRot += jawOpen * 0.9F + Mth.sin(ageInTicks * 0.12F) * 0.03F;
     }
 
     @Override
