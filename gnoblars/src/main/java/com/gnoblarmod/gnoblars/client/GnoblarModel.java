@@ -52,7 +52,7 @@ public class GnoblarModel<T extends GnoblarEntity> extends EntityModel<T> implem
         PartDefinition root = mesh.getRoot();
 
         PartDefinition body = root.addOrReplaceChild("body",
-                CubeListBuilder.create().texOffs(0, 16).addBox(-3.0F, -5.0F, -2.0F, 6, 5, 4),
+                CubeListBuilder.create().texOffs(0, 16).addBox(-4.0F, -5.0F, -2.0F, 8, 5, 4),
                 PartPose.offset(0.0F, 21.0F, 0.0F));
         // a rag hanging from the belt (1 px thick: a zero-thickness plane has two coincident faces and flickers)
         body.addOrReplaceChild("loincloth",
@@ -91,13 +91,15 @@ public class GnoblarModel<T extends GnoblarEntity> extends EntityModel<T> implem
                         .texOffs(34, 32).addBox(-6.0F, -4.0F, 0.0F, 1, 2, 1),
                 PartPose.offset(-4.0F, -3.0F, 0.0F));
 
-        // long arms, one box each, swinging from the shoulder
+        // long arms, one box each, swinging from the shoulder. The body is 8 wide and the legs 2+2 inset from it:
+        // if a leg were flush with the body (both 6 wide) the hunch tilt would push the belt over the top of
+        // the leg's side face, two coplanar faces that z-fight and flicker.
         body.addOrReplaceChild("right_arm",
                 CubeListBuilder.create().texOffs(28, 16).addBox(-1.0F, -1.0F, -1.0F, 2, 7, 2),
-                PartPose.offset(-4.0F, -3.0F, 0.0F));
+                PartPose.offset(-5.0F, -3.0F, 0.0F));
         body.addOrReplaceChild("left_arm",
                 CubeListBuilder.create().texOffs(36, 16).addBox(-1.0F, -1.0F, -1.0F, 2, 7, 2),
-                PartPose.offset(4.0F, -3.0F, 0.0F));
+                PartPose.offset(5.0F, -3.0F, 0.0F));
 
         root.addOrReplaceChild("right_leg",
                 CubeListBuilder.create().texOffs(0, 25).addBox(-1.0F, 0.0F, -1.0F, 2, 3, 2),

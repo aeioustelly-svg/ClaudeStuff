@@ -53,11 +53,11 @@ BOXES = [
     ("wart", (0, 1), (9, 10), (-6, -5)),
     ("nose", (-2, 2), (10, 16), (-7, -4)),
     ("neck", (-1, 1), (15, 16), (-2, 0)),
-    ("left_arm", (3, 5), (17, 24), (-1, 1)),
-    ("right_arm", (-5, -3), (17, 24), (-1, 1)),
+    ("left_arm", (4, 6), (17, 24), (-1, 1)),
+    ("right_arm", (-6, -4), (17, 24), (-1, 1)),
     ("left_leg", (1, 3), (21, 24), (-1, 1)),
     ("right_leg", (-3, -1), (21, 24), (-1, 1)),
-    ("body", (-3, 3), (16, 21), (-2, 2)),
+    ("body", (-4, 4), (16, 21), (-2, 2)),
     ("head", (-4, 4), (9, 15), (-4, 2)),
 ]
 
@@ -87,7 +87,11 @@ def part_of(verts):
         # on the surface: some axis where the whole quad sits at one of the box's limits
         for a in range(3):
             if hi[a] - lo[a] < eps and (abs(lo[a] - bounds[a][0]) < eps or abs(lo[a] - bounds[a][1]) < eps):
-                return name
+                # and it must span the box's whole face, or a neighbour's face on the same plane (a leg's side
+                # at the edge of the arm's range) would be taken for this box's
+                others = [b for b in range(3) if b != a]
+                if all(abs((hi[b] - lo[b]) - (bounds[b][1] - bounds[b][0])) < 2 * eps for b in others):
+                    return name
     raise ValueError(f"quad belongs to no box: {pts.tolist()}")
 
 
@@ -196,7 +200,7 @@ def paint(part, pos, normal):
             hand = ((46, 56, 50), (72, 86, 72), (98, 112, 88))
             return skin(pos, face, hand) if (cell(x) + cell(z)) % 2 else shade(hand, 0, face)
         if part == "left_arm" and nz < -0.5 and abs(z + 1.0) < 0.1 and (
-                (abs(x - 3.5) < 0.1 and abs(y - 20.5) < 0.1) or (abs(x - 4.5) < 0.1 and abs(y - 21.5) < 0.1)):
+                (abs(x - 4.5) < 0.1 and abs(y - 20.5) < 0.1) or (abs(x - 5.5) < 0.1 and abs(y - 21.5) < 0.1)):
             return (168, 158, 134)                  # an old scar
         return skin(pos, face)
 
@@ -221,17 +225,17 @@ def paint(part, pos, normal):
                 return skin(pos, face)              # open collar of the vest
             if ax < 1.0:
                 return shade(BELT, 0 if cell(y) % 2 else 2, face)    # lacing
-            u = (x + 3.0) - 1.2 * (y - 16.0)
+            u = (x + 4.0) - 1.6 * (y - 16.0)
             if abs(u) <= 1.0:                       # sash from left shoulder to right hip
                 return shade(SASH, 2 if u < -0.4 else 1 if u < 0.6 else 0, face)
-            if abs(ax - 2.5) < 0.1 and abs(y - 18.5) < 0.1:
+            if abs(ax - 3.5) < 0.1 and abs(y - 18.5) < 0.1:
                 return BUCKLE                       # a rivet
         if nz > 0.5:                                # back
-            u = (x + 3.0) + 1.2 * (y - 16.0) - 6.0
+            u = (x + 4.0) + 1.6 * (y - 16.0) - 8.0
             if abs(u) <= 0.6:
                 return shade(SASH, 0, face)         # thin sash strap
-            if -2.0 <= x <= 1.0 and 17.0 <= y <= 19.0:
-                edge = x < -1.0 or x > 0.0 or y < 17.9 and y < 17.1 or y > 18.1
+            if -2.0 <= x <= 2.0 and 17.0 <= y <= 19.0:
+                edge = abs(x) > 1.0 or y < 18.0
                 return shade(BELT, 1, face) if edge else shade(LEATHER, 2, face)   # a stitched patch
         if face == "top":
             return skin(pos, face)

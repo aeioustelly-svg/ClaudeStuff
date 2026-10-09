@@ -20,7 +20,7 @@ guidelines (pacifism, vanilla interaction, vanilla-style models) and the sandbox
 | `./gradlew dumpModel` | Bakes the real `GnoblarModel` and writes `build/preview/model.json` |
 | `python3 -I tools/paint_texture.py` | Repaints `gnoblar.png` from the dumped geometry |
 | `python3 -I tools/render_preview.py` | Software-renders `build/preview/body.png`, `head.png`, `texture.png` |
-| `python3 -I tools/check_clipping.py` | Fails if an arm cuts into the head or nose in any dumped pose, or if two faces coincide (z-fighting). Run it after changing a pose or a cube |
+| `python3 -I tools/check_clipping.py` | Fails if an arm cuts into the head or nose in any dumped pose, or if two coplanar faces overlap (z-fighting). Run it after changing a pose or a cube |
 | `python3 -I tools/make_item_textures.py` | Rebuilds the item textures from vanilla textures |
 
 Use `--offline` only after a full online build: the runtime classpath needs artifacts that only an online build caches.
@@ -58,8 +58,15 @@ Do not use `runServer` or `runClient` in the sandbox (EULA and no display).
   bitten out. The head sits on a 1 px neck box. The arms are single boxes with their top level with the neck, and the rag loincloth
   is a 4x2x1 slab. Held items render through `ItemInHandLayer` and the model's `translateToHand`
   (shrunk to 0.65 for a small hand).
-- **No zero-thickness boxes.** They make two coincident quads with opposite normals that z-fight, so the ear and belt textures flicker in
-  game (no preview shows this). `check_clipping.py` also reports coincident faces. Give flat parts at least 1 px of thickness.
+- **Z-fighting (flicker in game, invisible in every preview).** Two faces in the same plane that face the same way and overlap are both
+  drawn at the same depth, and the lit/shaded pair flips from frame to frame. Two causes hit this mod:
+  - A zero-thickness box makes two coincident faces with opposite normals (the first ears and loincloth). Give flat parts 1 px.
+  - A tilting part sweeping over a neighbour's flush face. The vanilla chicken has legs flush with its body (leg x -3..0 and 1..3,
+    body x -3..3) and does not flicker, because the body never tilts and the leg box starts exactly at its hip, so the two faces only
+    touch along an edge. Here the hunch pushed the body's belt below the leg tops, over the legs' side faces. The fix is a body 8 wide
+    over legs 1..3 (inset), so no two faces share a plane whatever the pose.
+  `check_clipping.py` now clips every pair of coplanar same-facing faces in several poses and fails on any overlap. Run it after
+  changing a cube, a pivot or a pose. Mind that it is only as good as the poses dumped.
 - Head turn and pitch are clamped in `applyPose` (yaw x0.6 up to 45 degrees, no looking up past level) because a hunched creature's
   head otherwise swings into its shoulders.
 - `paint_texture.py` overwrites `gnoblar.png` and colours texels by 3D position, with an explicit box table (`BOXES`) that has to
