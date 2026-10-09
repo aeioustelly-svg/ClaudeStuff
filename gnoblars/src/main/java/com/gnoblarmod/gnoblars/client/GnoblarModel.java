@@ -54,9 +54,9 @@ public class GnoblarModel<T extends GnoblarEntity> extends EntityModel<T> implem
         PartDefinition body = root.addOrReplaceChild("body",
                 CubeListBuilder.create().texOffs(0, 16).addBox(-3.0F, -5.0F, -2.0F, 6, 5, 4),
                 PartPose.offset(0.0F, 21.0F, 0.0F));
-        // a rag hanging from the belt
+        // a rag hanging from the belt (1 px thick: a zero-thickness plane has two coincident faces and flickers)
         body.addOrReplaceChild("loincloth",
-                CubeListBuilder.create().texOffs(44, 16).addBox(-2.0F, 0.0F, 0.0F, 4, 2, 0),
+                CubeListBuilder.create().texOffs(44, 16).addBox(-2.0F, 0.0F, -1.0F, 4, 2, 1),
                 PartPose.offset(0.0F, 0.0F, -2.0F));
 
         PartDefinition head = body.addOrReplaceChild("head",
@@ -76,18 +76,19 @@ public class GnoblarModel<T extends GnoblarEntity> extends EntityModel<T> implem
                 CubeListBuilder.create().texOffs(44, 24).addBox(0.0F, -6.0F, -5.0F, 1, 1, 1),
                 PartPose.ZERO);
 
-        // pointed ears: stepped flat planes that climb and narrow to a tip, so the outline is not a rectangle
+        // pointed ears: stepped slabs, 1 px thick, that climb and narrow to a tip, so the outline is not a rectangle.
+        // They are not zero-thickness planes: those have two coincident faces that z-fight and flicker in game.
         head.addOrReplaceChild("left_ear",
                 CubeListBuilder.create()
-                        .texOffs(0, 32).addBox(0.0F, -2.0F, 0.0F, 3, 4, 0)
-                        .texOffs(6, 32).addBox(3.0F, -3.0F, 0.0F, 2, 3, 0)
-                        .texOffs(10, 32).addBox(5.0F, -4.0F, 0.0F, 1, 2, 0),
+                        .texOffs(0, 32).addBox(0.0F, -2.0F, 0.0F, 3, 4, 1)
+                        .texOffs(8, 32).addBox(3.0F, -3.0F, 0.0F, 2, 3, 1)
+                        .texOffs(14, 32).addBox(5.0F, -4.0F, 0.0F, 1, 2, 1),
                 PartPose.offset(4.0F, -3.0F, 0.0F));
         head.addOrReplaceChild("right_ear",
                 CubeListBuilder.create()
-                        .texOffs(20, 32).addBox(-3.0F, -2.0F, 0.0F, 3, 4, 0)
-                        .texOffs(26, 32).addBox(-5.0F, -3.0F, 0.0F, 2, 3, 0)
-                        .texOffs(30, 32).addBox(-6.0F, -4.0F, 0.0F, 1, 2, 0),
+                        .texOffs(20, 32).addBox(-3.0F, -2.0F, 0.0F, 3, 4, 1)
+                        .texOffs(28, 32).addBox(-5.0F, -3.0F, 0.0F, 2, 3, 1)
+                        .texOffs(34, 32).addBox(-6.0F, -4.0F, 0.0F, 1, 2, 1),
                 PartPose.offset(-4.0F, -3.0F, 0.0F));
 
         // long arms, one box each, swinging from the shoulder

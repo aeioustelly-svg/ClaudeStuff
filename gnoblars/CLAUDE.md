@@ -20,7 +20,7 @@ guidelines (pacifism, vanilla interaction, vanilla-style models) and the sandbox
 | `./gradlew dumpModel` | Bakes the real `GnoblarModel` and writes `build/preview/model.json` |
 | `python3 -I tools/paint_texture.py` | Repaints `gnoblar.png` from the dumped geometry |
 | `python3 -I tools/render_preview.py` | Software-renders `build/preview/body.png`, `head.png`, `texture.png` |
-| `python3 -I tools/check_clipping.py` | Fails if an arm cuts into the head or nose in any dumped pose. Run it after changing a pose or a cube |
+| `python3 -I tools/check_clipping.py` | Fails if an arm cuts into the head or nose in any dumped pose, or if two faces coincide (z-fighting). Run it after changing a pose or a cube |
 | `python3 -I tools/make_item_textures.py` | Rebuilds the item textures from vanilla textures |
 
 Use `--offline` only after a full online build: the runtime classpath needs artifacts that only an online build caches.
@@ -54,10 +54,12 @@ Do not use `runServer` or `runClient` in the sandbox (EULA and no display).
   single box that is not longer than it is tall: a 4x4x5 block read as a snout, a drooping hook read as a trunk, and a bridge plus
   knob was too fussy for a minimalist vanilla style. About one gnoblar in five has a wart (`hasWart`, set in
   `finalizeSpawn`, saved as `Wart`): a 1x1x1 cube on the nose that is only visible for those. The ears are
-  three stepped zero-thickness planes in the XY plane (they face forward, the forward side is painted pink and the back side is skin),
-  climbing to a point with one nick bitten out. The head sits on a 1 px neck box. The arms are single boxes with their top level with
-  the neck, and the rag loincloth is a plane. Held items render through `ItemInHandLayer` and the model's `translateToHand`
+  three stepped 1 px thick slabs (the face looking forward is painted pink, the back is skin), climbing to a point with one nick
+  bitten out. The head sits on a 1 px neck box. The arms are single boxes with their top level with the neck, and the rag loincloth
+  is a 4x2x1 slab. Held items render through `ItemInHandLayer` and the model's `translateToHand`
   (shrunk to 0.65 for a small hand).
+- **No zero-thickness boxes.** They make two coincident quads with opposite normals that z-fight, so the ear and belt textures flicker in
+  game (no preview shows this). `check_clipping.py` also reports coincident faces. Give flat parts at least 1 px of thickness.
 - Head turn and pitch are clamped in `applyPose` (yaw x0.6 up to 45 degrees, no looking up past level) because a hunched creature's
   head otherwise swings into its shoulders.
 - `paint_texture.py` overwrites `gnoblar.png` and colours texels by 3D position, with an explicit box table (`BOXES`) that has to

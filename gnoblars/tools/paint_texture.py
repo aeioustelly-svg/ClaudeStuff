@@ -43,13 +43,13 @@ FACE_LIGHT = {"top": 1.08, "side": 1.0, "bottom": 0.9}
 # Axis-aligned boxes of the unrotated model (pixels, y points down, feet at y = 24).
 # Order matters: the first box whose surface contains a quad owns it.
 BOXES = [
-    ("loincloth", (-2, 2), (21, 23), (-2, -2)),
-    ("lear_a", (4, 7), (10, 14), (-1, -1)),
-    ("lear_b", (7, 9), (9, 12), (-1, -1)),
-    ("lear_c", (9, 10), (8, 10), (-1, -1)),
-    ("rear_a", (-7, -4), (10, 14), (-1, -1)),
-    ("rear_b", (-9, -7), (9, 12), (-1, -1)),
-    ("rear_c", (-10, -9), (8, 10), (-1, -1)),
+    ("loincloth", (-2, 2), (21, 23), (-3, -2)),
+    ("lear_a", (4, 7), (10, 14), (-1, 0)),
+    ("lear_b", (7, 9), (9, 12), (-1, 0)),
+    ("lear_c", (9, 10), (8, 10), (-1, 0)),
+    ("rear_a", (-7, -4), (10, 14), (-1, 0)),
+    ("rear_b", (-9, -7), (9, 12), (-1, 0)),
+    ("rear_c", (-10, -9), (8, 10), (-1, 0)),
     ("wart", (0, 1), (9, 10), (-6, -5)),
     ("nose", (-2, 2), (10, 16), (-7, -4)),
     ("neck", (-1, 1), (15, 16), (-2, 0)),
@@ -116,8 +116,8 @@ def darker(color, k):
 
 
 def paint_ear(part, pos, normal):
-    """Pointed ear. The side facing forward is the inside: pink, with a vein climbing to the tip.
-    The back is skin with a dark rim along the top edge. One nick is bitten out of the lower edge."""
+    """Pointed ear, a 1 px slab. The face looking forward is the inside: pink, with a vein climbing to the tip.
+    The back is skin, the rim and edges are darker. One nick is bitten out of the lower edge."""
     piece = part[-1]
     x, y, z = pos
     ax = abs(x)
@@ -127,6 +127,8 @@ def paint_ear(part, pos, normal):
     bottom_row = y > bottom - 1.0
     if piece == "b" and bottom_row and 8.0 < ax < 9.0:
         return None                                  # the nick
+    if abs(normal[2]) < 0.5:                         # the thin edges
+        return shade(SKIN, 0, "side")
     if normal[2] < 0:                                # inside, facing forward
         if piece == "c" or top_row:
             return shade(EAR_INNER, 0, "side")
@@ -181,8 +183,8 @@ def paint(part, pos, normal):
     if part == "loincloth":
         if y > 22.0:
             return shade(CLOTH, 0, "side")          # frayed hem
-        if ax < 1.0:
-            return shade(SASH, 1, "side")           # a stripe in the sash's colour
+        if ax < 1.0 and nz < -0.5:
+            return shade(SASH, 1, "side")           # a stripe in the sash's colour on the front
         return cloth(pos, "side")
 
     if part in ("left_arm", "right_arm"):

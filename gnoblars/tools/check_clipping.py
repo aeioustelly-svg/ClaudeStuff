@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reports arms (and the ears) that cut into the head or nose in any dumped pose.
+"""Reports arms that cut into the head or nose in any dumped pose, and coincident faces (z-fighting).
 
 Quads come out of the dump in the same order in every pose, so the unrotated "rest" pose labels
 each quad with its part, and the head's oriented box is rebuilt from its own quads in each pose.
@@ -44,10 +44,28 @@ def sample(quad):
     return pts
 
 
+def coincident_faces(quads):
+    """Quads that occupy the same place (a zero-thickness box makes two) flicker in game from z-fighting."""
+    seen = {}
+    found = 0
+    for i, q in enumerate(quads):
+        verts = np.array(q).reshape(4, 8)[:, :3]
+        if np.ptp(verts, axis=0).min() > 0.01 and np.ptp(verts, axis=0).max() > 0.01:
+            key = tuple(sorted(tuple(np.round(v, 2)) for v in verts))
+        else:
+            key = tuple(sorted(tuple(np.round(v, 2)) for v in verts))
+        if key in seen:
+            found += 1
+            print(f"coincident faces: quads {seen[key]} and {i} at {verts.mean(axis=0).round(1).tolist()}")
+        else:
+            seen[key] = i
+    return found
+
+
 def main():
     data = json.load(open(MODEL))
     labels = [label(q) for q in data["poses"]["rest"]]
-    problems = 0
+    problems = coincident_faces(data["poses"]["rest"])
     for pose, quads in data["poses"].items():
         if pose == "rest":
             continue
