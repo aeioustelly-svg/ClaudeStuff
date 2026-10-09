@@ -69,14 +69,16 @@ public class ModelDump {
         Path out = Path.of(args[0]);
         Files.createDirectories(out.getParent());
 
-        // name -> {limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch, roll, rollAngle, dizzy, sit}
+        // name -> {limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch, curl, ball, rollAngle, dizzy, sit}
         Map<String, float[]> poses = new LinkedHashMap<>();
-        poses.put("idle", new float[]{0, 0.0F, 20, 0, 0, 0, 0, 0, 0});
-        poses.put("walk", new float[]{3.0F, 0.8F, 40, 0, 0, 0, 0, 0, 0});
-        poses.put("curling", new float[]{0, 0, 20, 0, 0, 0.35F, 0, 0, 0});
-        poses.put("ball", new float[]{0, 0, 20, 0, 0, 1, 0.6F, 0, 0});
-        poses.put("dizzy", new float[]{0, 0, 14, 0, 0, 0, 0, 1, 0});
-        poses.put("sit", new float[]{0, 0, 20, 0, 0, 0, 0, 0, 1});
+        poses.put("idle", new float[]{0, 0.0F, 20, 0, 0, 0, 0, 0, 0, 0});
+        poses.put("walk", new float[]{3.0F, 0.8F, 40, 0, 0, 0, 0, 0, 0, 0});
+        poses.put("curl25", new float[]{0, 0, 20, 0, 0, 0.25F, 0, 0, 0, 0});
+        poses.put("curl60", new float[]{0, 0, 20, 0, 0, 0.6F, 0, 0, 0, 0});
+        poses.put("curled", new float[]{0, 0, 20, 0, 0, 1, 0, 0, 0, 0});
+        poses.put("ball", new float[]{0, 0, 20, 0, 0, 1, 1, 0.6F, 0, 0});
+        poses.put("dizzy", new float[]{0, 0, 14, 0, 0, 0, 0, 0, 1, 0});
+        poses.put("sit", new float[]{0, 0, 20, 0, 0, 0, 0, 0, 0, 1});
 
         StringBuilder json = new StringBuilder("{\"texSize\":" + TEX_SIZE + ",\"poses\":{");
         ModelPart root = CannonboltModel.createBodyLayer().bakeRoot();
@@ -85,7 +87,7 @@ public class ModelDump {
         boolean first = true;
         for (Map.Entry<String, float[]> pose : poses.entrySet()) {
             float[] p = pose.getValue();
-            model.applyPose(p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8]);
+            model.applyPose(p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9]);
             if (!first) json.append(',');
             first = false;
             json.append('"').append(pose.getKey()).append("\":").append(dump(model, stack));

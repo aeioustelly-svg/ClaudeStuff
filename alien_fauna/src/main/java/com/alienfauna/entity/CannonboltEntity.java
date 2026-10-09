@@ -56,18 +56,24 @@ public class CannonboltEntity extends TamableAnimal {
             SynchedEntityData.defineId(CannonboltEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Boolean> DIZZY =
             SynchedEntityData.defineId(CannonboltEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Boolean> CURLING =
+            SynchedEntityData.defineId(CannonboltEntity.class, EntityDataSerializers.BOOLEAN);
+
+    /** Ticks it takes to lean forward and bring its arms together before it becomes a ball. */
+    private static final int CURL_TIME = 10;
 
     /** The curled-up ball is smaller than the standing body, so curling up always fits. */
     private static final EntityDimensions ROLLING_DIMENSIONS = EntityDimensions.scalable(1.4F, 1.4F);
 
     private int rollTicks;
+    private int curlTicks;
     private int rollCooldown;
     private int dizzyTicks;
     private boolean wantsUnroll;
     private int dizzyAfterUnroll;
 
     // Client-side animation state (also ticked on the server, which is harmless).
-    private float rollAnim, rollAnimO;
+    private float curlAnim, curlAnimO, ballAnim, ballAnimO;
     private float dizzyAnim, dizzyAnimO;
     private float sitAnim, sitAnimO;
     private float rollAngle, rollAngleO;
@@ -109,6 +115,7 @@ public class CannonboltEntity extends TamableAnimal {
         super.defineSynchedData();
         this.entityData.define(ROLLING, false);
         this.entityData.define(DIZZY, false);
+        this.entityData.define(CURLING, false);
     }
 
     @Override
@@ -132,9 +139,10 @@ public class CannonboltEntity extends TamableAnimal {
             return;
         }
         wantsUnroll = false;
-        if (!isRolling()) {
-            rollTicks = 0;
-            setRolling(true);
+        if (!isRolling() && !isCurling()) {
+            // First it leans forward and puts its arms together, standing still; then it is a ball.
+            curlTicks = CURL_TIME;
+            this.entityData.set(CURLING, true);
             playSound(SoundEvents.ARMOR_EQUIP_IRON, 1.0F, 0.6F);
         }
     }
@@ -169,6 +177,23 @@ public class CannonboltEntity extends TamableAnimal {
         }
         if (rollCooldown > 0) rollCooldown--;
 
+        if (isCurling() && --curlTicks <= 0) {
+            this.entityData.set(CURLING, false);
+            if (wantsUnroll) {
+                // told to stop before it finished curling up: it simply straightens again
+                wantsUnroll = false;
+                dizzyTicks = Math.max(dizzyAfterUnroll, 0);
+                dizzyAfterUnroll = 0;
+            } else {
+                rollTicks = 0;
+                setRolling(true);
+                playSound(SoundEvents.ANVIL_LAND, 0.4F, 0.6F);
+                if (level() instanceof ServerLevel server) {
+                    server.sendParticles(ParticleTypes.POOF, getX(), getY() + 0.7D, getZ(), 10, 0.5D, 0.35D, 0.5D, 0.04D);
+                }
+            }
+        }
+
         if (isRolling()) {
             rollTicks++;
             if (rollTicks % 5 == 0 && getDeltaMovement().horizontalDistanceSqr() > 0.004D) {
@@ -200,17 +225,19 @@ public class CannonboltEntity extends TamableAnimal {
     /** A dizzy Cannonbolt reels in place: no goals run, as with a stunned ravager. */
     @Override
     protected boolean isImmobile() {
-        return super.isImmobile() || isDizzy();
+        return super.isImmobile() || isDizzy() || isCurling();
     }
 
     @Override
     public void tick() {
         super.tick();
-        rollAnimO = rollAnim;
+        curlAnimO = curlAnim;
+        ballAnimO = ballAnim;
         dizzyAnimO = dizzyAnim;
         sitAnimO = sitAnim;
         rollAngleO = rollAngle;
-        rollAnim = approach(rollAnim, isRolling() ? 1.0F : 0.0F, 0.15F);
+        curlAnim = approach(curlAnim, (isCurling() || isRolling()) ? 1.0F : 0.0F, 1.0F / CURL_TIME);
+        ballAnim = approach(ballAnim, isRolling() ? 1.0F : 0.0F, 0.25F);
         dizzyAnim = approach(dizzyAnim, isDizzy() ? 1.0F : 0.0F, 0.1F);
         sitAnim = approach(sitAnim, isInSittingPose() ? 1.0F : 0.0F, 0.08F);
         if (isRolling()) {
@@ -383,11 +410,13 @@ public class CannonboltEntity extends TamableAnimal {
     public boolean isRolling() { return this.entityData.get(ROLLING); }
     private void setRolling(boolean value) { this.entityData.set(ROLLING, value); }
     public boolean isDizzy() { return this.entityData.get(DIZZY); }
+    public boolean isCurling() { return this.entityData.get(CURLING); }
 
     public int getRollCooldown() { return rollCooldown; }
     public void setRollCooldown(int ticks) { this.rollCooldown = ticks; }
 
-    public float getRollAnim(float partialTick) { return Mth.lerp(partialTick, rollAnimO, rollAnim); }
+    public float getCurlAnim(float partialTick) { return Mth.lerp(partialTick, curlAnimO, curlAnim); }
+    public float getBallAnim(float partialTick) { return Mth.lerp(partialTick, ballAnimO, ballAnim); }
     public float getDizzyAnim(float partialTick) { return Mth.lerp(partialTick, dizzyAnimO, dizzyAnim); }
     public float getSitAnim(float partialTick) { return Mth.lerp(partialTick, sitAnimO, sitAnim); }
     public float getRollAngle(float partialTick) { return Mth.lerp(partialTick, rollAngleO, rollAngle); }

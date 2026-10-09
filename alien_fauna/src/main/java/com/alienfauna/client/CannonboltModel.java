@@ -50,11 +50,11 @@ public class CannonboltModel<T extends CannonboltEntity> extends EntityModel<T> 
         PartDefinition body = root.addOrReplaceChild("body",
                 CubeListBuilder.create().texOffs(0, 72).addBox(-7.0F, -18.0F, -6.0F, 14, 18, 12)
                         // three yellow bands, each at least as wide as the torso, with a gap between them like
-                        // an armadillo's shell; the middle one is a little wider and longer. Each has its own part
+                        // an armadillo's shell; the middle one is a little wider and longer, and stands one pixel further out. Each has its own part
                         // of the texture.
                         .texOffs(72, 0).addBox(-7.0F, -18.0F, 6.0F, 14, 5, 2)
-                        .texOffs(72, 7).addBox(-8.0F, -12.0F, 6.0F, 16, 6, 2)
-                        .texOffs(72, 15).addBox(-7.0F, -5.0F, 6.0F, 14, 5, 2),
+                        .texOffs(72, 7).addBox(-8.0F, -12.0F, 6.0F, 16, 6, 3)
+                        .texOffs(72, 16).addBox(-7.0F, -5.0F, 6.0F, 14, 5, 2),
                 PartPose.offset(0.0F, 16.0F, 0.0F));
 
         // The yellow shoulder plates: one box each, against the torso and over the arm, tilted
@@ -122,26 +122,26 @@ public class CannonboltModel<T extends CannonboltEntity> extends EntityModel<T> 
                           float netHeadYaw, float headPitch) {
         float partialTick = ageInTicks - entity.tickCount;
         applyPose(limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch,
-                entity.getRollAnim(partialTick), entity.getRollAngle(partialTick),
+                entity.getCurlAnim(partialTick), entity.getBallAnim(partialTick), entity.getRollAngle(partialTick),
                 entity.getDizzyAnim(partialTick), entity.getSitAnim(partialTick));
     }
 
     /** Pure function of its inputs so the preview tool can pose the model without an entity. */
     public void applyPose(float limbSwing, float limbSwingAmount, float ageInTicks,
-                          float netHeadYaw, float headPitch, float roll, float rollAngle,
+                          float netHeadYaw, float headPitch, float curl, float ballAmt, float rollAngle,
                           float dizzy, float sit) {
         for (ModelPart part : new ModelPart[]{body, rightArm, leftArm, rightDome, leftDome, rightLeg, leftLeg, ball}) {
             part.resetPose();
         }
 
-        // Standing parts curl up over the first half of the roll animation, then the ball takes over.
-        float curl = Math.min(1.0F, roll * 2.0F);
-        boolean curled = roll > 0.5F;
+        // Curling up: curl runs 0 to 1 while it leans forward and puts its arms together. Once it is a
+        // ball, ballAmt runs 0 to 1 and the ball takes over from the standing parts.
+        boolean curled = ballAmt > 0.5F;
         body.visible = !curled;
         rightLeg.visible = !curled;
         leftLeg.visible = !curled;
         ball.visible = curled;
-        float ballScale = 0.75F + 0.25F * Math.min(1.0F, (roll - 0.5F) * 2.0F);
+        float ballScale = 0.75F + 0.25F * Math.min(1.0F, (ballAmt - 0.5F) * 2.0F);
         ball.xScale = ballScale;
         ball.yScale = ballScale;
         ball.zScale = ballScale;
@@ -185,6 +185,10 @@ public class CannonboltModel<T extends CannonboltEntity> extends EntityModel<T> 
         leftLeg.xRot -= 1.4F * curl;
         rightArm.xRot -= 1.2F * curl;
         leftArm.xRot -= 1.2F * curl;
+        rightArm.yRot -= 0.55F * curl;                 // hands brought together in front
+        leftArm.yRot += 0.55F * curl;
+        rightArm.zRot *= 1.0F - curl;
+        leftArm.zRot *= 1.0F - curl;
         body.y += 3.0F * curl;
     }
 

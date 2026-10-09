@@ -11,7 +11,7 @@ import net.minecraft.world.entity.ai.goal.Goal;
  * It only ever has a target when something hurt it or its owner.
  */
 public class CannonboltRollAttackGoal extends Goal {
-    private static final int WIND_UP = 10;
+    private static final int WIND_UP = 2;
     private static final int GIVE_UP = 120;
 
     private final CannonboltEntity mob;

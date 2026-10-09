@@ -245,8 +245,8 @@ def ball_bar(shift):
 BOXES = {
     "body": (0, 72, 14, 18, 12, body),
     "back_band_1": (72, 0, 14, 5, 2, back_band(0)),
-    "back_band_2": (72, 7, 16, 6, 2, back_band(1)),
-    "back_band_3": (72, 15, 14, 5, 2, back_band(2)),
+    "back_band_2": (72, 7, 16, 6, 3, back_band(1)),
+    "back_band_3": (72, 16, 14, 5, 2, back_band(2)),
     "dome": (68, 72, 8, 6, 7, dome),
     "arm": (0, 102, 6, 20, 6, arm),
     "arm_plate_mid": (48, 102, 1, 8, 4, plate_mid),
