@@ -21,7 +21,7 @@ guidelines (pacifism, vanilla interaction, vanilla-style models) and the sandbox
 | `python3 -I tools/paint_texture.py` | Repaints `gnoblar.png` from the dumped geometry |
 | `python3 -I tools/render_preview.py` | Software-renders `build/preview/body.png`, `head.png`, `texture.png` |
 | `python3 -I tools/check_clipping.py` | Fails if an arm cuts into the head or nose in any dumped pose, or if two coplanar faces overlap (z-fighting). Run it after changing a pose or a cube |
-| `python3 -I tools/make_item_textures.py` | Rebuilds the item textures from vanilla textures |
+| `python3 -I tools/make_item_textures.py` | Redraws the item textures (the nose pickle, from an ASCII map) |
 | `python3 -I tools/make_camp.py` | Rebuilds `data/gnoblars/structures/camp.nbt` block by block and draws `build/preview/camp.png` (top and side) |
 
 Use `--offline` only after a full online build: the runtime classpath needs artifacts that only an online build caches.
@@ -53,7 +53,7 @@ Do not use `runServer` or `runClient` in the sandbox (EULA and no display).
   view (it is behind them), which is why putting it down is a block click and not an entity click.
 - **Pacifism check:** nothing needs killing. Every gift and every loot entry has a peaceful source (fishing, farming, crafting,
   finding). Death drops nothing except what the gnoblar was carrying.
-- **Items:** Nose Pickle (dried kelp + brown mushroom -> 2 pickles, texture recoloured from the vanilla sea pickle) and the spawn egg.
+- **Items:** Nose Pickle (dried kelp + brown mushroom -> 2 pickles; its own drawing, a gherkin curved like a nose with a pair of nostrils, because the recoloured vanilla sea pickle read as a sea cucumber) and the spawn egg.
 - **Spawns:** swamps, mangrove swamps, taigas and badlands, groups of 2 to 4, on any solid ground (`ModEntities`).
 
 ## The camp

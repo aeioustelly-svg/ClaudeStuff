@@ -1,47 +1,65 @@
 #!/usr/bin/env python3
-"""Builds the mod's item textures from vanilla textures, as the project guidelines ask
-(same family means same template, new material painted in).
+"""Draws the mod's item textures.
 
-  nose_pickle.png   vanilla sea pickle shape and shading, on a warty olive-to-pale-green ramp
+  nose_pickle.png   a pickled gnoblar nose: a gherkin that is also a nose: it curves up from a thick end with a pair of nostrils to a thin
+                    stem, with a couple of bumps and a drop of brine. It is drawn from an ASCII map, three greens and a dark outline, in the muted vanilla style. (It was
+                    once the vanilla sea pickle recoloured, which looked like a sea cucumber, so it is its own drawing now.)
 
-    python3 -I tools/make_item_textures.py [client-extra.jar]
+    python3 -I tools/make_item_textures.py
 """
-import io
 import os
-import sys
-import zipfile
 
-import numpy as np
 from PIL import Image
 
-JAR = sys.argv[1] if len(sys.argv) > 1 else os.path.expanduser(
-    "~/.gradle/caches/forge_gradle/minecraft_repo/versions/1.20.1/client-extra.jar")
 OUT = "src/main/resources/assets/gnoblars/textures/item/"
-T = "assets/minecraft/textures/"
+
+PALETTE = {
+    ".": None,
+    "o": (30, 40, 18),      # outline
+    "d": (62, 78, 32),      # shadow
+    "m": (98, 118, 46),     # body
+    "l": (130, 150, 64),    # lit side
+    "h": (180, 194, 112),   # highlight
+    "w": (156, 164, 84),    # wart
+    "n": (24, 30, 12),      # nostril
+    "b": (206, 214, 128),   # brine
+}
+
+NOSE_PICKLE = [
+    "................",
+    "..........oo....",
+    ".........ohlo...",
+    "........ohmmlo..",
+    "........odmmlo..",
+    ".......odmmmlo..",
+    ".......odmwmmlo.",
+    "......odmmmmmlo.",
+    ".....odmmmmmmlo.",
+    "....odmwmmmmllo.",
+    "...odmmmmmmmlo..",
+    "..odmmmmmmmllo..",
+    "..odmmmmmmmlo...",
+    "..oddmnmmnmllo..",
+    "...ooddmmllo....",
+    ".....oooooo..b..",
+]
 
 
-def load(zf, name):
-    return Image.open(io.BytesIO(zf.read(T + name))).convert("RGBA")
-
-
-def ramp(img, dark, light):
-    """Recolour by brightness: darkest pixel -> dark, brightest -> light. Alpha is kept."""
-    a = np.array(img).astype(float)
-    solid = a[..., 3] > 0
-    lum = (a[..., 0] * 0.3 + a[..., 1] * 0.59 + a[..., 2] * 0.11) / 255.0
-    lo, hi = lum[solid].min(), lum[solid].max()
-    t = ((lum - lo) / (hi - lo + 1e-9))[..., None]
-    out = a.copy()
-    out[..., :3] = np.array(dark) * (1 - t) + np.array(light) * t
-    return Image.fromarray(np.clip(out, 0, 255).astype(np.uint8), "RGBA")
+def draw(rows, path):
+    assert len(rows) == 16 and all(len(r) == 16 for r in rows), "an item texture is 16 x 16"
+    img = Image.new("RGBA", (16, 16), (0, 0, 0, 0))
+    for y, row in enumerate(rows):
+        for x, ch in enumerate(row):
+            color = PALETTE[ch]
+            if color:
+                img.putpixel((x, y), (*color, 255))
+    img.save(path)
+    print("Wrote", path)
 
 
 def main():
-    with zipfile.ZipFile(JAR) as zf:
-        pickle = load(zf, "item/sea_pickle.png")
     os.makedirs(OUT, exist_ok=True)
-    ramp(pickle, (58, 62, 30), (178, 176, 104)).save(OUT + "nose_pickle.png")
-    print("Wrote", OUT + "nose_pickle.png")
+    draw(NOSE_PICKLE, OUT + "nose_pickle.png")
 
 
 if __name__ == "__main__":
