@@ -29,6 +29,9 @@ public class GnoblarModel<T extends GnoblarEntity> extends EntityModel<T> implem
             new ModelLayerLocation(new ResourceLocation(Gnoblars.MODID, "gnoblar"), "main");
 
     private static final float HUNCH = 0.5F;
+    // Flat parts (the ears and the loincloth) are done the way vanilla does its chicken legs: an ordinary box whose
+    // texture paints ONE face and leaves every other face transparent. The cutout render drops the transparent
+    // faces, so what shows is a single flat sheet with nothing coincident to z-fight. The box is 1 px thick.
 
     private final ModelPart root;
     private final ModelPart body, head, nose, wart, leftEar, rightEar, leftArm, rightArm, leftLeg, rightLeg;
@@ -54,7 +57,7 @@ public class GnoblarModel<T extends GnoblarEntity> extends EntityModel<T> implem
         PartDefinition body = root.addOrReplaceChild("body",
                 CubeListBuilder.create().texOffs(0, 16).addBox(-4.0F, -5.0F, -2.0F, 8, 5, 4),
                 PartPose.offset(0.0F, 21.0F, 0.0F));
-        // a rag hanging from the belt (1 px thick: a zero-thickness plane has two coincident faces and flickers)
+        // a rag hanging from the belt (only its front face is painted, like a chicken's leg)
         body.addOrReplaceChild("loincloth",
                 CubeListBuilder.create().texOffs(44, 16).addBox(-2.0F, 0.0F, -1.0F, 4, 2, 1),
                 PartPose.offset(0.0F, 0.0F, -2.0F));
@@ -76,8 +79,8 @@ public class GnoblarModel<T extends GnoblarEntity> extends EntityModel<T> implem
                 CubeListBuilder.create().texOffs(44, 24).addBox(0.0F, -6.0F, -5.0F, 1, 1, 1),
                 PartPose.ZERO);
 
-        // pointed ears: stepped slabs, 1 px thick, that climb and narrow to a tip, so the outline is not a rectangle.
-        // They are not zero-thickness planes: those have two coincident faces that z-fight and flicker in game.
+        // pointed ears: stepped boxes that climb and narrow to a tip, so the outline is not a rectangle. Only the
+        // front face of each is painted (see the note on flat parts above), so they read as flat sheets.
         head.addOrReplaceChild("left_ear",
                 CubeListBuilder.create()
                         .texOffs(0, 32).addBox(0.0F, -2.0F, 0.0F, 3, 4, 1)

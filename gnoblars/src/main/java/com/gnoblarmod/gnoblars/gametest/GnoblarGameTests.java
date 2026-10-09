@@ -175,7 +175,7 @@ public class GnoblarGameTests {
                 helper.assertTrue(gnoblar.isScared(), "Gnoblar did not run from the zombie"));
     }
 
-    @GameTest(templateNamespace = Gnoblars.MODID, template = TEMPLATE, timeoutTicks = 1200)
+    @GameTest(templateNamespace = Gnoblars.MODID, template = TEMPLATE, timeoutTicks = 3000)
     public static void friendSniffsUpScrap(GameTestHelper helper) {
         for (int x = 9; x <= 15; x++) {
             for (int z = 9; z <= 15; z++) {

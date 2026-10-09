@@ -58,15 +58,17 @@ Do not use `runServer` or `runClient` in the sandbox (EULA and no display).
   bitten out. The head sits on a 1 px neck box. The arms are single boxes with their top level with the neck, and the rag loincloth
   is a 4x2x1 slab. Held items render through `ItemInHandLayer` and the model's `translateToHand`
   (shrunk to 0.65 for a small hand).
-- **Z-fighting (flicker in game, invisible in every preview).** Two faces in the same plane that face the same way and overlap are both
-  drawn at the same depth, and the lit/shaded pair flips from frame to frame. Two causes hit this mod:
-  - A zero-thickness box makes two coincident faces with opposite normals (the first ears and loincloth). Give flat parts 1 px.
-  - A tilting part sweeping over a neighbour's flush face. The vanilla chicken has legs flush with its body (leg x -3..0 and 1..3,
-    body x -3..3) and does not flicker, because the body never tilts and the leg box starts exactly at its hip, so the two faces only
-    touch along an edge. Here the hunch pushed the body's belt below the leg tops, over the legs' side faces. The fix is a body 8 wide
-    over legs 1..3 (inset), so no two faces share a plane whatever the pose.
-  `check_clipping.py` now clips every pair of coplanar same-facing faces in several poses and fails on any overlap. Run it after
-  changing a cube, a pivot or a pose. Mind that it is only as good as the poses dumped.
+- **Flat parts: do it the way vanilla does a chicken's leg.** The chicken leg is an ordinary 3x5x3 box (`addBox(-1,0,-3,3,5,3)`), but
+  its texture paints one 1 px column on one face and the toes on the bottom face, and leaves every other face transparent. The cutout
+  render drops transparent texels, so a single flat sheet shows, and no two visible faces share a place. So the ears and the loincloth
+  are 1 px boxes with only the front face painted (`paint_ear` and the loincloth branch in `paint_texture.py` return `None` for every
+  other face). The user does not want them as visible slabs and does not want other tricks (zero-thickness boxes flicker, a tiny
+  `CubeDeformation` was rejected): paint one face and leave the rest transparent.
+- **Z-fighting between parts.** Two faces in the same plane that face the same way and overlap are both drawn at the same depth and
+  flicker (invisible in every preview). The hunch pushed the body's belt below the leg tops, over the legs' side faces, which had been
+  flush with a 6 wide body. The body is now 8 wide over legs 1..3 (inset), so no two faces share a plane whatever the pose.
+  `check_clipping.py` clips every pair of coplanar same-facing faces in several poses and fails on any overlap. Run it after changing
+  a cube, a pivot or a pose. It is only as good as the poses dumped, and nothing here has been seen in a real client.
 - Head turn and pitch are clamped in `applyPose` (yaw x0.6 up to 45 degrees, no looking up past level) because a hunched creature's
   head otherwise swings into its shoulders.
 - `paint_texture.py` overwrites `gnoblar.png` and colours texels by 3D position, with an explicit box table (`BOXES`) that has to
