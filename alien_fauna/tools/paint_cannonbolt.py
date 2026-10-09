@@ -98,32 +98,46 @@ def plate_flat(face, x, y, W, H):
 
 # ---- boxes (name: u, v, w, h, d, painter) ----
 
+def eye(x, y):
+    """Eye pixel at (x, y) relative to the eye's top-left corner, or None outside it. Four wide and
+    four tall: a one-pixel black outline round a 2x2 amber centre."""
+    if not (0 <= x < 4 and 0 <= y < 4):
+        return None
+    if y in (0, 3) or x in (0, 3):
+        return BLACK
+    return AMBER_LIGHT if (x, y) == (1, 1) else AMBER
+
+
 def body(face, x, y, W, H, tx, ty):
-    """The torso carries the face: black hood, amber eyes, black stripe, a long frown."""
+    """The torso carries the face: black hood and cowl, outlined amber eyes, a black stripe that
+    lines up with the one below the frown, and a long frown."""
     if face == "top":
         return BLACK
     if face == "bottom":
         return STEEL[0]
+    if face in ("left", "right"):
+        if y < 6:
+            return BLACK
+        if y == 6:
+            return dither(x, y, BLACK, STEEL[1])
+        return fur(face, x, y, W, H, tx, ty)
     if y < 2:
         return BLACK
     if face == "front":
         mid = W // 2
-        # Small amber eyes (2x1) in a black outline, mirrored about the centre line.
-        eye_core = y == 4 and x in (3, 4, 9, 10)
-        eye_ring = (y == 4 and x in (2, 5, 8, 11)) or (y in (3, 5) and x in (3, 4, 9, 10))
-        if eye_core:
-            return AMBER_LIGHT if x in (3, 9) else AMBER
-        if eye_ring:
-            return BLACK
         if y == 2:
-            return BLACK if mid - 1 <= x <= mid else dither(x, y, STEEL[1], WHITE[1])
-        if mid - 1 <= x <= mid and y <= 6:
+            return BLACK if mid - 1 <= x <= mid else dither(x, y, STEEL[1], BLACK)
+        if mid - 1 <= x <= mid and (y <= 6 or y >= 10):
             return BLACK
-        if y == 8 and 3 <= x <= 10:
+        left = eye(x - 1, y - 3)
+        right = eye(x - 9, y - 3)
+        if left is not None:
+            return left
+        if right is not None:
+            return right
+        if y == 9 and 3 <= x <= 10:
             return BLACK
-        if y == 9 and x in (3, 10):
-            return BLACK
-        if mid - 1 <= x <= mid and 10 <= y <= 14:
+        if y == 10 and x in (3, 10):
             return BLACK
     elif y == 2:
         return dither(x, y, STEEL[1], WHITE[1])
@@ -144,7 +158,7 @@ def arm(face, x, y, W, H, tx, ty):
     if y < 1:
         return BLACK
     if y >= H - 4:
-        return STEEL[1] if y < H - 1 else STEEL[0]
+        return STEEL[2] if y < H - 1 else STEEL[1]
     if y == H - 5:
         return dither(x, y, STEEL[1], WHITE[1])
     return fur(face, x, y, W, H, tx, ty)
@@ -157,20 +171,25 @@ def leg(face, x, y, W, H, tx, ty):
         return STEEL[0]
     if y >= H - 2:
         return STEEL[1] if y == H - 2 else STEEL[0]
+    if face in ("front", "back") and W // 2 - 1 <= x <= W // 2 and y < H - 2:
+        return BLACK
     return fur(face, x, y, W, H, tx, ty)
 
 
 def claws_down(face, x, y, W, H, tx, ty):
-    """Three claws hanging from a hand, tips curling inwards and ending in a single texel.
-
-    Used on two crossed flat cards, so the claws show from the front and from the side."""
-    if face not in ("front", "back", "left", "right") or H != 4:
+    """A dark knuckle row with three two-pixel claws hanging from it, narrowing to a tip. The gaps
+    between the claws stay transparent."""
+    if face not in ("front", "back"):
         return None
-    k, cx = divmod(x, 2)
-    tip_col = 1 if k == 0 else 0
-    if y < 2:
-        return CLAW_LIGHT if cx == 0 else CLAW
-    return CLAW if cx == tip_col else None
+    if y == 0:
+        return CLAW_LIGHT
+    claw = {0: 0, 1: 0, 3: 1, 4: 1, 6: 2, 7: 2}.get(x)
+    if claw is None:
+        return None
+    if y <= 2:
+        return CLAW
+    tip = {0: 1, 1: 3, 2: 6}[claw]          # the tip pixel of each claw (curling inwards)
+    return CLAW if x == tip and y <= 4 else None
 
 
 def claws_forward(face, x, y, W, H, tx, ty):
@@ -198,9 +217,9 @@ BOXES = {
     "arm_plate": (48, 96, 2, 9, 7, plate),
     "leg": (24, 96, 6, 8, 6, leg),
     "knee_plate": (68, 90, 1, 5, 4, plate),
-    "hand_claws": (0, 120, 6, 4, 0, claws_down),
+    "hand_claws": (0, 120, 8, 5, 0, claws_down),
     "hand_claws_side": (28, 118, 0, 4, 6, claws_down),
-    "foot_claws": (12, 120, 6, 0, 2, claws_forward),
+    "foot_claws": (20, 120, 6, 0, 2, claws_forward),
     "ball_x_bar": (0, 34, 20, 16, 14, ball_bar(0)),
     "ball_y_bar": (68, 34, 14, 20, 16, ball_bar(1)),
     "ball_z_bar": (0, 0, 16, 14, 20, ball_bar(-1)),

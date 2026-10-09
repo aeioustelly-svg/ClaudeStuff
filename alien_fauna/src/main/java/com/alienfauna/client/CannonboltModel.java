@@ -63,13 +63,13 @@ public class CannonboltModel<T extends CannonboltEntity> extends EntityModel<T> 
         // and two crossed flat cards of claws under the hand.
         body.addOrReplaceChild("right_arm",
                 CubeListBuilder.create().texOffs(0, 96).addBox(-3.0F, -1.0F, -3.0F, 6, 17, 6)
-                        .texOffs(0, 120).addBox(-3.0F, 16.0F, 0.0F, 6, 4, 0)
+                        .texOffs(0, 120).addBox(-4.0F, 15.0F, -4.0F, 8, 5, 0)
                         .texOffs(28, 118).addBox(0.0F, 16.0F, -3.0F, 0, 4, 6)
                         .texOffs(48, 96).addBox(-5.0F, 1.0F, -3.0F, 2, 9, 7),
                 PartPose.offset(-10.0F, -12.0F, 0.0F));
         body.addOrReplaceChild("left_arm",
                 CubeListBuilder.create().mirror().texOffs(0, 96).addBox(-3.0F, -1.0F, -3.0F, 6, 17, 6)
-                        .texOffs(0, 120).addBox(-3.0F, 16.0F, 0.0F, 6, 4, 0)
+                        .texOffs(0, 120).addBox(-4.0F, 15.0F, -4.0F, 8, 5, 0)
                         .texOffs(28, 118).addBox(0.0F, 16.0F, -3.0F, 0, 4, 6)
                         .texOffs(48, 96).addBox(3.0F, 1.0F, -3.0F, 2, 9, 7),
                 PartPose.offset(10.0F, -12.0F, 0.0F));
@@ -77,12 +77,12 @@ public class CannonboltModel<T extends CannonboltEntity> extends EntityModel<T> 
         // Legs: one box from the hip, a plate on the outside of the thigh, flat claws on the toes.
         root.addOrReplaceChild("right_leg",
                 CubeListBuilder.create().texOffs(24, 96).addBox(-3.0F, 0.0F, -3.0F, 6, 8, 6)
-                        .texOffs(12, 120).addBox(-3.0F, 7.0F, -5.0F, 6, 0, 2)
+                        .texOffs(20, 120).addBox(-3.0F, 7.0F, -5.0F, 6, 0, 2)
                         .texOffs(68, 90).addBox(-4.0F, 1.0F, -2.0F, 1, 5, 4),
                 PartPose.offset(-4.0F, 16.0F, 0.0F));
         root.addOrReplaceChild("left_leg",
                 CubeListBuilder.create().mirror().texOffs(24, 96).addBox(-3.0F, 0.0F, -3.0F, 6, 8, 6)
-                        .texOffs(12, 120).addBox(-3.0F, 7.0F, -5.0F, 6, 0, 2)
+                        .texOffs(20, 120).addBox(-3.0F, 7.0F, -5.0F, 6, 0, 2)
                         .texOffs(68, 90).addBox(3.0F, 1.0F, -2.0F, 1, 5, 4),
                 PartPose.offset(4.0F, 16.0F, 0.0F));
 
