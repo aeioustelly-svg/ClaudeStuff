@@ -7,7 +7,7 @@ import net.minecraft.world.entity.ai.util.LandRandomPos;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Wild and tame Cannonbolts now and then curl up and roll somewhere for the fun of it. It hurts
+ * Wild and tame Cannonbolts, babies about three times as often, now and then curl up and roll somewhere for the fun of it. It hurts
  * nothing. Afterwards the Cannonbolt is briefly dizzy, then not curious about rolling again for
  * a good while.
  */
@@ -22,12 +22,12 @@ public class CannonboltPlayRollGoal extends Goal {
 
     @Override
     public boolean canUse() {
-        if (mob.getTarget() != null || mob.isInSittingPose() || mob.isDizzy() || mob.isBaby()
+        if (mob.getTarget() != null || mob.isInSittingPose() || mob.isDizzy()
                 || mob.getRollCooldown() > 0 || !mob.onGround() || mob.isInWaterOrBubble()
                 || mob.isLeashed() || mob.isPassenger()) {
             return false;
         }
-        return mob.getRandom().nextInt(reducedTickDelay(240)) == 0;
+        return mob.getRandom().nextInt(reducedTickDelay(mob.isBaby() ? 90 : 240)) == 0;
     }
 
     @Override

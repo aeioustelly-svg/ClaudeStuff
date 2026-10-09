@@ -77,12 +77,23 @@ def plate(face, x, y, W, H, tx, ty):
     return YELLOW[1]
 
 
+def flat_side(face, y, H):
+    """The sides of a back band: a plain slab, light on top, dark underneath, with no pattern."""
+    if face == "top":
+        return YELLOW[2]
+    if face == "bottom":
+        return YELLOW[0]
+    return YELLOW[0] if y == H - 1 else YELLOW[1]
+
+
 def back_band(kind):
     """Each back band gets its own surface so the three never look like one texture repeated:
     vertical ridges on the first, a diagonal scratch on the second, a row of rivets on the third."""
     def paint(face, x, y, W, H, tx, ty):
+        if face != "back":
+            return flat_side(face, y, H)
         c = plate(face, x, y, W, H, tx, ty)
-        if face != "back" or c != YELLOW[1]:
+        if c != YELLOW[1]:
             return c
         if kind == 0 and x % 3 == 0:
             return YELLOW[0]
@@ -118,6 +129,18 @@ def plate_flat(face, x, y, W, H):
 
 # ---- boxes (name: u, v, w, h, d, painter) ----
 
+BABY = False                                       # set while the baby texture is painted
+
+
+def eye_big(x, y):
+    """The baby's eye: five wide and five tall, a black outline round a 3x3 amber centre."""
+    if not (0 <= x < 5 and 0 <= y < 5):
+        return None
+    if y in (0, 4) or x in (0, 4):
+        return BLACK
+    return AMBER_LIGHT if (x, y) in ((1, 1), (2, 1), (1, 2)) else AMBER
+
+
 def eye(x, y):
     """Eye pixel at (x, y) relative to the eye's top-left corner, or None outside it. Four wide and
     four tall: a one-pixel black outline round a 2x2 amber centre."""
@@ -148,24 +171,27 @@ def body(face, x, y, W, H, tx, ty):
         mid = W // 2
         if y == 2:
             return BLACK
-        if mid - 1 <= x <= mid and (y <= 6 or y >= 11):
+        if mid - 1 <= x <= mid and (y <= (2 if BABY else 6) or y >= (12 if BABY else 11)):
             return BLACK
-        left = eye(x - 1, y - 3)
-        right = eye(x - 9, y - 3)
+        if BABY:
+            left, right = eye_big(x - 1, y - 3), eye_big(x - 8, y - 3)
+        else:
+            left, right = eye(x - 1, y - 3), eye(x - 9, y - 3)
         if left is not None:
             return left
         if right is not None:
             return right
         # The mouth: a thick frown that touches neither stripe, with a grey lip shadow under the
         # middle and the corners drooping.
-        if y == 8 and 4 <= x <= 9:
+        my = y - 1 if BABY else y                   # the baby's mouth sits a row lower, below the bigger eyes
+        if my == 8 and 4 <= x <= 9:
             return BLACK
-        if y == 9:
+        if my == 9:
             if x in (3, 10):
                 return BLACK
             if 4 <= x <= 9:
                 return STEEL[2]
-        if y == 10 and x in (2, 11):
+        if my == 10 and x in (2, 11):
             return BLACK
     elif y == 2:
         return BLACK
@@ -262,7 +288,7 @@ BOXES = {
 }
 
 
-def main():
+def paint(path):
     img = Image.new("RGBA", (128, 128), (0, 0, 0, 0))
     px = img.load()
     for name, (u, v, w, h, d, painter) in BOXES.items():
@@ -272,8 +298,16 @@ def main():
                     colour = painter(face, x, y, fw, fh, fx + x, fy + y)
                     if colour is not None:
                         px[fx + x, fy + y] = colour + (255,) if len(colour) == 3 else colour
-    img.save(OUT)
-    print("Wrote", OUT)
+    img.save(path)
+    print("Wrote", path)
+
+
+def main():
+    global BABY
+    BABY = False
+    paint(OUT)
+    BABY = True                                      # the baby: same model and texture, bigger eyes
+    paint(OUT.replace("cannonbolt.png", "cannonbolt_baby.png"))
 
 
 if __name__ == "__main__":

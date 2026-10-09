@@ -27,7 +27,7 @@ public class CannonboltRollAttackGoal extends Goal {
     @Override
     public boolean canUse() {
         LivingEntity target = mob.getTarget();
-        if (target == null || !target.isAlive() || mob.isDizzy() || mob.isInSittingPose()
+        if (target == null || !target.isAlive() || mob.isBaby() || mob.isDizzy() || mob.isInSittingPose()
                 || mob.getRollCooldown() > 0 || !mob.onGround()) {
             return false;
         }

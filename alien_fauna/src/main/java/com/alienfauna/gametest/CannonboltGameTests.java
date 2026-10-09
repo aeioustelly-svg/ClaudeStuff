@@ -74,6 +74,39 @@ public class CannonboltGameTests {
         });
     }
 
+    @GameTest(templateNamespace = AlienFauna.MODID, template = TEMPLATE, timeoutTicks = 600)
+    public static void babyIsSmallerAndNeverFights(GameTestHelper helper) {
+        floor(helper);
+        Villager villager = target(helper, 12, 2, 12);
+        CannonboltEntity adult = helper.spawnWithNoFreeWill(ModEntities.CANNONBOLT.get(), 4, 2, 4);
+        CannonboltEntity baby = helper.spawn(ModEntities.CANNONBOLT.get(), 12, 2, 18);
+        baby.setBaby(true);
+        baby.setTarget(villager);
+        helper.runAfterDelay(250, () -> {
+            helper.assertTrue(baby.isBaby(), "The baby grew up in a few seconds");
+            helper.assertTrue(baby.getBbHeight() < adult.getBbHeight(), "The baby is not smaller than the adult");
+            helper.assertTrue(villager.getHealth() == villager.getMaxHealth(), "A baby Cannonbolt hurt its target");
+            helper.succeed();
+        });
+    }
+
+    @GameTest(templateNamespace = AlienFauna.MODID, template = TEMPLATE)
+    public static void feedingATameBabyMakesItGrow(GameTestHelper helper) {
+        floor(helper);
+        Player player = helper.makeMockPlayer();
+        player.getAbilities().instabuild = false;
+        player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.MELON_SLICE, 4));
+        CannonboltEntity baby = helper.spawn(ModEntities.CANNONBOLT.get(), 12, 2, 12);
+        baby.setBaby(true);
+        baby.tame(player);
+        baby.setOrderedToSit(false);
+        int before = baby.getAge();
+        baby.interact(player, InteractionHand.MAIN_HAND);
+        helper.assertTrue(baby.getAge() > before, "Feeding a tame baby did not move it towards adulthood");
+        helper.assertTrue(player.getItemInHand(InteractionHand.MAIN_HAND).getCount() == 3, "The melon slice was not used");
+        helper.succeed();
+    }
+
     @GameTest(templateNamespace = AlienFauna.MODID, template = TEMPLATE)
     public static void leansForwardBeforeBecomingABall(GameTestHelper helper) {
         floor(helper);

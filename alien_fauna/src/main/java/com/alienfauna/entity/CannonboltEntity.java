@@ -40,7 +40,12 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.DifficultyInstance;
+import net.minecraft.world.entity.MobSpawnType;
+import net.minecraft.world.entity.SpawnGroupData;
+import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraftforge.event.ForgeEventFactory;
+import javax.annotation.Nullable;
 
 /**
  * A gentle, armoured alien that curls into a ball to roll about.
@@ -99,7 +104,11 @@ public class CannonboltEntity extends TamableAnimal {
         this.goalSelector.addGoal(0, new FloatGoal(this));
         this.goalSelector.addGoal(1, new SitWhenOrderedToGoal(this));
         this.goalSelector.addGoal(2, new CannonboltRollAttackGoal(this));
-        this.goalSelector.addGoal(3, new MeleeAttackGoal(this, 1.0D, true));
+        this.goalSelector.addGoal(3, new MeleeAttackGoal(this, 1.0D, true) {
+            // a baby never fights
+            @Override public boolean canUse() { return !isBaby() && super.canUse(); }
+            @Override public boolean canContinueToUse() { return !isBaby() && super.canContinueToUse(); }
+        });
         this.goalSelector.addGoal(4, new FollowOwnerGoal(this, 1.1D, 8.0F, 3.0F, false));
         this.goalSelector.addGoal(5, new CannonboltPlayRollGoal(this));
         this.goalSelector.addGoal(6, new WaterAvoidingRandomStrollGoal(this, 0.7D));
@@ -128,7 +137,7 @@ public class CannonboltEntity extends TamableAnimal {
 
     @Override
     public EntityDimensions getDimensions(Pose pose) {
-        return isRolling() ? ROLLING_DIMENSIONS : super.getDimensions(pose);
+        return isRolling() ? ROLLING_DIMENSIONS.scale(getScale()) : super.getDimensions(pose);
     }
 
     // ---- rolling ----
@@ -157,7 +166,7 @@ public class CannonboltEntity extends TamableAnimal {
     }
 
     private boolean canUnroll() {
-        return level().noCollision(this, getType().getDimensions().makeBoundingBox(position()));
+        return level().noCollision(this, getType().getDimensions().scale(getScale()).makeBoundingBox(position()));
     }
 
     /** The crash at the end of an attack roll. Returns whether the target was hurt. */
@@ -297,6 +306,13 @@ public class CannonboltEntity extends TamableAnimal {
                 calmDown();
                 return InteractionResult.SUCCESS;
             }
+            if (isTame() && isBaby()) {
+                // feeding a tame baby makes it grow up faster
+                consume(player, held);
+                ageUp(AgeableMob.getSpeedUpSecondsWhenFeeding(-getAge()));
+                gameEvent(net.minecraft.world.level.gameevent.GameEvent.EAT);
+                return InteractionResult.SUCCESS;
+            }
             if (isTame()) {
                 if (getHealth() < getMaxHealth()) {
                     consume(player, held);
@@ -373,6 +389,17 @@ public class CannonboltEntity extends TamableAnimal {
         return stack.is(Items.MELON_SLICE);
     }
 
+    /** Now and then a natural group includes a baby. Spawn eggs and commands give an adult. */
+    @Override
+    public SpawnGroupData finalizeSpawn(ServerLevelAccessor level, DifficultyInstance difficulty, MobSpawnType reason,
+                                        @Nullable SpawnGroupData data, @Nullable CompoundTag tag) {
+        if (data == null) {
+            boolean natural = reason != MobSpawnType.SPAWN_EGG && reason != MobSpawnType.COMMAND;
+            data = natural ? new AgeableMob.AgeableMobGroupData(0.15F) : new AgeableMob.AgeableMobGroupData(false);
+        }
+        return super.finalizeSpawn(level, difficulty, reason, data, tag);
+    }
+
     @Override
     public AgeableMob getBreedOffspring(ServerLevel level, AgeableMob partner) {
         return null;
@@ -402,7 +429,7 @@ public class CannonboltEntity extends TamableAnimal {
 
     @Override
     public float getVoicePitch() {
-        return 0.5F + (this.random.nextFloat() - this.random.nextFloat()) * 0.08F;
+        return (isBaby() ? 1.0F : 0.5F) + (this.random.nextFloat() - this.random.nextFloat()) * 0.08F;
     }
 
     // ---- state accessors ----
