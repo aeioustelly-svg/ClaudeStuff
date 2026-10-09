@@ -1,0 +1,222 @@
+#!/usr/bin/env python3
+"""Paints the Cannonbolt entity texture (128x128).
+
+Mirrors the boxes in CannonboltModel.createBodyLayer: every entry in BOXES has the same texture
+offset and size as the cube with that name there, so change both together. Every texel is placed
+by face, and the pattern follows the material (white fur strokes, yellow shell plates with a dark
+crescent, steel-grey hands and feet, flat claws with transparent gaps) instead of random noise.
+Placeholder art: repaint over it in Blockbench if wanted. Running this overwrites cannonbolt.png.
+
+    python3 -I tools/paint_cannonbolt.py [out.png]
+"""
+import sys
+
+from PIL import Image
+
+OUT = sys.argv[1] if len(sys.argv) > 1 else "src/main/resources/assets/alien_fauna/textures/entity/cannonbolt.png"
+
+# Three shades each: cooler shadow, base, warmer highlight. Muted, like vanilla.
+WHITE = ((176, 177, 182), (214, 214, 212), (238, 237, 232))
+YELLOW = ((152, 112, 24), (200, 164, 38), (230, 198, 74))
+STEEL = ((70, 72, 86), (104, 106, 120), (140, 142, 156))
+BLACK = (24, 24, 28)
+AMBER = (228, 150, 36)
+AMBER_LIGHT = (250, 196, 84)
+CLAW = (28, 28, 34)
+CLAW_LIGHT = (96, 98, 112)
+
+
+def faces(u, v, w, h, d):
+    """Texture rectangles (x, y, width, height) of the six faces of a box at (u, v)."""
+    return {
+        "right": (u, v + d, d, h), "front": (u + d, v + d, w, h),
+        "left": (u + d + w, v + d, d, h), "back": (u + 2 * d + w, v + d, w, h),
+        "top": (u + d, v, w, d), "bottom": (u + d + w, v, w, d),
+    }
+
+
+# ---- materials ----
+
+def fur(face, x, y, W, H, tx, ty):
+    """White fur: strokes of three texels running down, staggered between columns."""
+    if face == "top":
+        return WHITE[2]
+    if face == "bottom":
+        return WHITE[0]
+    if y >= H - max(2, H // 5):
+        return WHITE[0]
+    if tx % 4 == 0 and (ty + tx // 2) % 8 < 3:
+        return WHITE[0]
+    if tx % 4 == 2 and (ty + tx // 2 + 4) % 8 < 2:
+        return WHITE[2]
+    return WHITE[1]
+
+
+def dither(x, y, a, b):
+    return a if (x + y) % 2 == 0 else b
+
+
+def plate(face, x, y, W, H, tx, ty):
+    """Yellow shell: lighter tops, darker undersides, a dark rim and a dark crescent on one side."""
+    if face == "top":
+        return YELLOW[2] if min(x, y, W - 1 - x, H - 1 - y) > 0 else YELLOW[1]
+    if face == "bottom":
+        return YELLOW[0]
+    if W < 3 or H < 3:
+        return YELLOW[1]
+    if x == 0 or x == W - 1 or y == H - 1:
+        return YELLOW[0]
+    crescent = (W // 4) * (1.0 - ((2.0 * y - H) / H) ** 2)
+    if x <= crescent:
+        return YELLOW[0]
+    if y == 1 and x < W - 2:
+        return YELLOW[2]
+    return YELLOW[1]
+
+
+def crack(face, x, y, W, H, tx, ty, row):
+    """Stepped black crack across a ball face with a dark edge beneath it."""
+    def line(col):
+        return row + 2 * ((col // 4) % 2)
+    ly = line(x)
+    if ly <= y <= ly + 1:
+        return BLACK
+    if x > 0 and x % 4 == 0 and min(line(x - 1), ly) <= y <= max(line(x - 1), ly) + 1:
+        return BLACK
+    if y == ly + 2:
+        return YELLOW[0]
+    return plate_flat(face, x, y, W, H)
+
+
+def plate_flat(face, x, y, W, H):
+    if face == "top":
+        return YELLOW[2]
+    if face == "bottom":
+        return YELLOW[0]
+    return YELLOW[1] if y < H - 2 else YELLOW[0]
+
+
+# ---- boxes (name: u, v, w, h, d, painter) ----
+
+def body(face, x, y, W, H, tx, ty):
+    """The torso carries the face: black hood, amber eyes, black stripe, a long frown."""
+    if face == "top":
+        return BLACK
+    if face == "bottom":
+        return STEEL[0]
+    if y < 2:
+        return BLACK
+    if face == "front":
+        mid = W // 2
+        eye = x in (2, 3, 4, 9, 10, 11)
+        if y == 2:
+            return BLACK if mid - 1 <= x <= mid else (STEEL[1] if eye else dither(x, y, STEEL[1], WHITE[1]))
+        if mid - 1 <= x <= mid and y <= 6:
+            return BLACK
+        if y in (3, 4) and eye:
+            return AMBER_LIGHT if y == 3 and x in (2, 9) else AMBER
+        if y == 5 and eye:
+            return STEEL[0]
+        if y == 8 and 3 <= x <= 10:
+            return BLACK
+        if y == 9 and x in (3, 10):
+            return BLACK
+        if mid <= x <= mid + 1 and 11 <= y <= 14:
+            return BLACK
+    elif y == 2:
+        return dither(x, y, STEEL[1], WHITE[1])
+    return fur(face, x, y, W, H, tx, ty)
+
+
+def dome(face, x, y, W, H, tx, ty):
+    if face == "bottom":
+        return BLACK
+    return plate(face, x, y, W, H, tx, ty)
+
+
+def arm(face, x, y, W, H, tx, ty):
+    if face == "top":
+        return BLACK
+    if face == "bottom":
+        return STEEL[0]
+    if y < 1:
+        return BLACK
+    if y >= H - 4:
+        return STEEL[1] if y < H - 1 else STEEL[0]
+    if y == H - 5:
+        return dither(x, y, STEEL[1], WHITE[1])
+    return fur(face, x, y, W, H, tx, ty)
+
+
+def leg(face, x, y, W, H, tx, ty):
+    if face == "top":
+        return WHITE[1]
+    if face == "bottom":
+        return STEEL[0]
+    if y >= H - 2:
+        return STEEL[1] if y == H - 2 else STEEL[0]
+    if face == "front" and W // 2 - 1 <= x <= W // 2 and y < H - 2:
+        return BLACK
+    return fur(face, x, y, W, H, tx, ty)
+
+
+def claws_down(face, x, y, W, H, tx, ty):
+    """Three claws hanging from a hand, tips converging; everything else stays transparent."""
+    if face not in ("front", "back"):
+        return None
+    k, cx = divmod(x, 2)
+    tip_col = 1 if k == 0 else 0 if k == 2 else 1
+    if y < H - 1:
+        return CLAW_LIGHT if y == 0 and cx == 0 else CLAW
+    return CLAW if cx == tip_col else None
+
+
+def claws_forward(face, x, y, W, H, tx, ty):
+    """Three flat claws lying forward from the toes; the tip row is the last row (front)."""
+    if face not in ("top", "bottom"):
+        return None
+    k, cx = divmod(x, 2)
+    if y < H - 1:
+        return CLAW_LIGHT if cx == 0 else CLAW
+    return CLAW if cx == 1 else None
+
+
+def ball_bar(shift):
+    def paint(face, x, y, W, H, tx, ty):
+        base = max(1, (H - 2) // 2 - 1 + shift + {"front": 0, "back": -2, "left": 2, "right": -1,
+                                                  "top": 1, "bottom": 0}[face])
+        return crack(face, x, y, W, H, tx, ty, base)
+    return paint
+
+
+BOXES = {
+    "body": (0, 72, 14, 15, 8, body),
+    "dome": (68, 72, 10, 7, 10, dome),
+    "arm": (0, 96, 6, 18, 6, arm),
+    "arm_plate": (48, 96, 2, 9, 7, plate),
+    "leg": (24, 96, 6, 8, 6, leg),
+    "knee_plate": (68, 90, 1, 5, 4, plate),
+    "hand_claws": (0, 120, 6, 3, 0, claws_down),
+    "foot_claws": (12, 120, 6, 0, 2, claws_forward),
+    "ball_x_bar": (0, 34, 20, 16, 14, ball_bar(0)),
+    "ball_y_bar": (68, 34, 14, 20, 16, ball_bar(1)),
+    "ball_z_bar": (0, 0, 16, 14, 20, ball_bar(-1)),
+}
+
+
+def main():
+    img = Image.new("RGBA", (128, 128), (0, 0, 0, 0))
+    px = img.load()
+    for name, (u, v, w, h, d, painter) in BOXES.items():
+        for face, (fx, fy, fw, fh) in faces(u, v, w, h, d).items():
+            for y in range(fh):
+                for x in range(fw):
+                    colour = painter(face, x, y, fw, fh, fx + x, fy + y)
+                    if colour is not None:
+                        px[fx + x, fy + y] = colour + (255,) if len(colour) == 3 else colour
+    img.save(OUT)
+    print("Wrote", OUT)
+
+
+if __name__ == "__main__":
+    main()
