@@ -45,7 +45,9 @@ def fur(face, x, y, W, H, tx, ty):
     if face == "bottom":
         return WHITE[0]
     if y >= H - max(2, H // 5):
-        return WHITE[0]
+        # the lower shadow band: staggered diagonal strokes in three greys, so it is not flat
+        k = (tx // 2 + (y - (H - max(2, H // 5))) * 2) % 4
+        return (WHITE[0], (146, 148, 158), WHITE[0], (194, 195, 200))[k]
     if tx % 4 == 0 and (ty + tx // 2) % 8 < 3:
         return WHITE[0]
     if tx % 4 == 2 and (ty + tx // 2 + 4) % 8 < 2:
@@ -132,15 +134,16 @@ def body(face, x, y, W, H, tx, ty):
     if face == "top":
         return BLACK
     if face == "bottom":
-        return STEEL[0]
+        # the centre stripe carries on under the body, so it loops all the way round
+        return BLACK if W // 2 - 1 <= x <= W // 2 else STEEL[0]
     if face in ("left", "right"):
         if y < 6:
             return BLACK
         return fur(face, x, y, W, H, tx, ty)
     if y < 2:
         return BLACK
-    if face == "back" and y in (5, 12):
-        return BLACK                                # the lines between the back bands
+    if face == "back" and (y in (5, 12) or W // 2 - 1 <= x <= W // 2):
+        return BLACK                                # the lines between the back bands, and the stripe coming up the back
     if face == "front":
         mid = W // 2
         if y == 2:
@@ -213,7 +216,7 @@ def arm(face, x, y, W, H, tx, ty):
     if face == "front" and y in (H - 3, H - 2) and x == 1:
         return FINGER                               # one faint thumb line on the front, one pixel in from the outer edge
     if y >= H - 4:
-        return STEEL[2]                             # no darker line along the bottom of the hand
+        return STEEL[2] if y < H - 1 else STEEL[1]
     if y == H - 5:
         return dither(x, y, STEEL[1], WHITE[1])
     return fur(face, x, y, W, H, tx, ty)
