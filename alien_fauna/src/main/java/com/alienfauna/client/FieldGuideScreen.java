@@ -19,49 +19,60 @@ import net.minecraft.world.entity.AgeableMob;
 import net.minecraft.world.entity.LivingEntity;
 
 /**
- * The Field Guide: the vanilla book page, an index of creatures, and for each creature a first page
- * with its model (it follows the mouse, with buttons for the baby and the ball) and a short
- * description, then pages for its habitat, behaviour, how to befriend it and what it drops.
+ * The Field Guide, as a two-page spread built from the vanilla book page (the left page is the same
+ * texture mirrored). The index has an introduction on the left and one model button per creature on
+ * the right. A creature's spread has its name, its model (with Baby and Ball buttons) and a short
+ * description on the left, and its habitat, behaviour, how to befriend it and what it drops on the
+ * right, carrying on over further spreads if the text is long.
  */
 public class FieldGuideScreen extends Screen {
     private static final ResourceLocation BOOK = new ResourceLocation("textures/gui/book.png");
-    private static final int TEXT_X = 36, TEXT_W = 114, LINES_PER_PAGE = 13;
+    private static final int PAGE = 192, TEXT_W = 114, LINES_PER_PAGE = 13;
 
+    private final int initialEntry;
     private int left;
     private int entry = -1;                 // -1 is the index
-    private int page;
+    private int spread;
     private LivingEntity model;
     private boolean baby, ball;
     private List<List<FormattedCharSequence>> textPages = List.of();
     private List<FormattedCharSequence> description = List.of();
+    private List<FormattedCharSequence> intro = List.of();
 
-    public FieldGuideScreen() {
+    public FieldGuideScreen(int initialEntry) {
         super(Component.translatable("item.alien_fauna.field_guide"));
+        this.initialEntry = initialEntry;
     }
 
     @Override
     protected void init() {
-        left = (width - 192) / 2;
-        rebuild();
+        left = (width - 2 * PAGE) / 2;
+        intro = font.split(Component.translatable("guide.alien_fauna.intro"), TEXT_W);
+        if (initialEntry >= 0 && entry < 0 && initialEntry < GuideEntries.ALL.size()) {
+            openEntry(initialEntry);
+        } else {
+            rebuild();
+        }
     }
 
-    private int totalPages() {
-        return entry < 0 ? 1 : 1 + textPages.size();
+    private int totalSpreads() {
+        return entry < 0 ? 1 : 1 + (textPages.size() <= 1 ? 0 : (textPages.size() - 1 + 1) / 2);
     }
 
     private void rebuild() {
         clearWidgets();
         addRenderableWidget(Button.builder(CommonComponents.GUI_DONE, b -> onClose()).bounds(width / 2 - 100, 196, 200, 20).build());
-        addRenderableWidget(new PageButton(left + 43, 159, false, b -> turn(-1), true)).visible = entry >= 0;
-        addRenderableWidget(new PageButton(left + 116, 159, true, b -> turn(1), true)).visible = page < totalPages() - 1;
+        addRenderableWidget(new PageButton(left + 43, 159, false, b -> turn(-1), true)).visible = entry >= 0 || spread > 0;
+        addRenderableWidget(new PageButton(left + PAGE + 116, 159, true, b -> turn(1), true)).visible = spread < totalSpreads() - 1;
         if (entry < 0) {
             for (int i = 0; i < GuideEntries.ALL.size(); i++) {
                 int index = i;
-                addRenderableWidget(Button.builder(Component.translatable(GuideEntries.ALL.get(i).titleKey()), b -> openEntry(index))
-                        .bounds(left + 39, 40 + i * 22, 110, 20).build());
+                GuideEntry e = GuideEntries.ALL.get(i);
+                LivingEntity icon = e.type().get().create(minecraft.level);
+                addRenderableWidget(new EntityButton(left + PAGE + 38 + (i % 3) * 38, 34 + (i / 3) * 38, 34, icon,
+                        Component.translatable(e.titleKey()), 14, b -> openEntry(index)));
             }
-        } else if (page == 0 && model != null) {
-            GuideEntry e = GuideEntries.ALL.get(entry);
+        } else if (spread == 0 && model != null) {
             int x = left + 40;
             if (model instanceof AgeableMob) {
                 addRenderableWidget(Button.builder(Component.translatable(baby ? "guide.alien_fauna.adult" : "guide.alien_fauna.baby"), b -> {
@@ -70,7 +81,7 @@ public class FieldGuideScreen extends Screen {
                     rebuild();
                 }).bounds(x, 108, 52, 14).build());
             }
-            if (e.hasBallForm()) {
+            if (GuideEntries.ALL.get(entry).hasBallForm()) {
                 addRenderableWidget(Button.builder(Component.translatable(ball ? "guide.alien_fauna.standing" : "guide.alien_fauna.ball"), b -> {
                     ball = !ball;
                     applyModel();
@@ -81,20 +92,20 @@ public class FieldGuideScreen extends Screen {
     }
 
     private void turn(int direction) {
-        page += direction;
-        if (page < 0) {
+        spread += direction;
+        if (spread < 0) {
             entry = -1;
-            page = 0;
+            spread = 0;
             model = null;
-        } else if (page >= totalPages()) {
-            page = totalPages() - 1;
+        } else if (spread >= totalSpreads()) {
+            spread = totalSpreads() - 1;
         }
         rebuild();
     }
 
     private void openEntry(int index) {
         entry = index;
-        page = 0;
+        spread = 0;
         baby = false;
         ball = false;
         GuideEntry e = GuideEntries.ALL.get(index);
@@ -134,28 +145,46 @@ public class FieldGuideScreen extends Screen {
         }
     }
 
+    private void drawLines(GuiGraphics graphics, List<FormattedCharSequence> lines, int x, int y) {
+        for (int i = 0; i < lines.size(); i++) {
+            graphics.drawString(font, lines.get(i), x, y + i * 9, 0, false);
+        }
+    }
+
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         renderBackground(graphics);
-        graphics.blit(BOOK, left, 2, 0, 0, 192, 192);
-        Component pageNumber = Component.translatable("book.pageIndicator", page + 1, totalPages());
-        graphics.drawString(font, pageNumber, left + 192 - 44 - font.width(pageNumber), 18, 0, false);
+        // right page: the vanilla texture; left page: the same texture mirrored
+        graphics.blit(BOOK, left + PAGE, 2, 0, 0, PAGE, PAGE);
+        graphics.blit(BOOK, left, 2, PAGE, 192, PAGE, 0, -PAGE, PAGE, 256, 256);
+        int leftText = left + (PAGE - 36 - TEXT_W), rightText = left + PAGE + 36;
+
+        Component indicator = Component.translatable("book.pageIndicator", spread + 1, totalSpreads());
+        graphics.drawString(font, indicator, left + 2 * PAGE - 44 - font.width(indicator), 18, 0, false);
+
         if (entry < 0) {
-            Component title = Component.translatable("guide.alien_fauna.title");
-            graphics.drawString(font, title, left + (192 - font.width(title)) / 2, 22, 0, false);
-        } else if (page == 0) {
-            Component title = Component.translatable(GuideEntries.ALL.get(entry).titleKey());
-            graphics.drawString(font, title, left + (192 - font.width(title)) / 2, 32, 0, false);
-            if (model != null) {
-                InventoryScreen.renderEntityInInventoryFollowsMouse(graphics, left + 96, 100, 30, left + 96 - mouseX, 60 - mouseY, model);
-            }
-            for (int i = 0; i < Math.min(3, description.size()); i++) {
-                graphics.drawString(font, description.get(i), left + TEXT_X, 126 + i * 9, 0, false);
-            }
+            Component title = Component.translatable("guide.alien_fauna.title").withStyle(ChatFormatting.BOLD);
+            graphics.drawString(font, title, left + (PAGE - font.width(title)) / 2, 22, 0, false);
+            drawLines(graphics, intro, leftText, 38);
         } else {
-            List<FormattedCharSequence> lines = textPages.get(page - 1);
-            for (int i = 0; i < lines.size(); i++) {
-                graphics.drawString(font, lines.get(i), left + TEXT_X, 32 + i * 9, 0, false);
+            if (spread == 0) {
+                Component title = Component.translatable(GuideEntries.ALL.get(entry).titleKey()).withStyle(ChatFormatting.BOLD);
+                graphics.drawString(font, title, left + (PAGE - font.width(title)) / 2, 22, 0, false);
+                if (model != null) {
+                    InventoryScreen.renderEntityInInventoryFollowsMouse(graphics, left + 96, 100, 30, left + 96 - mouseX, 60 - mouseY, model);
+                }
+                drawLines(graphics, description.subList(0, Math.min(3, description.size())), leftText, 126);
+                if (!textPages.isEmpty()) {
+                    drawLines(graphics, textPages.get(0), rightText, 32);
+                }
+            } else {
+                int leftIndex = 2 * spread - 1, rightIndex = 2 * spread;
+                if (leftIndex < textPages.size()) {
+                    drawLines(graphics, textPages.get(leftIndex), leftText, 32);
+                }
+                if (rightIndex < textPages.size()) {
+                    drawLines(graphics, textPages.get(rightIndex), rightText, 32);
+                }
             }
         }
         super.render(graphics, mouseX, mouseY, partialTick);

@@ -108,6 +108,20 @@ public class CannonboltGameTests {
     }
 
     @GameTest(templateNamespace = AlienFauna.MODID, template = TEMPLATE)
+    public static void fieldGuideDoesNotSitATameCannonbolt(GameTestHelper helper) {
+        floor(helper);
+        Player player = helper.makeMockPlayer();
+        player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(com.alienfauna.registry.ModItems.FIELD_GUIDE.get()));
+        CannonboltEntity cannonbolt = helper.spawn(ModEntities.CANNONBOLT.get(), 12, 2, 12);
+        cannonbolt.tame(player);
+        cannonbolt.setOrderedToSit(false);
+        cannonbolt.interact(player, InteractionHand.MAIN_HAND);
+        helper.assertTrue(!cannonbolt.isOrderedToSit(), "Using the Field Guide on a tame Cannonbolt sat it down");
+        helper.assertTrue(com.alienfauna.guide.GuideEntries.indexOf(cannonbolt.getType()) == 0, "The guide does not list the Cannonbolt first");
+        helper.succeed();
+    }
+
+    @GameTest(templateNamespace = AlienFauna.MODID, template = TEMPLATE)
     public static void leansForwardBeforeBecomingABall(GameTestHelper helper) {
         floor(helper);
         CannonboltEntity cannonbolt = helper.spawn(ModEntities.CANNONBOLT.get(), 12, 2, 12);

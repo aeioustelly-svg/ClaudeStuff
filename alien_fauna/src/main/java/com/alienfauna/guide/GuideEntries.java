@@ -11,6 +11,16 @@ public class GuideEntries {
                     List.of("description", "habitat", "behaviour", "befriending", "drops"), true));
 
     public static boolean has(EntityType<?> type) {
-        return ALL.stream().anyMatch(entry -> entry.type().get() == type);
+        return indexOf(type) >= 0;
+    }
+
+    /** Position of the creature's page in the guide, or -1 if the guide has none. */
+    public static int indexOf(EntityType<?> type) {
+        for (int i = 0; i < ALL.size(); i++) {
+            if (ALL.get(i).type().get() == type) {
+                return i;
+            }
+        }
+        return -1;
     }
 }

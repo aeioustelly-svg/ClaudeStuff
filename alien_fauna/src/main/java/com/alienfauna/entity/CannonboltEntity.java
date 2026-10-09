@@ -314,6 +314,9 @@ public class CannonboltEntity extends TamableAnimal {
     @Override
     public InteractionResult mobInteract(Player player, InteractionHand hand) {
         ItemStack held = player.getItemInHand(hand);
+        if (held.getItem() instanceof com.alienfauna.item.FieldGuideItem) {
+            return InteractionResult.PASS;          // the Field Guide opens its page instead
+        }
         boolean food = isFood(held);
 
         if (level().isClientSide) {
