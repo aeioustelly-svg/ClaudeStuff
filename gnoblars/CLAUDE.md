@@ -46,14 +46,35 @@ Do not use `runServer` or `runClient` in the sandbox (EULA and no display).
 - **Items:** Nose Pickle (dried kelp + brown mushroom -> 2 pickles, texture recoloured from the vanilla sea pickle) and the spawn egg.
 - **Spawns:** swamps, mangrove swamps, taigas and badlands, groups of 2 to 4, on any solid ground (`ModEntities`).
 
+## Variants
+
+Six looks, so gnoblars can be told apart in a crowd (`entity/GnoblarVariant.java`, chosen in `finalizeSpawn` by weight, saved as
+`Variant`, synched as an int, shown by `GnoblarRenderer` through `variant.texture()`):
+
+| Variant | Skin | Wart | Outfit |
+|---|---|---|---|
+| green (weight 4) | muted green | none | blue sash from the left shoulder |
+| mossy | dark green | on top of the nose | green-grey sash |
+| rusty | orange-brown | on the cheek | red sash, light wraps |
+| bark | brown | on the forehead | ochre sash worn the other way, grey vest |
+| pickle | yellow-olive | on the side of the nose | purple sash worn the other way |
+| sooty | dark grey-green | none | no sash, a stitched chest patch, red-brown wraps |
+
+Every other variant has weight 2, sooty weight 1. The geometry is identical for all: four wart cubes (`wart_nose`, `wart_nose_side`,
+`wart_cheek`, `wart_forehead`, all using one texture patch) and `GnoblarModel.setWartSpot` shows the one that the variant names, or
+every one for the preview tools when given null. `tools/paint_texture.py` holds the same table (`VARIANTS`) and writes
+`gnoblar_<id>.png` for each, so adding a variant means: a constant in `GnoblarVariant` with its wart spot and weight, an entry in
+`VARIANTS` with the same id, then `dumpModel`, `paint_texture.py` and `render_preview.py` (which writes `variants.png`, every look
+side by side). Older saves with the removed `Wart` flag load as the plain green variant.
+
 ## Model and texture
 
 - `client/GnoblarModel.java`: 64x64 texture, parts baked unrotated, all rotation in `applyPose(...)`, a pure function of its
   inputs that `ModelDump` calls. Poses: `idle`, `walk`, `scared`, `sit`, `sniff`.
 - The nose is one 4x6x3 block, taller than deep and hanging 1 px below the chin, with a nostril painted on each side face. Keep it a
   single box that is not longer than it is tall: a 4x4x5 block read as a snout, a drooping hook read as a trunk, and a bridge plus
-  knob was too fussy for a minimalist vanilla style. About one gnoblar in five has a wart (`hasWart`, set in
-  `finalizeSpawn`, saved as `Wart`): a 1x1x1 cube on the nose that is only visible for those. The ears are
+  knob was too fussy for a minimalist vanilla style. The wart cubes are described under "Variants".
+  The ears are
   three stepped 1 px thick slabs (the face looking forward is painted pink, the back is skin), climbing to a point with one nick
   bitten out. The head sits on a 1 px neck box. The arms are single boxes with their top level with the neck, and the rag loincloth
   is a 4x2x1 slab. Held items render through `ItemInHandLayer` and the model's `translateToHand`

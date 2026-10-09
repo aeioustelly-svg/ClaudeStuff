@@ -8,7 +8,11 @@ stitched leather, woven cloth) instead of random noise. Placeholder art: repaint
 result in Blockbench if wanted.
 
     ./gradlew dumpModel
-    python3 -I tools/paint_texture.py [model.json] [out.png]
+    python3 -I tools/paint_texture.py [model.json] [output directory]
+
+Paints one texture per variant (see VARIANTS; the names must match GnoblarVariant.java). The geometry is the same for all,
+so only the colours, the sash and the chest patch differ. Wart cubes share one texture patch, so a wart looks the same on
+every variant of a skin colour; which cube shows is decided by the model.
 """
 import json
 import math
@@ -18,7 +22,7 @@ import numpy as np
 from PIL import Image
 
 MODEL = sys.argv[1] if len(sys.argv) > 1 else "build/preview/model.json"
-OUT = sys.argv[2] if len(sys.argv) > 2 else "src/main/resources/assets/gnoblars/textures/entity/gnoblar.png"
+OUT_DIR = sys.argv[2] if len(sys.argv) > 2 else "src/main/resources/assets/gnoblars/textures/entity/"
 
 # Palettes: (dark = cooler shadow, base, light = warmer highlight), kept muted.
 SKIN = ((66, 78, 70), (94, 110, 94), (120, 136, 110))
@@ -40,6 +44,51 @@ WART_SHADES = ((112, 98, 72), (142, 126, 90), (172, 152, 108))
 
 FACE_LIGHT = {"top": 1.08, "side": 1.0, "bottom": 0.9}
 
+# The looks. Each palette is (dark, base, light), kept muted. sash_dir: +1 sash from the left shoulder to the right hip,
+# -1 the other way, 0 no sash (a stitched patch on the chest instead).
+VARIANTS = {
+    "green": dict(skin=((66, 78, 70), (94, 110, 94), (120, 136, 110)), leather=((66, 46, 34), (102, 72, 48), (134, 98, 64)),
+                  sash=((46, 54, 78), (66, 78, 106), (90, 104, 134)), cloth=((104, 90, 70), (142, 126, 98), (172, 156, 124)),
+                  iris=(214, 128, 40), sash_dir=1),
+    "mossy": dict(skin=((44, 58, 48), (66, 84, 62), (90, 108, 76)), leather=((52, 44, 30), (82, 68, 44), (112, 92, 58)),
+                  sash=((52, 66, 52), (72, 92, 70), (96, 116, 88)), cloth=((88, 84, 62), (120, 116, 84), (150, 146, 106)),
+                  iris=(220, 190, 70), sash_dir=1),
+    "rusty": dict(skin=((92, 64, 42), (138, 96, 56), (170, 126, 74)), leather=((54, 38, 28), (82, 58, 40), (110, 80, 54)),
+                  sash=((86, 36, 32), (122, 52, 44), (152, 74, 60)), cloth=((120, 104, 84), (156, 138, 110), (186, 168, 138)),
+                  iris=(120, 150, 60), sash_dir=1),
+    "bark": dict(skin=((70, 56, 44), (104, 86, 64), (134, 114, 86)), leather=((46, 42, 40), (70, 64, 60), (96, 88, 82)),
+                 sash=((120, 92, 44), (160, 126, 60), (190, 156, 86)), cloth=((96, 100, 92), (130, 134, 124), (160, 164, 152)),
+                 iris=(200, 90, 40), sash_dir=-1),
+    "pickle": dict(skin=((78, 84, 44), (112, 120, 62), (142, 150, 84)), leather=((70, 50, 34), (106, 76, 50), (138, 102, 66)),
+                   sash=((74, 58, 86), (98, 80, 112), (124, 104, 138)), cloth=((110, 96, 72), (146, 130, 100), (176, 160, 128)),
+                   iris=(190, 60, 44), sash_dir=-1),
+    "sooty": dict(skin=((44, 50, 48), (66, 74, 70), (90, 98, 90)), leather=((38, 30, 24), (58, 46, 36), (80, 64, 50)),
+                  sash=((86, 36, 32), (122, 52, 44), (152, 74, 60)), cloth=((98, 54, 46), (134, 76, 62), (164, 100, 82)),
+                  iris=(230, 170, 50), sash_dir=0),
+}
+
+
+def lighten(palette, add):
+    return tuple(tuple(min(255, c + a) for c, a in zip(shade_rgb, add)) for shade_rgb in palette)
+
+
+def apply_variant(v):
+    """Sets the colour globals every painting function reads."""
+    global SKIN, NOSE, HAND, HAIR, LEATHER, BELT, SASH, CLOTH, IRIS, WART_SHADES, SASH_DIR
+    SKIN = v["skin"]
+    NOSE = lighten(SKIN, (30, 32, 20))
+    HAND = tuple(tuple(int(c * 0.72) for c in shade_rgb) for shade_rgb in SKIN)
+    LEATHER = v["leather"]
+    BELT = tuple(tuple(int(c * 0.6) for c in shade_rgb) for shade_rgb in LEATHER)
+    SASH = v["sash"]
+    CLOTH = v["cloth"]
+    IRIS = v["iris"]
+    SASH_DIR = v["sash_dir"]
+    WART_SHADES = lighten(SKIN, (34, 18, -4))
+
+
+apply_variant(VARIANTS["green"])
+
 # Axis-aligned boxes of the unrotated model (pixels, y points down, feet at y = 24).
 # Order matters: the first box whose surface contains a quad owns it.
 BOXES = [
@@ -50,7 +99,10 @@ BOXES = [
     ("rear_a", (-7, -4), (10, 14), (-1, 0)),
     ("rear_b", (-9, -7), (9, 12), (-1, 0)),
     ("rear_c", (-10, -9), (8, 10), (-1, 0)),
-    ("wart", (0, 1), (9, 10), (-6, -5)),
+    ("wart_nose", (0, 1), (9, 10), (-6, -5)),
+    ("wart_nose_side", (2, 3), (12, 13), (-6, -5)),
+    ("wart_cheek", (3, 4), (13, 14), (-5, -4)),
+    ("wart_forehead", (-3, -2), (8, 9), (-3, -2)),
     ("nose", (-2, 2), (10, 16), (-7, -4)),
     ("neck", (-1, 1), (15, 16), (-2, 0)),
     ("left_arm", (4, 6), (17, 24), (-1, 1)),
@@ -95,22 +147,25 @@ def part_of(verts):
     raise ValueError(f"quad belongs to no box: {pts.tolist()}")
 
 
-def skin(pos, face, palette=SKIN):
+def skin(pos, face, palette=None):
     """Leathery skin: a diagonal crease pattern in three shades."""
+    palette = palette or SKIN
     x, y, z = (cell(c) for c in pos)
     k = (x * 3 + y * 5 + z * 7) % 11
     return shade(palette, 0 if k == 0 else 2 if k == 5 else 1, face)
 
 
-def leather(pos, face, palette=LEATHER):
+def leather(pos, face, palette=None):
     """Stitched leather: dark seams on a regular grid, light flecks between."""
+    palette = palette or LEATHER
     x, y, z = (cell(c) for c in pos)
     k = (x * 2 + y * 3 + z * 5) % 7
     return shade(palette, 0 if k == 0 else 2 if k == 3 else 1, face)
 
 
-def cloth(pos, face, palette=CLOTH):
+def cloth(pos, face, palette=None):
     """Woven cloth: a checker of two shades."""
+    palette = palette or CLOTH
     x, y, z = (cell(c) for c in pos)
     return shade(palette, 1 if (x + y + z) % 2 else 2, face)
 
@@ -144,7 +199,7 @@ def paint_ear(part, pos, normal):
     return shade(EAR_INNER, 2 if bottom_row else 1, "side")
 
 
-HEAD_PARTS = ("head", "nose", "wart")
+HEAD_PARTS = ("head", "nose")
 HEAD_RAISE = 2.0     # the face rows below are written for a head 2 px lower than it now sits
 
 
@@ -160,9 +215,9 @@ def paint(part, pos, normal):
         return paint_ear(part, pos, normal)
 
     if part == "neck":
-        return skin(pos, face, ((46, 56, 50), (72, 86, 72), (98, 112, 88)))
+        return skin(pos, face, HAND)
 
-    if part == "wart":
+    if part.startswith("wart"):
         return shade(WART_SHADES, 2 if face == "top" else 0 if face == "bottom" else 1, "side")
 
     if part == "nose":
@@ -199,8 +254,7 @@ def paint(part, pos, normal):
         if 22.0 < y < 23.0:
             return cloth(pos, face)                 # wrist wrap
         if y >= 23.0:
-            hand = ((46, 56, 50), (72, 86, 72), (98, 112, 88))
-            return skin(pos, face, hand) if (cell(x) + cell(z)) % 2 else shade(hand, 0, face)
+            return skin(pos, face, HAND) if (cell(x) + cell(z)) % 2 else shade(HAND, 0, face)
         if part == "left_arm" and nz < -0.5 and abs(z + 1.0) < 0.1 and (
                 (abs(x - 4.5) < 0.1 and abs(y - 20.5) < 0.1) or (abs(x - 5.5) < 0.1 and abs(y - 21.5) < 0.1)):
             return (168, 158, 134)                  # an old scar
@@ -227,14 +281,17 @@ def paint(part, pos, normal):
                 return skin(pos, face)              # open collar of the vest
             if ax < 1.0:
                 return shade(BELT, 0 if cell(y) % 2 else 2, face)    # lacing
-            u = (x + 4.0) - 1.6 * (y - 16.0)
-            if abs(u) <= 1.0:                       # sash from left shoulder to right hip
+            u = (x * SASH_DIR + 4.0) - 1.6 * (y - 16.0)
+            if SASH_DIR and abs(u) <= 1.0:          # sash across the chest, the way round this variant wears it
                 return shade(SASH, 2 if u < -0.4 else 1 if u < 0.6 else 0, face)
+            if not SASH_DIR and ax <= 3.0 and 17.0 <= y <= 19.0:
+                edge = ax > 2.0 or y < 18.0          # no sash: a stitched patch on the chest instead
+                return shade(BELT, 1, face) if edge else shade(LEATHER, 2, face)
             if abs(ax - 3.5) < 0.1 and abs(y - 18.5) < 0.1:
                 return BUCKLE                       # a rivet
         if nz > 0.5:                                # back
-            u = (x + 4.0) + 1.6 * (y - 16.0) - 8.0
-            if abs(u) <= 0.6:
+            u = (x * SASH_DIR + 4.0) + 1.6 * (y - 16.0) - 8.0
+            if SASH_DIR and abs(u) <= 0.6:
                 return shade(SASH, 0, face)         # thin sash strap
             if -2.0 <= x <= 2.0 and 17.0 <= y <= 19.0:
                 edge = abs(x) > 1.0 or y < 18.0
@@ -271,9 +328,7 @@ def paint(part, pos, normal):
     return darker(color, jaw) if jaw < 1.0 else color
 
 
-def main():
-    with open(MODEL) as f:
-        data = json.load(f)
+def paint_image(data):
     size = data["texSize"]
     img = np.zeros((size, size, 4), np.uint8)
 
@@ -303,9 +358,17 @@ def main():
                 if c is None:
                     continue              # transparent: a nick or gap in a flat part
                 img[tv, tu] = (*[int(max(0, min(255, v))) for v in c], 255)
+    return img
 
-    Image.fromarray(img, "RGBA").save(OUT)
-    print("Wrote", OUT)
+
+def main():
+    with open(MODEL) as f:
+        data = json.load(f)
+    for name, variant in VARIANTS.items():
+        apply_variant(variant)
+        path = f"{OUT_DIR.rstrip('/')}/gnoblar_{name}.png"
+        Image.fromarray(paint_image(data), "RGBA").save(path)
+        print("Wrote", path)
 
 
 if __name__ == "__main__":

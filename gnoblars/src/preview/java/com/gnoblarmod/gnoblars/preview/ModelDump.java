@@ -2,6 +2,7 @@ package com.gnoblarmod.gnoblars.preview;
 
 import com.gnoblarmod.gnoblars.client.GnoblarModel;
 import com.gnoblarmod.gnoblars.entity.GnoblarEntity;
+import com.gnoblarmod.gnoblars.entity.GnoblarVariant;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import java.nio.file.Files;
@@ -88,12 +89,21 @@ public class ModelDump {
         StringBuilder json = new StringBuilder("{\"texSize\":" + TEX_SIZE + ",\"poses\":{");
         ModelPart root = GnoblarModel.createBodyLayer().bakeRoot();
         GnoblarModel<GnoblarEntity> model = new GnoblarModel<>(root);
-        model.setWartVisible(true);   // the preview and the painter need the wart cube too
+        model.setWartSpot(null);   // the painter needs every wart cube (all variants) in the rest geometry
         json.append("\"rest\":").append(dump(model, root));
         for (Map.Entry<String, float[]> pose : poses.entrySet()) {
             float[] p = pose.getValue();
             model.applyPose(p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
             json.append(",\"").append(pose.getKey()).append("\":").append(dump(model, root));
+        }
+        json.append("},\"variants\":{");
+        // each variant as the game shows it: idle, with only its own wart cube visible
+        boolean first = true;
+        for (GnoblarVariant variant : GnoblarVariant.values()) {
+            model.setWartSpot(variant.wart());
+            model.applyPose(0, 0.0F, 20, 0, 0, 0, 0, 0);
+            json.append(first ? "" : ",").append("\"").append(variant.id()).append("\":").append(dump(model, root));
+            first = false;
         }
         json.append("}}");
         Files.writeString(out, json.toString());

@@ -2,6 +2,7 @@ package com.gnoblarmod.gnoblars.client;
 
 import com.gnoblarmod.gnoblars.Gnoblars;
 import com.gnoblarmod.gnoblars.entity.GnoblarEntity;
+import com.gnoblarmod.gnoblars.entity.GnoblarVariant;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.model.ArmedModel;
@@ -34,14 +35,17 @@ public class GnoblarModel<T extends GnoblarEntity> extends EntityModel<T> implem
     // faces, so what shows is a single flat sheet with nothing coincident to z-fight. The box is 1 px thick.
 
     private final ModelPart root;
-    private final ModelPart body, head, nose, wart, leftEar, rightEar, leftArm, rightArm, leftLeg, rightLeg;
+    private final ModelPart body, head, nose, noseWart, noseSideWart, cheekWart, foreheadWart, leftEar, rightEar, leftArm, rightArm, leftLeg, rightLeg;
 
     public GnoblarModel(ModelPart root) {
         this.root = root;
         this.body = root.getChild("body");
         this.head = body.getChild("head");
         this.nose = head.getChild("nose");
-        this.wart = nose.getChild("wart");
+        this.noseWart = nose.getChild("wart_nose");
+        this.noseSideWart = nose.getChild("wart_nose_side");
+        this.cheekWart = head.getChild("wart_cheek");
+        this.foreheadWart = head.getChild("wart_forehead");
         this.leftEar = head.getChild("left_ear");
         this.rightEar = head.getChild("right_ear");
         this.leftArm = body.getChild("left_arm");
@@ -74,10 +78,16 @@ public class GnoblarModel<T extends GnoblarEntity> extends EntityModel<T> implem
         PartDefinition nose = head.addOrReplaceChild("nose",
                 CubeListBuilder.create().texOffs(28, 0).addBox(-2.0F, -5.0F, -6.0F, 4, 6, 3),
                 PartPose.ZERO);
-        // some gnoblars have a wart on the nose (hidden on the rest)
-        nose.addOrReplaceChild("wart",
-                CubeListBuilder.create().texOffs(44, 24).addBox(0.0F, -6.0F, -5.0F, 1, 1, 1),
-                PartPose.ZERO);
+        // A wart is a 1x1x1 cube. Each spot has its own cube and a variant shows one of them (or none), so every
+        // look has its wart in a different place. All share one small patch of the texture.
+        nose.addOrReplaceChild("wart_nose",
+                CubeListBuilder.create().texOffs(44, 24).addBox(0.0F, -6.0F, -5.0F, 1, 1, 1), PartPose.ZERO);
+        nose.addOrReplaceChild("wart_nose_side",
+                CubeListBuilder.create().texOffs(44, 24).addBox(2.0F, -3.0F, -5.0F, 1, 1, 1), PartPose.ZERO);
+        head.addOrReplaceChild("wart_cheek",
+                CubeListBuilder.create().texOffs(44, 24).addBox(3.0F, -2.0F, -4.0F, 1, 1, 1), PartPose.ZERO);
+        head.addOrReplaceChild("wart_forehead",
+                CubeListBuilder.create().texOffs(44, 24).addBox(-3.0F, -7.0F, -2.0F, 1, 1, 1), PartPose.ZERO);
 
         // pointed ears: stepped boxes that climb and narrow to a tip, so the outline is not a rectangle. Only the
         // front face of each is painted (see the note on flat parts above), so each ear is one flat sheet. Its
@@ -115,14 +125,18 @@ public class GnoblarModel<T extends GnoblarEntity> extends EntityModel<T> implem
         return LayerDefinition.create(mesh, 64, 64);
     }
 
-    public void setWartVisible(boolean visible) {
-        wart.visible = visible;
+    /** Shows the wart cube for this spot and hides the others. A null spot shows every cube (for the preview tools). */
+    public void setWartSpot(GnoblarVariant.WartSpot spot) {
+        noseWart.visible = spot == null || spot == GnoblarVariant.WartSpot.NOSE_TOP;
+        noseSideWart.visible = spot == null || spot == GnoblarVariant.WartSpot.NOSE_SIDE;
+        cheekWart.visible = spot == null || spot == GnoblarVariant.WartSpot.CHEEK;
+        foreheadWart.visible = spot == null || spot == GnoblarVariant.WartSpot.FOREHEAD;
     }
 
     @Override
     public void setupAnim(T entity, float limbSwing, float limbSwingAmount, float ageInTicks,
                           float netHeadYaw, float headPitch) {
-        setWartVisible(entity.hasWart());
+        setWartSpot(entity.getVariant().wart());
         applyPose(limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch,
                 entity.isInSittingPose() ? 1.0F : 0.0F,
                 entity.isSniffing() ? 1.0F : 0.0F,

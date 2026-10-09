@@ -16,7 +16,8 @@ import numpy as np
 from PIL import Image, ImageDraw
 
 MODEL = "build/preview/model.json"
-TEXTURE = "src/main/resources/assets/gnoblars/textures/entity/gnoblar.png"
+TEXTURE_DIR = "src/main/resources/assets/gnoblars/textures/entity/"
+TEXTURE = TEXTURE_DIR + "gnoblar_green.png"
 OUT_DIR = "build/preview"
 AXIS_Y = 17.0
 BG = (46, 50, 56)
@@ -132,6 +133,18 @@ def main():
     for name, yaw, pitch in (("front", 180, 6), ("3/4", 215, 14), ("side", 90, 4), ("top", 180, 75)):
         cells.append((f"idle / {name}", render(quads, tex, yaw, pitch, 32.0, (330, 300), focus=head_only)))
     sheet(cells, 4, (330, 300), os.path.join(OUT_DIR, "head.png"))
+
+    # every variant side by side, the way the game shows them (idle, only its own wart cube)
+    cells = []
+    for name, quads_raw in data["variants"].items():
+        vtex = np.array(Image.open(f"{TEXTURE_DIR}gnoblar_{name}.png").convert("RGBA"))
+        quads = []
+        for q in quads_raw:
+            v = np.array(q).reshape(4, 8)
+            quads.append((v[:, :3] * np.array([1, -1, 1]), v[:, 3:5], v[0, 5:8] * np.array([1, -1, 1])))
+        cells.append((f"{name} / 3/4", render(quads, vtex, 215, 14, 15.0, (330, 330))))
+        cells.append((f"{name} / front", render(quads, vtex, 180, 4, 15.0, (330, 330))))
+    sheet(cells, 4, (330, 330), os.path.join(OUT_DIR, "variants.png"))
 
     # unfolded texture, enlarged
     t = Image.open(TEXTURE).convert("RGBA")

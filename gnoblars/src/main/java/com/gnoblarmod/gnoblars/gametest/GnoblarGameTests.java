@@ -2,6 +2,7 @@ package com.gnoblarmod.gnoblars.gametest;
 
 import com.gnoblarmod.gnoblars.Gnoblars;
 import com.gnoblarmod.gnoblars.entity.GnoblarEntity;
+import com.gnoblarmod.gnoblars.entity.GnoblarVariant;
 import com.gnoblarmod.gnoblars.registry.ModEntities;
 import com.gnoblarmod.gnoblars.registry.ModItems;
 import java.util.List;
@@ -230,30 +231,42 @@ public class GnoblarGameTests {
     }
 
     @GameTest(templateNamespace = Gnoblars.MODID, template = TEMPLATE)
-    public static void someSpawnWithWartsAndMostDoNot(GameTestHelper helper) {
-        int warts = 0;
-        for (int i = 0; i < 200; i++) {
+    public static void everyVariantSpawnsAndGreenIsCommonest(GameTestHelper helper) {
+        int[] counts = new int[GnoblarVariant.values().length];
+        for (int i = 0; i < 400; i++) {
             GnoblarEntity gnoblar = ModEntities.GNOBLAR.get().create(helper.getLevel());
             gnoblar.finalizeSpawn(helper.getLevel(), helper.getLevel().getCurrentDifficultyAt(gnoblar.blockPosition()),
                     MobSpawnType.NATURAL, null, null);
-            if (gnoblar.hasWart()) {
-                warts++;
-            }
+            counts[gnoblar.getVariant().ordinal()]++;
         }
-        helper.assertTrue(warts > 0 && warts < 100, "Expected a minority of warty gnoblars, got " + warts + " of 200");
+        for (GnoblarVariant variant : GnoblarVariant.values()) {
+            helper.assertTrue(counts[variant.ordinal()] > 0, "No " + variant.id() + " gnoblar in 400 spawns");
+        }
+        helper.assertTrue(counts[GnoblarVariant.GREEN.ordinal()] > counts[GnoblarVariant.SOOTY.ordinal()],
+                "The plain green gnoblar should be commoner than the rare sooty one");
         helper.succeed();
     }
 
     @GameTest(templateNamespace = Gnoblars.MODID, template = TEMPLATE)
-    public static void wartSurvivesSaving(GameTestHelper helper) {
+    public static void variantSurvivesSaving(GameTestHelper helper) {
         GnoblarEntity gnoblar = spawn(helper);
-        gnoblar.setWart(true);
+        gnoblar.setVariant(GnoblarVariant.RUSTY);
         CompoundTag tag = new CompoundTag();
         gnoblar.addAdditionalSaveData(tag);
         GnoblarEntity copy = ModEntities.GNOBLAR.get().create(helper.getLevel());
-        helper.assertTrue(!copy.hasWart(), "A fresh gnoblar should have no wart");
+        helper.assertTrue(copy.getVariant() == GnoblarVariant.GREEN, "A fresh gnoblar should be the plain green one");
         copy.readAdditionalSaveData(tag);
-        helper.assertTrue(copy.hasWart(), "The wart was lost when saving");
+        helper.assertTrue(copy.getVariant() == GnoblarVariant.RUSTY, "The variant was lost when saving");
+        helper.succeed();
+    }
+
+    @GameTest(templateNamespace = Gnoblars.MODID, template = TEMPLATE)
+    public static void variantsHaveTheirOwnTexturesAndWarts(GameTestHelper helper) {
+        java.util.Set<ResourceLocation> textures = new java.util.HashSet<>();
+        for (GnoblarVariant variant : GnoblarVariant.values()) {
+            helper.assertTrue(textures.add(variant.texture()), "Two variants share the texture " + variant.texture());
+        }
+        helper.assertTrue(GnoblarVariant.GREEN.wart() == GnoblarVariant.WartSpot.NONE, "The plain gnoblar should have no wart");
         helper.succeed();
     }
 

@@ -67,8 +67,8 @@ public class GnoblarEntity extends TamableAnimal {
             SynchedEntityData.defineId(GnoblarEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Boolean> SCARED =
             SynchedEntityData.defineId(GnoblarEntity.class, EntityDataSerializers.BOOLEAN);
-    private static final EntityDataAccessor<Boolean> WART =
-            SynchedEntityData.defineId(GnoblarEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Integer> VARIANT =
+            SynchedEntityData.defineId(GnoblarEntity.class, EntityDataSerializers.INT);
 
     private int sniffCooldown = 1200;
     private int pesterCooldown;
@@ -107,7 +107,7 @@ public class GnoblarEntity extends TamableAnimal {
         entityData.define(TRUST, 0);
         entityData.define(SNIFFING, false);
         entityData.define(SCARED, false);
-        entityData.define(WART, false);
+        entityData.define(VARIANT, 0);
     }
 
     // ---- gifts, trust and taming -------------------------------------------------------------
@@ -309,19 +309,19 @@ public class GnoblarEntity extends TamableAnimal {
         entityData.set(SNIFFING, sniffing);
     }
 
-    /** About one gnoblar in five has a wart on its nose, decided when it spawns. */
-    public boolean hasWart() {
-        return entityData.get(WART);
+    /** Which look this gnoblar has, decided when it spawns. */
+    public GnoblarVariant getVariant() {
+        return GnoblarVariant.byId(entityData.get(VARIANT));
     }
 
-    public void setWart(boolean wart) {
-        entityData.set(WART, wart);
+    public void setVariant(GnoblarVariant variant) {
+        entityData.set(VARIANT, variant.ordinal());
     }
 
     @Override
     public SpawnGroupData finalizeSpawn(ServerLevelAccessor level, DifficultyInstance difficulty,
                                         MobSpawnType reason, SpawnGroupData data, CompoundTag tag) {
-        setWart(random.nextInt(5) == 0);
+        setVariant(GnoblarVariant.roll(random));
         return super.finalizeSpawn(level, difficulty, reason, data, tag);
     }
 
@@ -362,7 +362,7 @@ public class GnoblarEntity extends TamableAnimal {
     public void addAdditionalSaveData(CompoundTag tag) {
         super.addAdditionalSaveData(tag);
         tag.putInt("Trust", getTrust());
-        tag.putBoolean("Wart", hasWart());
+        tag.putString("Variant", getVariant().id());
         tag.putInt("SniffCooldown", sniffCooldown);
         tag.putInt("HoardTicks", hoardTicks);
     }
@@ -371,7 +371,7 @@ public class GnoblarEntity extends TamableAnimal {
     public void readAdditionalSaveData(CompoundTag tag) {
         super.readAdditionalSaveData(tag);
         setTrust(tag.getInt("Trust"));
-        setWart(tag.getBoolean("Wart"));
+        setVariant(GnoblarVariant.byName(tag.getString("Variant")));
         sniffCooldown = tag.getInt("SniffCooldown");
         hoardTicks = tag.getInt("HoardTicks");
     }
