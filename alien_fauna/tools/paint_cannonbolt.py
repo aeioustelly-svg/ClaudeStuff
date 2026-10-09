@@ -57,17 +57,17 @@ def dither(x, y, a, b):
 
 
 def plate(face, x, y, W, H, tx, ty):
-    """Yellow shell: lighter tops, darker undersides, a dark rim and a dark crescent on one side."""
-    if face == "top":
-        return YELLOW[2] if min(x, y, W - 1 - x, H - 1 - y) > 0 else YELLOW[1]
+    """Yellow shell with a black outline painted into the texture itself (nothing is layered on
+    top): every face of the box has a one-pixel black border, and faces two pixels or thinner are
+    black throughout. Inside: a light top, a dark crescent on one side."""
+    if min(W, H) <= 2 or x == 0 or y == 0 or x == W - 1 or y == H - 1:
+        return BLACK
     if face == "bottom":
         return YELLOW[0]
-    if W < 3 or H < 3:
-        return YELLOW[1]
-    if x == 0 or x == W - 1 or y == H - 1:
-        return YELLOW[0]
+    if face == "top":
+        return YELLOW[2]
     crescent = (W // 4) * (1.0 - ((2.0 * y - H) / H) ** 2)
-    if x <= crescent:
+    if x <= crescent or y >= H - 2:
         return YELLOW[0]
     if y == 1 and x < W - 2:
         return YELLOW[2]
@@ -123,6 +123,8 @@ def body(face, x, y, W, H, tx, ty):
         return fur(face, x, y, W, H, tx, ty)
     if y < 2:
         return BLACK
+    if face == "back" and y in (5, 10):
+        return BLACK                                # the lines between the back bands
     if face == "front":
         mid = W // 2
         if y == 2:
@@ -182,9 +184,9 @@ def leg(face, x, y, W, H, tx, ty):
 
 
 def claws_down(face, x, y, W, H, tx, ty):
-    """Three claws hanging flush from the front of the hand, each two pixels wide at the base and
-    curling inwards to a single-pixel tip. The gaps between them stay transparent."""
-    if face not in ("front", "back"):
+    """Three claws hanging flush from the outer side of the hand, each two pixels wide at the base
+    and curling inwards to a single-pixel tip. The gaps between them stay transparent."""
+    if face not in ("right", "left"):
         return None
     claw = {0: 0, 1: 0, 3: 1, 4: 1, 6: 2, 7: 2}.get(x)
     if claw is None:
@@ -219,7 +221,7 @@ BOXES = {
     "arm_plate": (48, 96, 2, 6, 6, plate),
     "leg": (24, 96, 6, 8, 6, leg),
     "knee_plate": (68, 90, 1, 5, 4, plate),
-    "hand_claws": (0, 120, 8, 3, 0, claws_down),
+    "hand_claws": (100, 96, 0, 3, 8, claws_down),
     "back_band": (72, 0, 14, 4, 2, plate),
     "foot_claws": (20, 120, 6, 0, 2, claws_forward),
     "ball_x_bar": (0, 34, 20, 16, 14, ball_bar(0)),

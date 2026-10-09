@@ -66,15 +66,15 @@ public class CannonboltModel<T extends CannonboltEntity> extends EntityModel<T> 
                 PartPose.offsetAndRotation(7.0F, -12.0F, 0.0F, 0.0F, 0.0F, 0.12F));
 
         // Arms: one long box from the shoulder down to the knees, a yellow plate on the outside
-        // and a flat card of three claws hanging flush from the front of the hand.
+        // and a flat card of three claws hanging flush from the outer side of the hand.
         body.addOrReplaceChild("right_arm",
                 CubeListBuilder.create().texOffs(0, 96).addBox(-3.0F, -1.0F, -3.0F, 6, 17, 6)
-                        .texOffs(0, 120).addBox(-4.0F, 16.0F, -3.0F, 8, 3, 0)
+                        .texOffs(100, 96).addBox(-3.0F, 16.0F, -4.0F, 0, 3, 8)
                         .texOffs(48, 96).addBox(-5.0F, 4.0F, -3.0F, 2, 6, 6),
                 PartPose.offset(-10.0F, -12.0F, 0.0F));
         body.addOrReplaceChild("left_arm",
                 CubeListBuilder.create().mirror().texOffs(0, 96).addBox(-3.0F, -1.0F, -3.0F, 6, 17, 6)
-                        .texOffs(0, 120).addBox(-4.0F, 16.0F, -3.0F, 8, 3, 0)
+                        .texOffs(100, 96).addBox(3.0F, 16.0F, -4.0F, 0, 3, 8)
                         .texOffs(48, 96).addBox(3.0F, 4.0F, -3.0F, 2, 6, 6),
                 PartPose.offset(10.0F, -12.0F, 0.0F));
 
