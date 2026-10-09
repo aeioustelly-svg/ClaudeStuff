@@ -167,7 +167,7 @@ public class CannonboltGameTests {
     }
 
     @GameTest(templateNamespace = AlienFauna.MODID, template = TEMPLATE)
-    public static void ballTakesLessProjectileDamage(GameTestHelper helper) {
+    public static void ballCannotBeHurtAndProjectilesBounceOff(GameTestHelper helper) {
         floor(helper);
         CannonboltEntity standing = helper.spawnWithNoFreeWill(ModEntities.CANNONBOLT.get(), 8, 2, 12);
         CannonboltEntity ball = helper.spawnWithNoFreeWill(ModEntities.CANNONBOLT.get(), 16, 2, 12);
@@ -175,14 +175,44 @@ public class CannonboltGameTests {
         helper.runAfterDelay(15, () -> {
             Snowball snowball = new Snowball(helper.getLevel(), 0, 0, 0);
             DamageSource thrown = helper.getLevel().damageSources().thrown(snowball, null);
-            standing.hurt(thrown, 10.0F);
-            ball.hurt(thrown, 10.0F);
-            float lostStanding = standing.getMaxHealth() - standing.getHealth();
-            float lostBall = ball.getMaxHealth() - ball.getHealth();
-            helper.assertTrue(lostStanding > 0.0F, "Standing Cannonbolt took no damage");
-            helper.assertTrue(lostBall < lostStanding, "Ball took as much projectile damage as the standing body");
+            boolean standingHurt = standing.hurt(thrown, 10.0F);
+            boolean ballHurt = ball.hurt(thrown, 10.0F);
+            helper.assertTrue(standingHurt, "A standing Cannonbolt was not hurt by a projectile");
+            helper.assertTrue(!ballHurt, "A projectile hurt a Cannonbolt in ball form");
+            helper.assertTrue(ball.getHealth() == ball.getMaxHealth(), "A ball lost health to a projectile");
+            helper.assertTrue(!ball.hurt(helper.getLevel().damageSources().generic(), 10.0F), "Generic damage hurt a ball");
+            helper.assertTrue(ball.getHealth() == ball.getMaxHealth(), "A ball lost health to generic damage");
             helper.succeed();
         });
+    }
+
+    @GameTest(templateNamespace = AlienFauna.MODID, template = TEMPLATE)
+    public static void punchedBallJustRolls(GameTestHelper helper) {
+        floor(helper);
+        Player player = helper.makeMockPlayer();
+        CannonboltEntity ball = helper.spawnWithNoFreeWill(ModEntities.CANNONBOLT.get(), 16, 2, 12);
+        ball.startRolling();
+        helper.runAfterDelay(15, () -> {
+            boolean hurt = ball.hurt(player.damageSources().playerAttack(player), 10.0F);
+            helper.assertTrue(!hurt, "A punch hurt a Cannonbolt in ball form");
+            helper.assertTrue(ball.getHealth() == ball.getMaxHealth(), "A ball lost health to a punch");
+            helper.assertTrue(ball.getDeltaMovement().horizontalDistanceSqr() > 0.0D, "A punched ball did not roll away");
+            helper.succeed();
+        });
+    }
+
+    @GameTest(templateNamespace = AlienFauna.MODID, template = TEMPLATE)
+    public static void fieldGuideCoversEveryCreatureAndCanBeCrafted(GameTestHelper helper) {
+        for (EntityType<?> type : net.minecraftforge.registries.ForgeRegistries.ENTITY_TYPES.getValues()) {
+            ResourceLocation id = net.minecraftforge.registries.ForgeRegistries.ENTITY_TYPES.getKey(type);
+            if (id != null && AlienFauna.MODID.equals(id.getNamespace())) {
+                helper.assertTrue(com.alienfauna.guide.GuideEntries.has(type), "The Field Guide has no entry for " + id);
+            }
+        }
+        helper.assertTrue(helper.getLevel().getRecipeManager()
+                        .byKey(new ResourceLocation(AlienFauna.MODID, "field_guide")).isPresent(),
+                "The Field Guide recipe was not loaded");
+        helper.succeed();
     }
 
     @GameTest(templateNamespace = AlienFauna.MODID, template = TEMPLATE, timeoutTicks = 400)

@@ -17,6 +17,10 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.AgeableMob;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.projectile.AbstractArrow;
+import net.minecraft.world.entity.projectile.Projectile;
+import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.entity.EntityDimensions;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
@@ -264,10 +268,28 @@ public class CannonboltEntity extends TamableAnimal {
 
     @Override
     public boolean hurt(DamageSource source, float amount) {
+        if (isRolling() && !source.is(DamageTypeTags.BYPASSES_INVULNERABILITY)) {
+            // A ball cannot be hurt. A punch only sends it rolling away, and projectiles bounce off.
+            if (!level().isClientSide) {
+                Entity direct = source.getDirectEntity();
+                if (direct instanceof Projectile projectile) {
+                    if (!(projectile instanceof AbstractArrow)) {      // arrows already bounce off anything that cannot be hurt
+                        projectile.setDeltaMovement(projectile.getDeltaMovement().scale(-0.4D));
+                        projectile.hurtMarked = true;
+                    }
+                    playSound(SoundEvents.SHIELD_BLOCK, 0.8F, 1.2F);
+                } else if (direct != null) {
+                    Vec3 away = position().subtract(direct.position());
+                    Vec3 push = new Vec3(away.x, 0.0D, away.z).normalize().scale(0.55D);
+                    setDeltaMovement(getDeltaMovement().add(push.x, 0.2D, push.z));
+                    this.hurtMarked = true;
+                    playSound(SoundEvents.IRON_GOLEM_STEP, 0.8F, 0.5F);
+                }
+            }
+            return false;
+        }
         if (isDizzy()) {
             amount *= 1.25F;
-        } else if (isRolling() && source.is(DamageTypeTags.IS_PROJECTILE)) {
-            amount *= 0.5F;
         }
         if (!level().isClientSide) {
             setOrderedToSit(false);
@@ -436,6 +458,21 @@ public class CannonboltEntity extends TamableAnimal {
 
     public boolean isRolling() { return this.entityData.get(ROLLING); }
     private void setRolling(boolean value) { this.entityData.set(ROLLING, value); }
+    /** For the Field Guide: shows this (never added to a level) Cannonbolt as a ball or standing. */
+    public void setDisplayBall(boolean ball) {
+        this.entityData.set(ROLLING, ball);
+        curlAnim = curlAnimO = ball ? 1.0F : 0.0F;
+        ballAnim = ballAnimO = ball ? 1.0F : 0.0F;
+    }
+
+    /** For the Field Guide: keeps the ball turning while it is on show. */
+    public void tickDisplay() {
+        if (isRolling()) {
+            rollAngleO = rollAngle;
+            rollAngle += 0.12F;
+        }
+    }
+
     public boolean isDizzy() { return this.entityData.get(DIZZY); }
     public boolean isCurling() { return this.entityData.get(CURLING); }
 

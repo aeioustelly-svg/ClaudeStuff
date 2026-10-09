@@ -22,6 +22,8 @@ public class AlienFauna {
     private void addCreative(BuildCreativeModeTabContentsEvent event) {
         if (event.getTabKey() == CreativeModeTabs.SPAWN_EGGS) {
             event.accept(ModItems.CANNONBOLT_SPAWN_EGG);
+        } else if (event.getTabKey() == CreativeModeTabs.TOOLS_AND_UTILITIES) {
+            event.accept(ModItems.FIELD_GUIDE);
         }
     }
 }
