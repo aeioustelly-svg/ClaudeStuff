@@ -162,6 +162,14 @@ def body(face, x, y, W, H, tx, ty):
     if face in ("left", "right"):
         if y < 3:
             return BLACK                            # same depth as the hood on the front and back
+        d = x if face == "right" else W - 1 - x     # pixels in from the back edge of this side
+        if d < 2 and y in (5, 12):
+            return BLACK                            # the lines between the back bands wrap round the corner
+        # A dark crescent along the back edge, thickest under the hood and fading away down the side,
+        # so the black under the back plates carries on smoothly onto the side of the body.
+        w = 4 if y <= 5 else 3 if y <= 8 else 2 if y <= 11 else 1 if y <= 14 else 0
+        if d < w:
+            return ((46, 48, 58), (70, 72, 86), (104, 106, 120), (128, 130, 142))[(d * 3) // max(1, w - 1)]
         return fur(face, x, y, W, H, tx, ty)
     if y < 2:
         return BLACK
