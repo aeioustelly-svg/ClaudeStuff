@@ -6,7 +6,8 @@ A wolf-headed flying serpent inspired by the Dacian Draco battle standard. Read 
 preview pipeline, model and texture rules (including the flat-parts method copied from the vanilla chicken, z-fighting, painting by 3D
 position and variants), entity, networking and GameTest pitfalls, and world generation.
 
-**Other mods in this repository:** `gnoblars/` is a separate mod (own Gradle project, own `CLAUDE.md`). Run its commands from inside that folder. Nothing in this project depends on it.
+**Other mods in this repository:** `alien_fauna/` (Cannonbolt, Gnoblars and the Field Guide book; own Gradle project, own `CLAUDE.md`) is a separate mod. Run its
+commands from inside that folder. `gnoblars/` is the standalone gnoblar mod that was merged into it, kept for reference only. Nothing in this project depends on either.
 
 ## Stack
 

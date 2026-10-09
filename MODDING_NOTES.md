@@ -233,3 +233,25 @@ sandbox, so none of this can be tested headlessly: say so.
 3. Update the mod's `CLAUDE.md` (what exists, what was rejected and why, what is unverified) and this file if something general was learned.
 4. Commit, push, `SendUserFile` the jar and any preview images.
 5. In the reply: what changed, what could not be checked, and what to look at first in the game.
+
+## 12. Merging one mod into another (the gnoblars into Alien Fauna)
+
+Done once, and it went through with the mechanical steps below; the GameTests of both mods then passed together (63 in one world).
+
+- **Which branch holds what:** the Alien Fauna mod lived on another branch (`origin/claude/epic-mendel-0vhz2t`, folder `alien_fauna/`). Look at every
+  branch (`git branch -a`, `git ls-tree -r --name-only <branch>`) before saying a mod cannot be found. `git merge` was refused by the sandbox's
+  safety check; the additive way worked: `git checkout <branch> -- alien_fauna` brings the folder in as new files on the working branch. Do not
+  push to the other branch without being told to.
+- **Namespace:** everything moves from `gnoblars:` to the target mod id: registry names, `data/<modid>/...` (loot tables, recipes, biome modifier,
+  worldgen, tags), `assets/<modid>/...` (textures, models, lang), language keys (`entity.<modid>.`, `item.<modid>.`, `message.<modid>.`), and
+  the ids written inside the structure NBT (entity id, loot table), so **regenerate the structure from its script** instead of editing it.
+  A scripted copy with `str.replace` for the package names and `<Mod>.MODID` did it; then grep for the old names, which only prose should
+  still contain.
+- **Merge by hand:** the `@Mod` class (config registration, creative tab entries), `ModEntities` (type, attributes, spawn placement),
+  `ModItems`, the client event class (layer definitions, renderers). Add a second `dump...` Gradle task and preview main class for the second
+  model; prefix the second mod's preview files and tool names so they do not overwrite the first's (`gnoblar_body.png`, `paint_gnoblar.py`).
+- **Shared resources:** the empty GameTest arena is shared, so the structure file is not copied twice. One config file serves the whole mod.
+- **A book that lists every creature** (`GuideEntries`) turns a missing entry into a failing GameTest: a good pattern, and the way a new creature
+  gets documented. Entries are written in the voice of the book and must be true to the code. A creature's `mobInteract` must pass the book through
+  so using the book on it opens its page.
+- The old standalone project is left in place with a note that it is superseded, not deleted.

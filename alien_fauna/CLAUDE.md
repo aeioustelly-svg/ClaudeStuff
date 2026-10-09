@@ -1,53 +1,78 @@
-> **Superseded.** The gnoblars were merged into the Alien Fauna mod (`../alien_fauna/`, namespace `alien_fauna`), which is where they are
-> developed now: see `alien_fauna/CLAUDE.md`. This standalone project is kept only for reference and is no longer updated, so a change
-> here will not reach the game. It can be deleted when it is no longer wanted (the history keeps it).
+# Alien Fauna: Forge 1.20.1 mod
 
-# Gnoblars: Forge 1.20.1 mod
+Gentle alien creatures for the Overworld, with a Field Guide book that describes each of them. Two creatures so far:
 
-Tiny, big-nosed goblinoid scavengers inspired by the gnoblars of Warhammer's Ogre Kingdoms. Mostly harmless and annoying, and
-they can be befriended with kindness. This is a separate mod from the Dacian Draco in the repository root. It has its own Gradle
-project in this folder, and it shares the Forge cache in `~/.gradle`. Read the root `CLAUDE.md` first: the stack, the project
-guidelines (pacifism, vanilla interaction, vanilla-style models) and the sandbox pitfalls all apply here too.
+- the **Cannonbolt**, an armoured alien that rolls up into a ball (`entity/CannonboltEntity.java`, the lang text under `guide.alien_fauna.cannonbolt.*`
+  describes how it behaves: it can be calmed or tamed with melon slices, breeds, never drops anything);
+- the **Gnoblar**, a tiny, big-nosed, nosy scavenger that can be befriended in many gentle ways (the rest of this file). The gnoblars were
+  built as a standalone mod first (the `gnoblars/` folder, kept for reference and no longer updated) and then merged in here under the
+  `alien_fauna` namespace: entity `alien_fauna:gnoblar`, data `data/alien_fauna/...`, textures `textures/entity/gnoblar_*.png`.
 
-## Stack
+This is a separate Gradle project in this folder (mod id `alien_fauna`, package `com.alienfauna`, version 0.2.0) and shares the Forge cache in
+`~/.gradle` with the other mods in the repository. Read the root `CLAUDE.md` and `MODDING_NOTES.md` first: the stack, the project guidelines
+(pacifism, vanilla interaction, vanilla-style models) and the pitfalls apply here. Run every command from inside `alien_fauna/`.
 
-- Minecraft 1.20.1, Forge 47.4.26, official mappings, Gradle 8.8 wrapper, Java 17 (the toolchain fetches it).
-- Mod id `gnoblars`, package `com.gnoblarmod.gnoblars`. The author field in `gradle.properties` is still a placeholder.
-- Run every command from inside `gnoblars/`.
+## Stack and commands
 
-## Commands
+- Minecraft 1.20.1, Forge 47.4.26, official mappings, Gradle 8.8 wrapper, Java 17. The author field in `gradle.properties` is a placeholder.
 
 | Command | Purpose |
 |---|---|
-| `./gradlew build` | Builds `build/libs/gnoblars-0.1.0.jar` |
-| `./gradlew runGameTestServer` | Runs the GameTests headless. No Minecraft EULA is needed |
-| `./gradlew dumpModel` | Bakes the real `GnoblarModel` and writes `build/preview/model.json` |
-| `python3 -I tools/paint_texture.py` | Repaints every variant texture, the dye masks and the mud overlay from the dumped geometry |
-| `python3 -I tools/render_preview.py` | Software-renders `build/preview/body.png` (every pose), `head.png`, `variants.png`, `extras.png` (mud and dyed sashes), `texture.png` |
-| `python3 -I tools/check_clipping.py` | Fails if an arm cuts into the head or nose in any dumped pose, or if two coplanar faces overlap (z-fighting). Run it after changing a pose or a cube |
-| `python3 -I tools/make_item_textures.py` | Redraws the item textures (the nose pickle, from an ASCII map) |
-| `python3 -I tools/make_camp.py` | Rebuilds `data/gnoblars/structures/camp.nbt` block by block and draws `build/preview/camp.png` (top and side) |
+| `./gradlew build` | Builds `build/libs/alien_fauna-0.2.0.jar` |
+| `./gradlew runGameTestServer` | Runs the GameTests headless (no EULA). All 63 should pass (Cannonbolt, Field Guide and Gnoblar tests share one arena and one world) |
+| `./gradlew dumpModel` | Cannonbolt: bakes the real model and writes `build/preview/model.json` (then `tools/paint_cannonbolt.py`, `tools/render_preview.py`) |
+| `./gradlew dumpGnoblar` | Gnoblar: bakes the real model in many poses and every variant, writes `build/preview/gnoblar.json` |
+| `python3 -I tools/gnoblar/paint_gnoblar.py` | Repaints every gnoblar variant texture, the dye masks and the mud overlay from the dumped geometry |
+| `python3 -I tools/gnoblar/render_gnoblar.py` | Software-renders `build/preview/gnoblar_body.png` (every pose), `gnoblar_head.png`, `gnoblar_variants.png`, `gnoblar_extras.png`, `gnoblar_texture.png` |
+| `python3 -I tools/gnoblar/check_gnoblar_clipping.py` | Fails if an arm cuts into the head or nose in any dumped pose, or if two coplanar faces overlap (z-fighting). Run it after changing a pose or a cube |
+| `python3 -I tools/gnoblar/make_nose_pickle.py` | Redraws the nose pickle item texture (from an ASCII map) |
+| `python3 -I tools/gnoblar/make_gnoblar_camp.py` | Rebuilds `data/alien_fauna/structures/camp.nbt` block by block and draws `build/preview/gnoblar_camp.png` |
+| `python3 -I tools/make_item_textures.py` | Rebuilds the Field Guide item texture from the vanilla book |
 
-Use `--offline` only after a full online build: the runtime classpath needs artifacts that only an online build caches.
-Do not use `runServer` or `runClient` in the sandbox (EULA and no display).
+Do not use `runServer` or `runClient` in the sandbox (EULA and no display). `--offline` only works after a full online build.
 
-## Design (what exists in 0.1.0)
+## The Field Guide
+
+The book (`item/FieldGuideItem`) is given once on first join (`GuideEvents`) and is craftable (book, yellow dye, melon slice). Using it opens
+`client/FieldGuideScreen`: an index with one model button per creature, and for each creature a two-page spread (name, a live model with buttons,
+a short description, then the other sections, over further spreads if long). Using the book **on a creature opens that creature's page**: a
+creature's `mobInteract` must therefore return `PASS` for a `FieldGuideItem`, or its own interaction (a gnoblar's mode cycle) eats the click.
+
+**Adding a creature to the guide** (a GameTest, `fieldGuideCoversEveryCreatureAndCanBeCrafted`, fails if a creature of the mod has no entry):
+
+1. A line in `guide/GuideEntries.ALL`: `new GuideEntry(id, () -> ModEntities.X.get(), sections, hasBaby, hasBallForm, hasLooks, canDance)`. The
+   first section is always `description`. The flags choose the buttons under the model (at most two fit): Baby, Ball, Look (cycles the gnoblar
+   variants), Dance. A new kind of button means a field in `GuideEntry`, a branch in `FieldGuideScreen.rebuild` and one in `applyModel`.
+2. Language keys in `lang/en_us.json`: `entity.alien_fauna.<id>`, `guide.alien_fauna.<id>.<section>` for every section, and
+   `guide.alien_fauna.heading.<section>` for every section but the first (shared by all creatures: `habitat`, `behaviour`, `befriending`,
+   `drops`, `looks`, `kindness` exist).
+3. The `description` is cut to **three lines of about 21 characters** under the model: keep it near 50 to 60 characters. The other sections
+   wrap and flow over the spreads, about 13 lines to a page, so a long entry takes a few spreads; test long text by counting, as the GUI cannot
+   be rendered headlessly (nothing in the screen has ever been seen in a client).
+4. If the model needs a display state (the Cannonbolt ball, the gnoblar look and dance), give the entity a setter that works on an entity
+   that is not in a world, and call it from `FieldGuideScreen.applyModel`.
+
+The voice of the entries is a warm, dry naturalist's notes. The gnoblar entry (description, habitat, behaviour, looks, befriending, kindness,
+drops) has the personality of the creature ("a nuisance, and entirely harmless", "they insist they came first"): keep every claim true to the code, as
+the book is the only place a player learns the mechanics.
+
+## Gnoblars: design
 
 - **Mob:** `GnoblarEntity` is a `TamableAnimal`. 8 health, 0.5 x 0.9 hitbox, vanilla villager sounds pitched up. Never attacks.
 - **Wild behaviour (the annoying part):**
   - `GnoblarPesterGoal` follows the nearest player and squeaks, then gets distracted and leaves them alone for 15 to 45 seconds.
   - `GnoblarScavengeGoal` picks up one item from dropped stacks and holds it in its hand.
-  - Both can be switched off in `gnoblars-common.toml` (`pestering`, `scavenging`).
+  - Both can be switched off in `alien_fauna-common.toml` (`pestering`, `scavenging`).
 - **Cowardice:** `GnoblarAvoidMonstersGoal` runs from every `Monster` and sets the `scared` flag (arms flung up in the model).
 - **Gifts and trust:** junk food earns trust (rotten flesh, spider eye, poisonous potato, bone, dried kelp, brown mushroom: 1 each,
   nose pickle: 2). At 4 trust the gnoblar is tamed, like a wolf. Hitting a wild gnoblar resets its trust to 0.
   A gift also makes a holding gnoblar drop what it carries. It drops the item by itself after 5 minutes, and on death
   (`setGuaranteedDrop`: the vanilla drop chance only applies to player kills otherwise).
 - **Friends:** follow the owner, food heals, and an empty-hand click cycles the mode (`GnoblarMode`): follow, then sit, then wander,
-  with an action-bar message for each (lang `message.gnoblars.mode.*`). Wander uses `Mob.restrictTo` around the spot where it was told
+  with an action-bar message for each (lang `message.alien_fauna.mode.*`). Wander uses `Mob.restrictTo` around the spot where it was told
   (radius `WANDER_RADIUS` 10, not saved by vanilla, so `readAdditionalSaveData` sets it again), sit uses vanilla's ordered-to-sit, and
   `GnoblarFollowOwnerGoal` only runs in follow mode. A hurt sitting friend gets up and follows. `GnoblarSniffGoal` walks to soft
-  ground (dirt, sand, gravel, clay), sniffs for 3 seconds and rolls `data/gnoblars/loot_tables/gameplay/gnoblar_sniffing.json`
+  ground (dirt, sand, gravel, clay), sniffs for 3 seconds and rolls `data/alien_fauna/loot_tables/gameplay/gnoblar_sniffing.json`
   (flint, clay, sticks, bone, mushroom, string, leather, a rare gold nugget), then rests for 2 to 4 minutes. It works in follow and
   wander mode, not while sitting or riding.
 - **Riding:** sneak and click your own gnoblar to carry it piggyback (too big for a shoulder). It becomes a passenger of the player
@@ -66,13 +91,13 @@ Do not use `runServer` or `runClient` in the sandbox (EULA and no display).
 
 ## The camp
 
-A generated structure, `data/gnoblars/structures/camp.nbt` (15 x 8 x 15), built by `tools/make_camp.py` (edit the script and rerun it;
+A generated structure, `data/alien_fauna/structures/camp.nbt` (15 x 8 x 15), built by `tools/gnoblar/make_gnoblar_camp.py` (edit the script and rerun it;
 the NBT is not meant to be edited by hand). A trodden clearing with a cooking pot (a water cauldron on a campfire, in a ring of
 cobblestone), two hide tents (brown wool and grey wool A-frames: a bedroom with a loot chest, a hay bed and a barrel, and a store of
 barrels with a composter), a scrap heap with a cauldron and iron bars, a totem of bone blocks with a carved pumpkin face, a drying
 rack, log seats, lanterns on posts and five gnoblars of different variants (the variant is in the entity NBT, because structure
 entities skip `finalizeSpawn`). Layer 0 is foundation and layer 1 the ground, and a built cell with no earth below it gets a foundation.
-Loot, `data/gnoblars/loot_tables/chests/camp.json`, is junk and small goods (rotten flesh, bones, kelp, mushrooms, sticks, string,
+Loot, `data/alien_fauna/loot_tables/chests/camp.json`, is junk and small goods (rotten flesh, bones, kelp, mushrooms, sticks, string,
 nuggets, a chance of a lead, name tag, bell, emerald or nose pickles): everything peaceful.
 
 Worldgen is data driven, vanilla format: `worldgen/structure/gnoblar_camp.json` (a jigsaw structure with one single-piece pool,
@@ -124,9 +149,9 @@ Six looks, so gnoblars can be told apart in a crowd (`entity/GnoblarVariant.java
 
 Every other variant has weight 2, sooty weight 1. The geometry is identical for all: four wart cubes (`wart_nose`, `wart_nose_side`,
 `wart_cheek`, `wart_forehead`, all using one texture patch) and `GnoblarModel.setWartSpot` shows the one that the variant names, or
-every one for the preview tools when given null. `tools/paint_texture.py` holds the same table (`VARIANTS`) and writes
+every one for the preview tools when given null. `tools/gnoblar/paint_gnoblar.py` holds the same table (`VARIANTS`) and writes
 `gnoblar_<id>.png` for each, so adding a variant means: a constant in `GnoblarVariant` with its wart spot and weight, an entry in
-`VARIANTS` with the same id, then `dumpModel`, `paint_texture.py` and `render_preview.py` (which writes `variants.png`, every look
+`VARIANTS` with the same id, then `dumpGnoblar`, `paint_gnoblar.py` and `render_gnoblar.py` (which writes `gnoblar_variants.png`, every look
 side by side). Older saves with the removed `Wart` flag load as the plain green variant.
 
 ## Model and texture
@@ -144,25 +169,25 @@ side by side). Older saves with the removed `Wart` flag load as the plain green 
 - **Flat parts: do it the way vanilla does a chicken's leg.** The chicken leg is an ordinary 3x5x3 box (`addBox(-1,0,-3,3,5,3)`), but
   its texture paints one 1 px column on one face and the toes on the bottom face, and leaves every other face transparent. The cutout
   render drops transparent texels, so a single flat sheet shows, and no two visible faces share a place. So the ears and the loincloth
-  are 1 px boxes with every face but the front left transparent (`paint_ear` and the loincloth branch in `paint_texture.py` return
+  are 1 px boxes with every face but the front left transparent (`paint_ear` and the loincloth branch in `paint_gnoblar.py` return
   `None` for the rest). The loincloth front is flush with the body front. The user does not want visible slabs and rejected other tricks (zero-thickness boxes flicker, a tiny `CubeDeformation`):
   paint one face and leave the rest transparent.
 - **Z-fighting between parts.** Two faces in the same plane that face the same way and overlap are both drawn at the same depth and
   flicker (invisible in every preview). The hunch pushed the body's belt below the leg tops, over the legs' side faces, which had been
   flush with a 6 wide body. The body is now 8 wide over legs 1..3 (inset), so no two faces share a plane whatever the pose.
-  `check_clipping.py` clips every pair of coplanar same-facing faces in several poses and fails on any overlap. Run it after changing
+  `check_gnoblar_clipping.py` clips every pair of coplanar same-facing faces in several poses and fails on any overlap. Run it after changing
   a cube, a pivot or a pose. It is only as good as the poses dumped, and nothing here has been seen in a real client.
 - Head turn and pitch are clamped in `applyPose` (yaw x0.6 up to 45 degrees, no looking up past level) because a hunched creature's
   head otherwise swings into its shoulders.
-- `paint_texture.py` overwrites the textures in `textures/entity/` and colours texels by 3D position, with an explicit box table (`BOXES`) that has to
+- `paint_gnoblar.py` overwrites the textures in `textures/entity/` and colours texels by 3D position, with an explicit box table (`BOXES`) that has to
   match the model code. When a cube in `GnoblarModel` moves, update that table.
 - Ear rotation: for the left ear a negative `yRot` sweeps it back and a positive `zRot` droops it. The right ear mirrors that.
-  `HEAD_RAISE` in `paint_texture.py` shifts the head-part rows, so the face rows are written for a head 2 px lower than it sits.
+  `HEAD_RAISE` in `paint_gnoblar.py` shifts the head-part rows, so the face rows are written for a head 2 px lower than it sits.
 
 ## Tests
 
-`gametest/GnoblarGameTests.java`, template `data/gnoblars/structures/empty.nbt` (24x24x24, the same as the Draco). Same rules as the
-Draco: mock players are not in `level.players()`, so `isOwnedBy` compares UUIDs, and a goal that ends itself must tolerate one
+`gametest/GnoblarGameTests.java`, template `data/alien_fauna/structures/empty.nbt` (24x24x24, shared with the Cannonbolt tests). Same rules as the
+other mods in this repository (see `MODDING_NOTES.md`): mock players are not in `level.players()`, so `isOwnedBy` compares UUIDs, and a goal that ends itself must tolerate one
 more `tick()`. Goals that scan `level().players()` (pester) cannot be tested headlessly.
 
 ## Not verified

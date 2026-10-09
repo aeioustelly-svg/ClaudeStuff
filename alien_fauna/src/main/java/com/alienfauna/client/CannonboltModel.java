@@ -1,0 +1,208 @@
+package com.alienfauna.client;
+
+import com.alienfauna.AlienFauna;
+import com.alienfauna.entity.CannonboltEntity;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import net.minecraft.client.model.EntityModel;
+import net.minecraft.client.model.geom.ModelLayerLocation;
+import net.minecraft.client.model.geom.ModelPart;
+import net.minecraft.client.model.geom.PartPose;
+import net.minecraft.client.model.geom.builders.CubeListBuilder;
+import net.minecraft.client.model.geom.builders.LayerDefinition;
+import net.minecraft.client.model.geom.builders.MeshDefinition;
+import net.minecraft.client.model.geom.builders.PartDefinition;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.Mth;
+
+/**
+ * Vanilla-style Cannonbolt. Standing it is one tall white torso with the face on its front
+ * (no separate head), a big yellow plate on each shoulder and armadillo-style bands across the back, long one-box arms, short one-box legs,
+ * yellow plates on the outside of arms and legs and flat claws. Curled up it is a rounded yellow ball built from three
+ * crossing bars, and it spins by the distance rolled.
+ *
+ * Texture is 128x128 and painted by tools/paint_cannonbolt.py, which mirrors the boxes below.
+ * Keep the two in step when changing a box.
+ */
+public class CannonboltModel<T extends CannonboltEntity> extends EntityModel<T> {
+    public static final ModelLayerLocation LAYER_LOCATION =
+            new ModelLayerLocation(new ResourceLocation(AlienFauna.MODID, "cannonbolt"), "main");
+
+    private final ModelPart body, rightArm, leftArm, rightDome, leftDome, rightLeg, leftLeg, ball;
+
+    public CannonboltModel(ModelPart root) {
+        this.body = root.getChild("body");
+        this.rightDome = body.getChild("right_dome");
+        this.leftDome = body.getChild("left_dome");
+        this.rightArm = body.getChild("right_arm");
+        this.leftArm = body.getChild("left_arm");
+        this.rightLeg = root.getChild("right_leg");
+        this.leftLeg = root.getChild("left_leg");
+        this.ball = root.getChild("ball");
+    }
+
+    public static LayerDefinition createBodyLayer() {
+        MeshDefinition mesh = new MeshDefinition();
+        PartDefinition root = mesh.getRoot();
+
+        // Feet are at y = 24. The hips are at y = 16, the shoulders at y = 6.
+        // One tall white torso carries the face (there is no separate head, as on the character).
+        PartDefinition body = root.addOrReplaceChild("body",
+                CubeListBuilder.create().texOffs(0, 72).addBox(-7.0F, -18.0F, -6.0F, 14, 18, 12)
+                        // three yellow bands, each at least as wide as the torso, with a gap between them like
+                        // an armadillo's shell; the middle one is a little wider and longer, and stands one pixel further out. Each has its own part
+                        // of the texture.
+                        .texOffs(72, 0).addBox(-7.0F, -18.0F, 6.0F, 14, 5, 2)
+                        .texOffs(72, 7).addBox(-8.0F, -12.0F, 6.0F, 16, 6, 3)
+                        .texOffs(72, 16).addBox(-7.0F, -5.0F, 6.0F, 14, 5, 2),
+                PartPose.offset(0.0F, 16.0F, 0.0F));
+
+        // The yellow shoulder plates: one box each, against the torso and over the arm, tilted
+        // slightly inwards about their inner bottom corner. They are 7 px deep, so their front and
+        // back faces share a plane with neither the torso (12 deep) nor the arm (6 deep).
+        // The left one mirrors the right.
+        body.addOrReplaceChild("right_dome",
+                CubeListBuilder.create().texOffs(68, 72).addBox(-8.0F, -6.0F, -3.5F, 8, 6, 7),
+                PartPose.offsetAndRotation(-7.0F, -15.0F, 0.0F, 0.0F, 0.0F, 0.12F));
+        body.addOrReplaceChild("left_dome",
+                CubeListBuilder.create().mirror().texOffs(68, 72).addBox(0.0F, -6.0F, -3.5F, 8, 6, 7),
+                PartPose.offsetAndRotation(7.0F, -15.0F, 0.0F, 0.0F, 0.0F, -0.12F));
+
+        // Arms: one long box from the shoulder down to the knees and a round yellow plate on the
+        // outside of the forearm, joined to the black of the shoulder by a painted line. The plate is three boxes (a middle column and two short sides), so its
+        // cut corners are real faces and nothing hollow shows through them. A yellow box sits on the black
+        // plate and sticks out exactly one pixel beyond it, which gives the plate its shape. The fingers are faint lines painted on the hand, with no claw geometry.
+        body.addOrReplaceChild("right_arm",
+                CubeListBuilder.create().texOffs(0, 102).addBox(-3.0F, -1.0F, -3.0F, 6, 20, 6)
+                        .texOffs(48, 102).addBox(-4.0F, 6.0F, -2.0F, 1, 8, 4)
+                        .texOffs(58, 102).addBox(-4.0F, 7.0F, -3.0F, 1, 6, 1)
+                        .texOffs(58, 102).addBox(-4.0F, 7.0F, 2.0F, 1, 6, 1)
+                        .texOffs(48, 114).addBox(-5.0F, 7.0F, -2.0F, 1, 6, 4),
+                PartPose.offset(-10.0F, -15.0F, 0.0F));
+        body.addOrReplaceChild("left_arm",
+                CubeListBuilder.create().mirror().texOffs(0, 102).addBox(-3.0F, -1.0F, -3.0F, 6, 20, 6)
+                        .texOffs(48, 102).addBox(3.0F, 6.0F, -2.0F, 1, 8, 4)
+                        .texOffs(58, 102).addBox(3.0F, 7.0F, -3.0F, 1, 6, 1)
+                        .texOffs(58, 102).addBox(3.0F, 7.0F, 2.0F, 1, 6, 1)
+                        .texOffs(48, 114).addBox(4.0F, 7.0F, -2.0F, 1, 6, 4),
+                PartPose.offset(10.0F, -15.0F, 0.0F));
+
+        // Legs: one box from the hip and a plate on the outside of the thigh. The toes are faint lines painted
+        // on the foot, like the fingers, with no claw geometry.
+        root.addOrReplaceChild("right_leg",
+                CubeListBuilder.create().texOffs(24, 102).addBox(-3.0F, 0.0F, -3.0F, 6, 8, 6)
+                        .texOffs(68, 90).addBox(-4.0F, 1.0F, -1.0F, 1, 5, 2)
+                        .texOffs(74, 90).addBox(-4.0F, 2.0F, -2.0F, 1, 3, 1)
+                        .texOffs(74, 90).addBox(-4.0F, 2.0F, 1.0F, 1, 3, 1)
+                        .texOffs(74, 95).addBox(-5.0F, 2.0F, -1.0F, 1, 3, 2),
+                PartPose.offset(-4.0F, 16.0F, 0.0F));
+        root.addOrReplaceChild("left_leg",
+                CubeListBuilder.create().mirror().texOffs(24, 102).addBox(-3.0F, 0.0F, -3.0F, 6, 8, 6)
+                        .texOffs(68, 90).addBox(3.0F, 1.0F, -1.0F, 1, 5, 2)
+                        .texOffs(74, 90).addBox(3.0F, 2.0F, -2.0F, 1, 3, 1)
+                        .texOffs(74, 90).addBox(3.0F, 2.0F, 1.0F, 1, 3, 1)
+                        .texOffs(74, 95).addBox(4.0F, 2.0F, -1.0F, 1, 3, 2),
+                PartPose.offset(4.0F, 16.0F, 0.0F));
+
+        // The ball: three bars crossing at the centre, which together make a cube with chamfered
+        // edges, 20 pixels across. Each pair of bars has different cross-sections, so no two faces
+        // share a plane.
+        root.addOrReplaceChild("ball",
+                CubeListBuilder.create()
+                        .texOffs(0, 34).addBox(-10.0F, -8.0F, -7.0F, 20, 16, 14)
+                        .texOffs(68, 34).addBox(-7.0F, -10.0F, -8.0F, 14, 20, 16)
+                        .texOffs(0, 0).addBox(-8.0F, -7.0F, -10.0F, 16, 14, 20),
+                PartPose.offset(0.0F, 14.0F, 0.0F));
+
+        return LayerDefinition.create(mesh, 128, 128);
+    }
+
+    @Override
+    public void setupAnim(T entity, float limbSwing, float limbSwingAmount, float ageInTicks,
+                          float netHeadYaw, float headPitch) {
+        float partialTick = ageInTicks - entity.tickCount;
+        applyPose(limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch,
+                entity.getCurlAnim(partialTick), entity.getBallAnim(partialTick), entity.getRollAngle(partialTick),
+                entity.getDizzyAnim(partialTick), entity.getSitAnim(partialTick));
+    }
+
+    /** Pure function of its inputs so the preview tool can pose the model without an entity. */
+    public void applyPose(float limbSwing, float limbSwingAmount, float ageInTicks,
+                          float netHeadYaw, float headPitch, float curl, float ballAmt, float rollAngle,
+                          float dizzy, float sit) {
+        for (ModelPart part : new ModelPart[]{body, rightArm, leftArm, rightDome, leftDome, rightLeg, leftLeg, ball}) {
+            part.resetPose();
+        }
+
+        // Curling up: curl runs 0 to 1 while it leans forward and puts its arms together. Once it is a
+        // ball, ballAmt runs 0 to 1 and the ball takes over from the standing parts.
+        boolean curled = ballAmt > 0.5F;
+        body.visible = !curled;
+        rightLeg.visible = !curled;
+        leftLeg.visible = !curled;
+        ball.visible = curled;
+        float ballScale = 0.75F + 0.25F * Math.min(1.0F, (ballAmt - 0.5F) * 2.0F);
+        ball.xScale = ballScale;
+        ball.yScale = ballScale;
+        ball.zScale = ballScale;
+        ball.xRot = rollAngle;
+        ball.y += (1.0F - ballScale) * 10.0F;
+
+        // Heavy walk, with a clear stomp: legs and arms swing against each other, the torso twists and
+        // rolls towards the planted foot and leans into the step, and the whole body dips at the widest
+        // point of each stride. The swing is scaled up so even a slow stroll reads.
+        float walk = Math.min(1.0F, limbSwingAmount * 1.8F) * (1.0F - sit);
+        float stride = limbSwing * 0.6662F;
+        float swing = Mth.cos(stride);
+        rightLeg.xRot = swing * 0.85F * walk;
+        leftLeg.xRot = -swing * 0.85F * walk;
+        rightArm.xRot = -swing * 0.7F * walk + Mth.sin(ageInTicks * 0.067F) * 0.04F;
+        leftArm.xRot = swing * 0.7F * walk - Mth.sin(ageInTicks * 0.067F) * 0.04F;
+        rightArm.zRot = 0.17F + Mth.cos(ageInTicks * 0.09F) * 0.02F;   // hands held a little way out, clear of the thigh plates
+        leftArm.zRot = -rightArm.zRot;
+        body.zRot = swing * 0.07F * walk;
+        body.yRot = swing * 0.12F * walk;
+        body.xRot = 0.08F * walk;
+        body.y += Math.abs(swing) * 1.5F * walk;
+
+        // No head: the whole torso turns a little towards what it looks at.
+        body.yRot += Mth.clamp(netHeadYaw, -45.0F, 45.0F) * Mth.DEG_TO_RAD * 0.3F;
+
+        // Sitting: lowered onto the haunches, legs forward, arms resting.
+        body.y += 6.0F * sit;
+        rightLeg.y += 6.0F * sit;
+        leftLeg.y += 6.0F * sit;
+        rightLeg.xRot -= 1.45F * sit;
+        leftLeg.xRot -= 1.45F * sit;
+        rightArm.xRot -= 0.5F * sit;
+        leftArm.xRot -= 0.5F * sit;
+
+        // Dizzy: slumped, head lolling, arms swinging loosely.
+        body.xRot += 0.2F * dizzy;
+        body.yRot += Mth.cos(ageInTicks * 0.3F) * 0.2F * dizzy;
+        body.zRot += Mth.sin(ageInTicks * 0.4F) * 0.1F * dizzy;
+        rightArm.xRot += Mth.sin(ageInTicks * 0.4F) * 0.15F * dizzy;
+        leftArm.xRot -= Mth.sin(ageInTicks * 0.4F) * 0.15F * dizzy;
+
+        // Curling up: hunched forward, legs and arms pulled in, dropping towards the ball's centre.
+        body.xRot += 0.9F * curl;
+        rightLeg.xRot -= 1.4F * curl;
+        leftLeg.xRot -= 1.4F * curl;
+        rightArm.xRot -= 1.2F * curl;
+        leftArm.xRot -= 1.2F * curl;
+        rightArm.yRot -= 0.55F * curl;                 // hands brought together in front
+        leftArm.yRot += 0.55F * curl;
+        rightArm.zRot *= 1.0F - curl;
+        leftArm.zRot *= 1.0F - curl;
+        body.y += 3.0F * curl;
+    }
+
+    @Override
+    public void renderToBuffer(PoseStack poseStack, VertexConsumer buffer, int packedLight, int packedOverlay,
+                               float red, float green, float blue, float alpha) {
+        body.render(poseStack, buffer, packedLight, packedOverlay, red, green, blue, alpha);
+        rightLeg.render(poseStack, buffer, packedLight, packedOverlay, red, green, blue, alpha);
+        leftLeg.render(poseStack, buffer, packedLight, packedOverlay, red, green, blue, alpha);
+        ball.render(poseStack, buffer, packedLight, packedOverlay, red, green, blue, alpha);
+    }
+}
