@@ -1,0 +1,14 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "pattern": [
+    " S ",
+    "WWW",
+    "W W"
+  ],
+  "key": {
+    "S": { "item": "dacian_draco:shed_skin" },
+    "W": { "tag": "minecraft:wool" }
+  },
+  "result": { "item": "dacian_draco:dacian_felt_cap" }
+}
