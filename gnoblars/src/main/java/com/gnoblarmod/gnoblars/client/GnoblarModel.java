@@ -79,9 +79,9 @@ public class GnoblarModel<T extends GnoblarEntity> extends EntityModel<T> implem
                 CubeListBuilder.create().texOffs(44, 24).addBox(0.0F, -6.0F, -5.0F, 1, 1, 1),
                 PartPose.ZERO);
 
-        // pointed ears: stepped boxes that climb and narrow to a tip, so the outline is not a rectangle. The front
-        // (pink inside) and the back (skin outside) faces are painted, the edges are transparent, so each ear is two
-        // thin sheets 1 px apart and never two faces in one place.
+        // pointed ears: stepped boxes that climb and narrow to a tip, so the outline is not a rectangle. Only the
+        // front face of each is painted (see the note on flat parts above), so each ear is one flat sheet. Its
+        // texture is two-toned (skin rim, pink middle) so it looks right from the front and from behind.
         head.addOrReplaceChild("left_ear",
                 CubeListBuilder.create()
                         .texOffs(0, 32).addBox(0.0F, -2.0F, 0.0F, 3, 4, 1)

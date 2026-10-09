@@ -61,8 +61,8 @@ Do not use `runServer` or `runClient` in the sandbox (EULA and no display).
 - **Flat parts: do it the way vanilla does a chicken's leg.** The chicken leg is an ordinary 3x5x3 box (`addBox(-1,0,-3,3,5,3)`), but
   its texture paints one 1 px column on one face and the toes on the bottom face, and leaves every other face transparent. The cutout
   render drops transparent texels, so a single flat sheet shows, and no two visible faces share a place. So the ears and the loincloth
-  are 1 px boxes with edges left transparent: the loincloth paints only its front face (flush with the body front), the ears paint
-  their front and back faces, 1 px apart (`paint_ear` and the loincloth branch in `paint_texture.py` return `None` for the rest). The user does not want them as visible slabs and does not want other tricks (zero-thickness boxes flicker, a tiny
+  are 1 px boxes with every face but the front left transparent (`paint_ear` and the loincloth branch in `paint_texture.py` return
+  `None` for the rest). The loincloth front is flush with the body front. The user does not want them as visible slabs and does not want other tricks (zero-thickness boxes flicker, a tiny
   `CubeDeformation` was rejected): paint one face and leave the rest transparent.
 - **Z-fighting between parts.** Two faces in the same plane that face the same way and overlap are both drawn at the same depth and
   flicker (invisible in every preview). The hunch pushed the body's belt below the leg tops, over the legs' side faces, which had been
