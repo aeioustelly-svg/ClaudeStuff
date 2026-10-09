@@ -114,6 +114,7 @@ public class CannonboltEntity extends TamableAnimal {
             @Override public boolean canContinueToUse() { return !isBaby() && super.canContinueToUse(); }
         });
         this.goalSelector.addGoal(4, new FollowOwnerGoal(this, 1.1D, 8.0F, 3.0F, false));
+        this.goalSelector.addGoal(4, new net.minecraft.world.entity.ai.goal.BreedGoal(this, 1.0D));
         this.goalSelector.addGoal(5, new CannonboltPlayRollGoal(this));
         this.goalSelector.addGoal(6, new WaterAvoidingRandomStrollGoal(this, 0.7D));
         this.goalSelector.addGoal(7, new LookAtPlayerGoal(this, Player.class, 8.0F));
@@ -317,6 +318,9 @@ public class CannonboltEntity extends TamableAnimal {
         if (held.getItem() instanceof com.alienfauna.item.FieldGuideItem) {
             return InteractionResult.PASS;          // the Field Guide opens its page instead
         }
+        if (held.getItem() instanceof net.minecraft.world.item.SpawnEggItem) {
+            return super.mobInteract(player, hand);    // a spawn egg used on an adult spawns a baby, as with other animals
+        }
         boolean food = isFood(held);
 
         if (level().isClientSide) {
@@ -344,6 +348,9 @@ public class CannonboltEntity extends TamableAnimal {
                     heal(4.0F);
                     gameEvent(net.minecraft.world.level.gameevent.GameEvent.EAT);
                     return InteractionResult.SUCCESS;
+                }
+                if (isOwnedBy(player) && !isBaby() && getAge() == 0 && canFallInLove()) {
+                    return super.mobInteract(player, hand);    // at full health, a melon slice puts it in love
                 }
             } else {
                 consume(player, held);
@@ -427,12 +434,18 @@ public class CannonboltEntity extends TamableAnimal {
 
     @Override
     public AgeableMob getBreedOffspring(ServerLevel level, AgeableMob partner) {
-        return null;
+        CannonboltEntity child = com.alienfauna.registry.ModEntities.CANNONBOLT.get().create(level);
+        if (child != null && getOwnerUUID() != null) {
+            child.setOwnerUUID(getOwnerUUID());          // a baby of tame parents belongs to their owner
+            child.setTame(true);
+        }
+        return child;
     }
 
+    /** Only tame Cannonbolts breed: two of them, each fed a melon slice while at full health. */
     @Override
     public boolean canFallInLove() {
-        return false;
+        return isTame() && super.canFallInLove();
     }
 
     // ---- sounds (cow and iron golem sounds pitched down) ----

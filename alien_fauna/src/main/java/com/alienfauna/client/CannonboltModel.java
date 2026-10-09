@@ -148,20 +148,25 @@ public class CannonboltModel<T extends CannonboltEntity> extends EntityModel<T> 
         ball.xRot = rollAngle;
         ball.y += (1.0F - ballScale) * 10.0F;
 
-        // Heavy walk: slow strides, arms against the legs, a little sway.
-        float walk = limbSwingAmount * (1.0F - sit);
-        float stride = limbSwing * 0.5F;
-        rightLeg.xRot = Mth.cos(stride) * 1.1F * walk;
-        leftLeg.xRot = -Mth.cos(stride) * 1.1F * walk;
-        rightArm.xRot = -Mth.cos(stride) * 0.6F * walk + Mth.sin(ageInTicks * 0.067F) * 0.04F;
-        leftArm.xRot = Mth.cos(stride) * 0.6F * walk - Mth.sin(ageInTicks * 0.067F) * 0.04F;
+        // Heavy walk, with a clear stomp: legs and arms swing against each other, the torso twists and
+        // rolls towards the planted foot and leans into the step, and the whole body dips at the widest
+        // point of each stride. The swing is scaled up so even a slow stroll reads.
+        float walk = Math.min(1.0F, limbSwingAmount * 1.8F) * (1.0F - sit);
+        float stride = limbSwing * 0.6662F;
+        float swing = Mth.cos(stride);
+        rightLeg.xRot = swing * 0.85F * walk;
+        leftLeg.xRot = -swing * 0.85F * walk;
+        rightArm.xRot = -swing * 0.7F * walk + Mth.sin(ageInTicks * 0.067F) * 0.04F;
+        leftArm.xRot = swing * 0.7F * walk - Mth.sin(ageInTicks * 0.067F) * 0.04F;
         rightArm.zRot = 0.17F + Mth.cos(ageInTicks * 0.09F) * 0.02F;   // hands held a little way out, clear of the thigh plates
         leftArm.zRot = -rightArm.zRot;
-        body.zRot = Mth.cos(stride) * 0.05F * walk;
-        body.y += Math.abs(Mth.cos(stride)) * -1.0F * walk;
+        body.zRot = swing * 0.07F * walk;
+        body.yRot = swing * 0.12F * walk;
+        body.xRot = 0.08F * walk;
+        body.y += Math.abs(swing) * 1.5F * walk;
 
         // No head: the whole torso turns a little towards what it looks at.
-        body.yRot = Mth.clamp(netHeadYaw, -45.0F, 45.0F) * Mth.DEG_TO_RAD * 0.3F;
+        body.yRot += Mth.clamp(netHeadYaw, -45.0F, 45.0F) * Mth.DEG_TO_RAD * 0.3F;
 
         // Sitting: lowered onto the haunches, legs forward, arms resting.
         body.y += 6.0F * sit;

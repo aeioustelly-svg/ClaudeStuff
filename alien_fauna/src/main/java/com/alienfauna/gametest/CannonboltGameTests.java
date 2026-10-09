@@ -43,6 +43,11 @@ public class CannonboltGameTests {
         }
     }
 
+    /** The whole 24 x 24 x 24 test arena. */
+    private static net.minecraft.world.phys.AABB arena(GameTestHelper helper) {
+        return new net.minecraft.world.phys.AABB(helper.absolutePos(new BlockPos(0, 0, 0)), helper.absolutePos(new BlockPos(24, 24, 24)));
+    }
+
     private static Villager target(GameTestHelper helper, int x, int y, int z) {
         return helper.spawnWithNoFreeWill(EntityType.VILLAGER, x, y, z);
     }
@@ -118,6 +123,72 @@ public class CannonboltGameTests {
         cannonbolt.interact(player, InteractionHand.MAIN_HAND);
         helper.assertTrue(!cannonbolt.isOrderedToSit(), "Using the Field Guide on a tame Cannonbolt sat it down");
         helper.assertTrue(com.alienfauna.guide.GuideEntries.indexOf(cannonbolt.getType()) == 0, "The guide does not list the Cannonbolt first");
+        helper.succeed();
+    }
+
+    /**
+     * A tame Cannonbolt whose owner is not in the level sits down, as a wolf does, and the mock player
+     * of a GameTest never is, so the mobs here have no goals and the birth is triggered directly.
+     */
+    @GameTest(templateNamespace = AlienFauna.MODID, template = TEMPLATE)
+    public static void twoTameCannonboltsBreedAndTheBabyIsTame(GameTestHelper helper) {
+        floor(helper);
+        Player player = helper.makeMockPlayer();
+        CannonboltEntity a = helper.spawnWithNoFreeWill(ModEntities.CANNONBOLT.get(), 10, 2, 12);
+        CannonboltEntity b = helper.spawnWithNoFreeWill(ModEntities.CANNONBOLT.get(), 14, 2, 12);
+        for (CannonboltEntity c : new CannonboltEntity[]{a, b}) {
+            c.tame(player);
+            c.setOrderedToSit(false);
+            c.setInSittingPose(false);
+            c.setInLove(player);
+        }
+        helper.assertTrue(a.canMate(b), "Two tame Cannonbolts in love cannot mate");
+        a.spawnChildFromBreeding(helper.getLevel(), b);
+        java.util.List<CannonboltEntity> babies = helper.getLevel()
+                .getEntitiesOfClass(CannonboltEntity.class, arena(helper)).stream().filter(CannonboltEntity::isBaby).toList();
+        helper.assertTrue(!babies.isEmpty(), "No baby was born");
+        helper.assertTrue(babies.get(0).isTame(), "The baby of tame parents is not tame");
+        helper.assertTrue(babies.get(0).isOwnedBy(player), "The baby does not belong to its parents' owner");
+        helper.succeed();
+    }
+
+    @GameTest(templateNamespace = AlienFauna.MODID, template = TEMPLATE)
+    public static void aMelonSliceAtFullHealthPutsATameCannonboltInLove(GameTestHelper helper) {
+        floor(helper);
+        Player player = helper.makeMockPlayer();
+        player.getAbilities().instabuild = false;
+        player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.MELON_SLICE, 4));
+        CannonboltEntity tame = helper.spawnWithNoFreeWill(ModEntities.CANNONBOLT.get(), 12, 2, 12);
+        tame.tame(player);
+        tame.setOrderedToSit(false);
+        tame.interact(player, InteractionHand.MAIN_HAND);
+        helper.assertTrue(tame.isInLove(), "A melon slice did not put a healthy tame Cannonbolt in love");
+        helper.assertTrue(player.getItemInHand(InteractionHand.MAIN_HAND).getCount() == 3, "The melon slice was not used");
+        helper.succeed();
+    }
+
+    @GameTest(templateNamespace = AlienFauna.MODID, template = TEMPLATE)
+    public static void wildCannonboltsDoNotBreed(GameTestHelper helper) {
+        floor(helper);
+        Player player = helper.makeMockPlayer();
+        player.getAbilities().instabuild = false;
+        player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.MELON_SLICE, 8));
+        CannonboltEntity wild = helper.spawn(ModEntities.CANNONBOLT.get(), 12, 2, 12);
+        wild.interact(player, InteractionHand.MAIN_HAND);
+        helper.assertTrue(!wild.isInLove(), "A wild Cannonbolt fell in love");
+        helper.succeed();
+    }
+
+    @GameTest(templateNamespace = AlienFauna.MODID, template = TEMPLATE)
+    public static void spawnEggOnAnAdultSpawnsABaby(GameTestHelper helper) {
+        floor(helper);
+        Player player = helper.makeMockPlayer();
+        player.getAbilities().instabuild = false;
+        player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(com.alienfauna.registry.ModItems.CANNONBOLT_SPAWN_EGG.get()));
+        CannonboltEntity adult = helper.spawn(ModEntities.CANNONBOLT.get(), 12, 2, 12);
+        adult.interact(player, InteractionHand.MAIN_HAND);
+        boolean baby = helper.getLevel().getEntitiesOfClass(CannonboltEntity.class, arena(helper)).stream().anyMatch(CannonboltEntity::isBaby);
+        helper.assertTrue(baby, "A spawn egg used on an adult did not spawn a baby");
         helper.succeed();
     }
 

@@ -73,6 +73,8 @@ public class ModelDump {
         Map<String, float[]> poses = new LinkedHashMap<>();
         poses.put("idle", new float[]{0, 0.0F, 20, 0, 0, 0, 0, 0, 0, 0});
         poses.put("walk", new float[]{3.0F, 0.8F, 40, 0, 0, 0, 0, 0, 0, 0});
+        poses.put("stepA", new float[]{0.0F, 0.6F, 40, 0, 0, 0, 0, 0, 0, 0});
+        poses.put("stepB", new float[]{4.716F, 0.6F, 40, 0, 0, 0, 0, 0, 0, 0});
         poses.put("curl25", new float[]{0, 0, 20, 0, 0, 0.25F, 0, 0, 0, 0});
         poses.put("curl60", new float[]{0, 0, 20, 0, 0, 0.6F, 0, 0, 0, 0});
         poses.put("curled", new float[]{0, 0, 20, 0, 0, 1, 0, 0, 0, 0});
