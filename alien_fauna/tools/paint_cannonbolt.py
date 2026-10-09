@@ -173,7 +173,10 @@ def round_plate(face, x, y, W, H, tx, ty):
     """A plate on a limb, trimmed to look round: the four corners of each big face are cut away
     (transparent) and the rest has a one-pixel black outline. The thin edge faces are dark amber
     along the part that is still there, so no square corner sticks out and the plate still reads
-    as yellow when seen edge-on."""
+    as yellow when seen edge-on. The face against the limb is left empty: it is hidden by the limb
+    except through the trimmed corners, where its black border showed up as stray black blocks."""
+    if face == "left":
+        return None
     if min(W, H) < 4:
         long_side, pos = (W, x) if W >= H else (H, y)
         return YELLOW[0] if 1 <= pos <= long_side - 2 else None
