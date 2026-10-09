@@ -66,13 +66,14 @@ public class GnoblarModel<T extends GnoblarEntity> extends EntityModel<T> implem
         body.addOrReplaceChild("neck",
                 CubeListBuilder.create().texOffs(44, 20).addBox(-1.0F, -6.0F, -2.0F, 2, 1, 2),
                 PartPose.ZERO);
-        // the nose: one big block, nothing more
+        // the nose: one big block, taller than it is deep and hanging a pixel below the chin,
+        // so it reads as a nose and not as a snout
         PartDefinition nose = head.addOrReplaceChild("nose",
-                CubeListBuilder.create().texOffs(28, 0).addBox(-2.0F, -4.0F, -8.0F, 4, 4, 5),
+                CubeListBuilder.create().texOffs(28, 0).addBox(-2.0F, -5.0F, -6.0F, 4, 6, 3),
                 PartPose.ZERO);
         // some gnoblars have a wart on the nose (hidden on the rest)
         nose.addOrReplaceChild("wart",
-                CubeListBuilder.create().texOffs(44, 24).addBox(0.0F, -5.0F, -7.0F, 1, 1, 1),
+                CubeListBuilder.create().texOffs(44, 24).addBox(0.0F, -6.0F, -5.0F, 1, 1, 1),
                 PartPose.ZERO);
 
         // pointed ears: stepped flat planes that climb and narrow to a tip, so the outline is not a rectangle

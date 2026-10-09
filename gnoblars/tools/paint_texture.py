@@ -50,8 +50,8 @@ BOXES = [
     ("rear_a", (-7, -4), (10, 14), (-1, -1)),
     ("rear_b", (-9, -7), (9, 12), (-1, -1)),
     ("rear_c", (-10, -9), (8, 10), (-1, -1)),
-    ("wart", (0, 1), (10, 11), (-8, -7)),
-    ("nose", (-2, 2), (11, 15), (-9, -4)),
+    ("wart", (0, 1), (9, 10), (-6, -5)),
+    ("nose", (-2, 2), (10, 16), (-7, -4)),
     ("neck", (-1, 1), (15, 16), (-2, 0)),
     ("left_arm", (3, 5), (17, 24), (-1, 1)),
     ("right_arm", (-5, -3), (17, 24), (-1, 1)),
@@ -160,16 +160,22 @@ def paint(part, pos, normal):
         return shade(WART_SHADES, 2 if face == "top" else 0 if face == "bottom" else 1, "side")
 
     if part == "nose":
-        if nz < -0.5 and abs(z + 9.0) < 0.1:       # the front: one nostril each side
-            if abs(y - 13.5) < 0.1 and abs(ax - 1.5) < 0.1:
-                return NOSTRIL
-            if abs(y - 14.5) < 0.1:
-                return shade(NOSE, 0, face)        # shaded underlip
-            if abs(y - 11.5) < 0.1 and ax < 1.0:
-                return shade(NOSE, 2, face)        # a shiny highlight
-            return skin(pos, face, NOSE)
+        wy = y - HEAD_RAISE                          # true height; the face rows above are written for a lower head
         if face == "bottom":
             return shade(NOSE, 0, face)
+        if nz < -0.5 and abs(z + 7.0) < 0.1:         # the front: smooth, a highlight at the top, a shaded tip
+            if wy < 11.0 and ax < 1.0:
+                return shade(NOSE, 2, face)
+            if wy > 15.0:
+                return shade(NOSE, 0, face)
+            return skin(pos, face, NOSE)
+        if abs(nx) > 0.5:                            # the sides: a nostril with a flare crease above it
+            if abs(z + 6.5) < 0.1 and abs(wy - 14.5) < 0.1:
+                return NOSTRIL
+            if abs(z + 6.5) < 0.1 and abs(wy - 13.5) < 0.1:
+                return shade(NOSE, 0, face)
+            if wy > 15.0:
+                return shade(NOSE, 0, face)
         return skin(pos, face, NOSE)
 
     if part == "loincloth":

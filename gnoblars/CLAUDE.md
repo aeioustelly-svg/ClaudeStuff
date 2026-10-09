@@ -50,8 +50,9 @@ Do not use `runServer` or `runClient` in the sandbox (EULA and no display).
 
 - `client/GnoblarModel.java`: 64x64 texture, parts baked unrotated, all rotation in `applyPose(...)`, a pure function of its
   inputs that `ModelDump` calls. Poses: `idle`, `walk`, `scared`, `sit`, `sniff`.
-- The nose is one big 4x4x5 block with a nostril painted on each side of the front. Keep it a single box: a drooping hook read as a
-  trunk, and a bridge plus knob was too fussy for a minimalist vanilla style. About one gnoblar in five has a wart (`hasWart`, set in
+- The nose is one 4x6x3 block, taller than deep and hanging 1 px below the chin, with a nostril painted on each side face. Keep it a
+  single box that is not longer than it is tall: a 4x4x5 block read as a snout, a drooping hook read as a trunk, and a bridge plus
+  knob was too fussy for a minimalist vanilla style. About one gnoblar in five has a wart (`hasWart`, set in
   `finalizeSpawn`, saved as `Wart`): a 1x1x1 cube on the nose that is only visible for those. The ears are
   three stepped zero-thickness planes in the XY plane (they face forward, the forward side is painted pink and the back side is skin),
   climbing to a point with one nick bitten out. The head sits on a 1 px neck box. The arms are single boxes with their top level with
