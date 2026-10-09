@@ -155,7 +155,7 @@ public class CannonboltModel<T extends CannonboltEntity> extends EntityModel<T> 
         leftLeg.xRot = -Mth.cos(stride) * 1.1F * walk;
         rightArm.xRot = -Mth.cos(stride) * 0.6F * walk + Mth.sin(ageInTicks * 0.067F) * 0.04F;
         leftArm.xRot = Mth.cos(stride) * 0.6F * walk - Mth.sin(ageInTicks * 0.067F) * 0.04F;
-        rightArm.zRot = 0.04F + Mth.cos(ageInTicks * 0.09F) * 0.02F;
+        rightArm.zRot = 0.17F + Mth.cos(ageInTicks * 0.09F) * 0.02F;   // hands held a little way out, clear of the thigh plates
         leftArm.zRot = -rightArm.zRot;
         body.zRot = Mth.cos(stride) * 0.05F * walk;
         body.y += Math.abs(Mth.cos(stride)) * -1.0F * walk;
