@@ -153,21 +153,40 @@ def eye(x, y):
 
 
 BAYER = ((0, 8, 2, 10), (12, 4, 14, 6), (3, 11, 1, 9), (15, 7, 13, 5))
-SIDE_TONES = ((30, 31, 38), (52, 54, 66), (78, 80, 95), (112, 114, 128))
+SIDE_TONES = ((30, 31, 38), (52, 54, 66), (78, 80, 95), (112, 114, 128), (152, 154, 164))
+
+
+def hood_bleed(y):
+    """How far the hood's shadow reaches down the body at row y: a soft, long ease-out from the
+    third row, never darker than a mid-dark grey, so there is no sudden band under the hood."""
+    t = max(0.0, min(1.0, 1.0 - (y - 3) / 12.0))
+    return 0.45 * t * t * (3.0 - 2.0 * t)
+
+
+def dither_tone(amount, tx, ty, fur_colour):
+    f = 5.0 * (1.0 - amount)
+    idx = int(f + BAYER[ty % 4][tx % 4] / 16.0)
+    return fur_colour if idx >= 5 else SIDE_TONES[max(0, idx)]
+
+
+def front_edge(x, y, W, tx, ty, fur_colour):
+    """The hood's shadow carries on round the corner onto the front, over the three columns next to
+    each side, matching the value the side has at that corner so there is no seam."""
+    e = min(x, W - 1 - x)
+    amount = hood_bleed(y) * 0.4 * max(0.0, 1.0 - e / 4.0)
+    return fur_colour if amount < 0.04 else dither_tone(amount, tx, ty, fur_colour)
 
 
 def side_shade(face, x, y, W, H, tx, ty, d):
     """The side of the torso. The black hood and the black under the back plates fade into the fur
-    through five tones, mixed by an ordered dither, along a gently wavering edge, so there is no
+    through six tones, mixed by an ordered dither, along a gently wavering edge, so there is no
     straight line and no hard step between the regions."""
     wob = 0.9 * math.sin(y * 0.85 + 0.6) + 0.6 * math.sin(y * 2.3 + 1.7)         # keeps the edge organic
     reach = 6.5 * max(0.0, 1.0 - (y - 3) / 15.0) ** 1.15 + wob                      # how far the dark reaches in
     dark = max(0.0, min(1.0, 1.0 - d / max(reach, 0.5))) ** 1.15 if reach > 0 else 0.0
-    hood = max(0.0, 1.0 - (y - 3) / 6.5) * (0.5 + 0.5 * max(0.0, 1.0 - d / 9.0))   # the hood bleeds down
+    hood = hood_bleed(y) * (0.4 + 0.6 * max(0.0, 1.0 - d / 10.0))               # the hood bleeds down, gently
     amount = max(dark, hood)
-    f = 4.0 * (1.0 - amount)
-    idx = int(f + BAYER[ty % 4][tx % 4] / 16.0)
-    return fur(face, x, y, W, H, tx, ty) if idx >= 4 else SIDE_TONES[max(0, idx)]
+    return dither_tone(amount, tx, ty, fur(face, x, y, W, H, tx, ty))
 
 
 def body(face, x, y, W, H, tx, ty):
@@ -217,6 +236,8 @@ def body(face, x, y, W, H, tx, ty):
             return BLACK
     elif y == 2:
         return BLACK
+    if face == "front" and y >= 3:
+        return front_edge(x, y, W, tx, ty, fur(face, x, y, W, H, tx, ty))
     return fur(face, x, y, W, H, tx, ty)
 
 
