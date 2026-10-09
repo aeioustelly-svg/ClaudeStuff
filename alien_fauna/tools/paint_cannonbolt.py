@@ -169,9 +169,30 @@ def body(face, x, y, W, H, tx, ty):
     return fur(face, x, y, W, H, tx, ty)
 
 
+def round_plate(face, x, y, W, H, tx, ty):
+    """A plate on a limb, trimmed to look round: the four corners of each big face are cut away
+    (transparent) and the rest has a one-pixel black outline. The thin edge faces are dark amber
+    along the part that is still there, so no square corner sticks out and the plate still reads
+    as yellow when seen edge-on."""
+    if min(W, H) < 4:
+        long_side, pos = (W, x) if W >= H else (H, y)
+        return YELLOW[0] if 1 <= pos <= long_side - 2 else None
+    if x in (0, W - 1) and y in (0, H - 1):
+        return None
+    if x in (0, W - 1) or y in (0, H - 1):
+        return BLACK
+    lit = (x - W / 2.0) + (y - H / 2.0)
+    if lit < -W * 0.2:
+        return YELLOW[2]
+    if lit > W * 0.25:
+        return YELLOW[0]
+    return YELLOW[1]
+
+
 def dome(face, x, y, W, H, tx, ty):
-    """A shoulder plate. Its bottom edge, where it meets the torso, is outlined in black."""
-    if face == "bottom" or (face != "top" and y == H - 1):
+    """A shoulder plate. Only a two-pixel black band along the bottom, where it meets the body,
+    is black; the rest of the plate is not outlined."""
+    if face == "bottom" or (face != "top" and y >= H - 2):
         return BLACK
     return plate(face, x, y, W, H, tx, ty)
 
@@ -225,13 +246,13 @@ def ball_bar(shift):
 BOXES = {
     "body": (0, 72, 14, 18, 12, body),
     "back_band_1": (72, 0, 14, 5, 2, back_band(0)),
-    "back_band_2": (72, 7, 14, 6, 2, back_band(1)),
+    "back_band_2": (72, 7, 16, 6, 2, back_band(1)),
     "back_band_3": (72, 15, 14, 5, 2, back_band(2)),
     "dome": (68, 72, 8, 6, 7, dome),
     "arm": (0, 102, 6, 20, 6, arm),
-    "arm_plate": (48, 102, 2, 6, 6, plate),
+    "arm_plate": (48, 102, 2, 6, 6, round_plate),
     "leg": (24, 102, 6, 8, 6, leg),
-    "knee_plate": (68, 90, 1, 5, 4, plate),
+    "knee_plate": (68, 90, 1, 5, 4, round_plate),
     "foot_claws": (28, 120, 6, 0, 2, claws_forward),
     "ball_x_bar": (0, 34, 20, 16, 14, ball_bar(0)),
     "ball_y_bar": (68, 34, 14, 20, 16, ball_bar(1)),

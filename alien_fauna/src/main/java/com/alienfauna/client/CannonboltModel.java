@@ -49,11 +49,11 @@ public class CannonboltModel<T extends CannonboltEntity> extends EntityModel<T> 
         // One tall white torso carries the face (there is no separate head, as on the character).
         PartDefinition body = root.addOrReplaceChild("body",
                 CubeListBuilder.create().texOffs(0, 72).addBox(-7.0F, -18.0F, -6.0F, 14, 18, 12)
-                        // three yellow bands, each as wide as the torso, with a gap between them like an
-                        // armadillo's shell; the middle one is a little longer. Each has its own part
+                        // three yellow bands, each at least as wide as the torso, with a gap between them like
+                        // an armadillo's shell; the middle one is a little wider and longer. Each has its own part
                         // of the texture.
                         .texOffs(72, 0).addBox(-7.0F, -18.0F, 6.0F, 14, 5, 2)
-                        .texOffs(72, 7).addBox(-7.0F, -12.0F, 6.0F, 14, 6, 2)
+                        .texOffs(72, 7).addBox(-8.0F, -12.0F, 6.0F, 16, 6, 2)
                         .texOffs(72, 15).addBox(-7.0F, -5.0F, 6.0F, 14, 5, 2),
                 PartPose.offset(0.0F, 16.0F, 0.0F));
 
