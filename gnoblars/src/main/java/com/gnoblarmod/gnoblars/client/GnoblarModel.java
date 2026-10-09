@@ -57,9 +57,9 @@ public class GnoblarModel<T extends GnoblarEntity> extends EntityModel<T> implem
         PartDefinition body = root.addOrReplaceChild("body",
                 CubeListBuilder.create().texOffs(0, 16).addBox(-4.0F, -5.0F, -2.0F, 8, 5, 4),
                 PartPose.offset(0.0F, 21.0F, 0.0F));
-        // a rag hanging from the belt (only its front face is painted, like a chicken's leg)
+        // a rag hanging from the belt, its front face level with the front of the body (only that face is painted)
         body.addOrReplaceChild("loincloth",
-                CubeListBuilder.create().texOffs(44, 16).addBox(-2.0F, 0.0F, -1.0F, 4, 2, 1),
+                CubeListBuilder.create().texOffs(44, 16).addBox(-2.0F, 0.0F, 0.0F, 4, 2, 1),
                 PartPose.offset(0.0F, 0.0F, -2.0F));
 
         PartDefinition head = body.addOrReplaceChild("head",
@@ -79,8 +79,9 @@ public class GnoblarModel<T extends GnoblarEntity> extends EntityModel<T> implem
                 CubeListBuilder.create().texOffs(44, 24).addBox(0.0F, -6.0F, -5.0F, 1, 1, 1),
                 PartPose.ZERO);
 
-        // pointed ears: stepped boxes that climb and narrow to a tip, so the outline is not a rectangle. Only the
-        // front face of each is painted (see the note on flat parts above), so they read as flat sheets.
+        // pointed ears: stepped boxes that climb and narrow to a tip, so the outline is not a rectangle. The front
+        // (pink inside) and the back (skin outside) faces are painted, the edges are transparent, so each ear is two
+        // thin sheets 1 px apart and never two faces in one place.
         head.addOrReplaceChild("left_ear",
                 CubeListBuilder.create()
                         .texOffs(0, 32).addBox(0.0F, -2.0F, 0.0F, 3, 4, 1)

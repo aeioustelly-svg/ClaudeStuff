@@ -43,7 +43,7 @@ FACE_LIGHT = {"top": 1.08, "side": 1.0, "bottom": 0.9}
 # Axis-aligned boxes of the unrotated model (pixels, y points down, feet at y = 24).
 # Order matters: the first box whose surface contains a quad owns it.
 BOXES = [
-    ("loincloth", (-2, 2), (21, 23), (-3, -2)),
+    ("loincloth", (-2, 2), (21, 23), (-2, -1)),
     ("lear_a", (4, 7), (10, 14), (-1, 0)),
     ("lear_b", (7, 9), (9, 12), (-1, 0)),
     ("lear_c", (9, 10), (8, 10), (-1, 0)),
@@ -120,11 +120,11 @@ def darker(color, k):
 
 
 def paint_ear(part, pos, normal):
-    """Pointed ear, a 1 px box of which only the FRONT face is painted, as vanilla does for a chicken's leg.
-    Every other face stays transparent, so the ear is one flat sheet (pink, with a vein climbing to the tip)
-    and no two visible faces share a place. One nick is bitten out of the lower edge."""
-    if normal[2] > -0.5:
-        return None                                  # back and edges: transparent
+    """Pointed ear, a 1 px box with only its two big faces painted (the edges stay transparent), so it reads as
+    thin sheets. The face looking forward is the inside: pink, with a vein climbing to the tip. The back is skin
+    with a dark rim along the top edge. One nick is bitten out of the lower edge of both."""
+    if abs(normal[2]) < 0.5:
+        return None                                  # the edges: transparent
     piece = part[-1]
     x, y, z = pos
     ax = abs(x)
@@ -134,11 +134,15 @@ def paint_ear(part, pos, normal):
     bottom_row = y > bottom - 1.0
     if piece == "b" and bottom_row and 8.0 < ax < 9.0:
         return None                                  # the nick
-    if piece == "c" or top_row:
-        return shade(EAR_INNER, 0, "side")
-    if abs(y - vein) < 0.1:
-        return shade(EAR_INNER, 0, "side")
-    return shade(EAR_INNER, 2 if bottom_row else 1, "side")
+    if normal[2] < 0:                                # inside, facing forward
+        if piece == "c" or top_row:
+            return shade(EAR_INNER, 0, "side")
+        if abs(y - vein) < 0.1:
+            return shade(EAR_INNER, 0, "side")
+        return shade(EAR_INNER, 2 if bottom_row else 1, "side")
+    if piece == "c" or top_row:                      # outside
+        return shade(SKIN, 0, "side")
+    return shade(SKIN, 2 if (cell(ax) + cell(y)) % 3 == 0 else 1, "side")
 
 
 HEAD_PARTS = ("head", "nose", "wart")
