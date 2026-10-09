@@ -23,3 +23,7 @@ run
 
 # Files from Forge MDK
 forge*changelog.txt
+
+# Dev tooling output
+logs
+__pycache__
