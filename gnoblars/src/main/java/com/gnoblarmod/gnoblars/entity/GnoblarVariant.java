@@ -35,12 +35,14 @@ public enum GnoblarVariant {
     private final WartSpot wart;
     private final int weight;
     private final ResourceLocation texture;
+    private final ResourceLocation sashTexture;
 
     GnoblarVariant(String id, WartSpot wart, int weight) {
         this.id = id;
         this.wart = wart;
         this.weight = weight;
         this.texture = new ResourceLocation(Gnoblars.MODID, "textures/entity/gnoblar_" + id + ".png");
+        this.sashTexture = new ResourceLocation(Gnoblars.MODID, "textures/entity/gnoblar_sash_" + id + ".png");
     }
 
     public String id() {
@@ -53,6 +55,11 @@ public enum GnoblarVariant {
 
     public ResourceLocation texture() {
         return texture;
+    }
+
+    /** A grey copy of the part of the outfit that dye colours (the sash, or the wraps), tinted when drawn. */
+    public ResourceLocation sashTexture() {
+        return sashTexture;
     }
 
     public static GnoblarVariant byId(int ordinal) {

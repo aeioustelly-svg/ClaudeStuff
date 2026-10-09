@@ -120,7 +120,7 @@ def main():
     # whole body, every pose, three views
     views = [("3/4", 215, 14), ("front", 180, 4), ("side", 90, 4)]
     cells = []
-    for pose in ("idle", "walk", "scared", "sit", "sniff", "ride"):
+    for pose in ("idle", "walk", "scared", "sit", "sniff", "ride", "dance", "sleep"):
         quads = load_quads(data, pose)
         for name, yaw, pitch in views:
             cells.append((f"{pose} / {name}", render(quads, tex, yaw, pitch, 15.0, (330, 330))))
@@ -145,6 +145,32 @@ def main():
         cells.append((f"{name} / 3/4", render(quads, vtex, 215, 14, 15.0, (330, 330))))
         cells.append((f"{name} / front", render(quads, vtex, 180, 4, 15.0, (330, 330))))
     sheet(cells, 4, (330, 330), os.path.join(OUT_DIR, "variants.png"))
+
+    # extras: mud, and sashes dyed (a grey mask multiplied by the dye colour, then drawn over the outfit)
+    def layered(name, mud=False, dye=None):
+        base = Image.open(f"{TEXTURE_DIR}gnoblar_{name}.png").convert("RGBA")
+        if dye is not None:
+            mask = np.array(Image.open(f"{TEXTURE_DIR}gnoblar_sash_{name}.png").convert("RGBA")).astype(float)
+            mask[..., :3] = mask[..., :3] * np.array(dye) / 255.0
+            base.alpha_composite(Image.fromarray(mask.astype(np.uint8), "RGBA"))
+        if mud:
+            base.alpha_composite(Image.open(f"{TEXTURE_DIR}gnoblar_mud.png").convert("RGBA"))
+        return np.array(base)
+
+    RED, BLUE, GREEN, YELLOW, PURPLE = (176, 46, 38), (60, 68, 170), (94, 124, 22), (254, 216, 61), (137, 50, 184)
+    looks = [("green muddy", "green", True, None), ("mossy, red sash", "mossy", False, RED),
+             ("rusty, blue sash", "rusty", False, BLUE), ("bark, yellow sash", "bark", False, YELLOW),
+             ("pickle, purple sash, muddy", "pickle", True, PURPLE), ("sooty, green wraps", "sooty", False, GREEN)]
+    cells = []
+    for label, name, mud, dye in looks:
+        vtex = layered(name, mud, dye)
+        quads = []
+        for q in data["variants"][name]:
+            v = np.array(q).reshape(4, 8)
+            quads.append((v[:, :3] * np.array([1, -1, 1]), v[:, 3:5], v[0, 5:8] * np.array([1, -1, 1])))
+        cells.append((f"{label} / 3/4", render(quads, vtex, 215, 14, 15.0, (330, 330))))
+        cells.append((f"{label} / front", render(quads, vtex, 180, 4, 15.0, (330, 330))))
+    sheet(cells, 4, (330, 330), os.path.join(OUT_DIR, "extras.png"))
 
     # unfolded texture, enlarged
     t = Image.open(TEXTURE).convert("RGBA")

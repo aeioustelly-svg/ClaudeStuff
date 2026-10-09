@@ -17,12 +17,17 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.entity.SpawnPlacements;
 import net.minecraft.world.entity.ai.goal.SitWhenOrderedToGoal;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import com.gnoblarmod.gnoblars.entity.goal.GnoblarSleepGoal;
+import net.minecraft.world.item.alchemy.Potions;
+import net.minecraft.world.item.alchemy.PotionUtils;
+import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.Blocks;
@@ -225,6 +230,11 @@ public class GnoblarGameTests {
         }
         helper.assertTrue(campfires == 1 && cauldrons == 1, "The camp should have one fire with one cooking pot");
         helper.assertTrue(totems == 1, "The camp should have its pumpkin totem");
+        int beds = 0;
+        for (BlockPos pos : BlockPos.betweenClosed(origin, origin.offset(size.getX() - 1, size.getY() - 1, size.getZ() - 1))) {
+            if (GnoblarSleepGoal.isBed(helper.getLevel(), pos)) beds++;
+        }
+        helper.assertTrue(beds >= 2, "The camp should have gnoblar beds, found " + beds);
         helper.assertTrue(lootContainers >= 2, "The camp should have loot containers, found " + lootContainers);
         var residents = helper.getLevel().getEntitiesOfClass(GnoblarEntity.class,
                 new net.minecraft.world.phys.AABB(origin, origin.offset(size.getX(), size.getY(), size.getZ())));
@@ -338,7 +348,10 @@ public class GnoblarGameTests {
         gnoblar.goalSelector.removeAllGoals(goal -> goal instanceof SitWhenOrderedToGoal);
         gnoblar.setSniffCooldown(0);
         helper.succeedWhen(() ->
-                helper.assertTrue(gnoblar.getSniffsCompleted() > 0, "Friendly gnoblar never finished sniffing"));
+                {
+            helper.assertTrue(gnoblar.getSniffsCompleted() > 0, "Friendly gnoblar never finished sniffing");
+            helper.assertTrue(gnoblar.isMuddy(), "Digging should leave a gnoblar muddy");
+        });
     }
 
     @GameTest(templateNamespace = Gnoblars.MODID, template = TEMPLATE)
@@ -416,6 +429,167 @@ public class GnoblarGameTests {
             helper.assertTrue(textures.add(variant.texture()), "Two variants share the texture " + variant.texture());
         }
         helper.assertTrue(GnoblarVariant.GREEN.wart() == GnoblarVariant.WartSpot.NONE, "The plain gnoblar should have no wart");
+        helper.succeed();
+    }
+
+    // ---- kindness: brush, wash, dye, banner hat, bed, dance, cake ------------------------------------------
+
+    private static ItemStack waterBottle() {
+        return PotionUtils.setPotion(new ItemStack(Items.POTION), Potions.WATER);
+    }
+
+    @GameTest(templateNamespace = Gnoblars.MODID, template = TEMPLATE)
+    public static void brushingWinsTrustOnceInAWhile(GameTestHelper helper) {
+        GnoblarEntity gnoblar = spawn(helper);
+        Player player = player(helper);
+        ItemStack brush = new ItemStack(Items.BRUSH);
+        give(gnoblar, player, brush);
+        helper.assertTrue(gnoblar.getTrust() == 1, "A brushing should earn a point of trust");
+        helper.assertTrue(brush.getDamageValue() == 1, "Brushing should wear the brush");
+        give(gnoblar, player, brush);
+        helper.assertTrue(gnoblar.getTrust() == 1, "A second brushing straight away should earn nothing");
+        helper.succeed();
+    }
+
+    @GameTest(templateNamespace = Gnoblars.MODID, template = TEMPLATE)
+    public static void brushingCanBefriendAGnoblar(GameTestHelper helper) {
+        GnoblarEntity gnoblar = spawn(helper);
+        Player player = player(helper);
+        gnoblar.setTrust(GnoblarEntity.TAME_TRUST - 1);
+        give(gnoblar, player, new ItemStack(Items.BRUSH));
+        helper.assertTrue(gnoblar.isTame() && gnoblar.isOwnedBy(player), "The last point of trust should befriend it");
+        helper.succeed();
+    }
+
+    @GameTest(templateNamespace = Gnoblars.MODID, template = TEMPLATE)
+    public static void washingNeedsMudAndReturnsTheBottle(GameTestHelper helper) {
+        GnoblarEntity gnoblar = spawn(helper);
+        Player player = player(helper);
+        ItemStack clean = waterBottle();
+        helper.assertTrue(give(gnoblar, player, clean) == InteractionResult.PASS && clean.getCount() == 1,
+                "A clean gnoblar should not take a bath");
+        gnoblar.setMuddy(true);
+        give(gnoblar, player, waterBottle());
+        helper.assertTrue(!gnoblar.isMuddy(), "The mud should be gone");
+        helper.assertTrue(player.getMainHandItem().is(Items.GLASS_BOTTLE), "The empty bottle should come back");
+        helper.assertTrue(gnoblar.getTrust() == 1, "A wash should earn a point of trust");
+        helper.succeed();
+    }
+
+    @GameTest(templateNamespace = Gnoblars.MODID, template = TEMPLATE, timeoutTicks = 800)
+    public static void mudMakesAGnoblarMuddy(GameTestHelper helper) {
+        helper.setBlock(new BlockPos(12, -1, 12), Blocks.MUD);
+        GnoblarEntity gnoblar = spawn(helper);
+        gnoblar.goalSelector.removeAllGoals(goal -> true);
+        helper.succeedWhen(() -> helper.assertTrue(gnoblar.isMuddy(), "Standing in mud should make a gnoblar muddy"));
+    }
+
+    @GameTest(templateNamespace = Gnoblars.MODID, template = TEMPLATE)
+    public static void ownersDyeTheSash(GameTestHelper helper) {
+        GnoblarEntity gnoblar = spawn(helper);
+        Player owner = player(helper);
+        Player stranger = player(helper);
+        tame(gnoblar, owner);
+        ItemStack dye = new ItemStack(Items.RED_DYE, 2);
+        give(gnoblar, stranger, dye);
+        helper.assertTrue(gnoblar.getSashColor() == null && dye.getCount() == 2, "A stranger dyed somebody else's gnoblar");
+        give(gnoblar, owner, dye);
+        helper.assertTrue(gnoblar.getSashColor() == DyeColor.RED && dye.getCount() == 1, "The owner's dye should colour the sash");
+        helper.assertTrue(give(gnoblar, owner, dye) == InteractionResult.PASS, "The same dye twice should change nothing");
+        give(gnoblar, owner, new ItemStack(Items.BLUE_DYE));
+        helper.assertTrue(gnoblar.getSashColor() == DyeColor.BLUE, "A different dye should recolour it");
+        helper.succeed();
+    }
+
+    @GameTest(templateNamespace = Gnoblars.MODID, template = TEMPLATE)
+    public static void bannersMakeHatsAndShearsTakeThemOff(GameTestHelper helper) {
+        GnoblarEntity gnoblar = spawn(helper);
+        Player owner = player(helper);
+        tame(gnoblar, owner);
+        ItemStack white = new ItemStack(Items.WHITE_BANNER);
+        give(gnoblar, owner, white);
+        helper.assertTrue(gnoblar.getItemBySlot(EquipmentSlot.HEAD).is(Items.WHITE_BANNER) && white.isEmpty(),
+                "The banner should go on its head");
+        give(gnoblar, owner, new ItemStack(Items.RED_BANNER));
+        helper.assertTrue(gnoblar.getItemBySlot(EquipmentSlot.HEAD).is(Items.RED_BANNER), "A second banner should replace the first");
+        helper.assertTrue(owner.getInventory().contains(new ItemStack(Items.WHITE_BANNER)), "The first banner should go back to the owner");
+        give(gnoblar, owner, new ItemStack(Items.SHEARS));
+        helper.assertTrue(gnoblar.getItemBySlot(EquipmentSlot.HEAD).isEmpty(), "Shears should take the hat off");
+        helper.succeedWhen(() -> helper.assertItemEntityPresent(Items.RED_BANNER, new BlockPos(12, 1, 12), 4.0D));
+    }
+
+    @GameTest(templateNamespace = Gnoblars.MODID, template = TEMPLATE)
+    public static void aBedIsHayWithACarpetOnTop(GameTestHelper helper) {
+        BlockPos hay = new BlockPos(14, 0, 12);
+        helper.setBlock(hay, Blocks.HAY_BLOCK);
+        helper.assertTrue(!GnoblarSleepGoal.isBed(helper.getLevel(), helper.absolutePos(hay)), "Hay alone is not a bed");
+        helper.setBlock(hay.above(), Blocks.RED_CARPET);
+        helper.assertTrue(GnoblarSleepGoal.isBed(helper.getLevel(), helper.absolutePos(hay)), "Hay with a carpet is a bed");
+        helper.succeed();
+    }
+
+    @GameTest(templateNamespace = Gnoblars.MODID, template = TEMPLATE, timeoutTicks = 2400)
+    public static void gnoblarsSleepOnABedAtNight(GameTestHelper helper) {
+        // tests run side by side in one world, so put the clock back as soon as this one has what it needs
+        long before = helper.getLevel().getDayTime();
+        helper.getLevel().setDayTime(18000L);
+        helper.setBlock(new BlockPos(14, 0, 12), Blocks.HAY_BLOCK);
+        helper.setBlock(new BlockPos(14, 1, 12), Blocks.RED_CARPET);
+        GnoblarEntity gnoblar = spawn(helper);
+        BlockPos bed = helper.absolutePos(new BlockPos(14, 0, 12));
+        helper.succeedWhen(() -> {
+            helper.assertTrue(gnoblar.isNapping(), "The gnoblar should sleep on the bed at night");
+            helper.assertTrue(gnoblar.getY() > bed.getY() + 1.0D && Math.abs(gnoblar.getX() - (bed.getX() + 0.5D)) < 0.6D,
+                    "The gnoblar should lie on top of the bed");
+            helper.getLevel().setDayTime(before);
+        });
+    }
+
+    @GameTest(templateNamespace = Gnoblars.MODID, template = TEMPLATE)
+    public static void nightRunsFromDuskToJustBeforeDawn(GameTestHelper helper) {
+        helper.assertTrue(!GnoblarSleepGoal.isNight(2000L) && !GnoblarSleepGoal.isNight(12000L), "Day is not night");
+        helper.assertTrue(GnoblarSleepGoal.isNight(13000L) && GnoblarSleepGoal.isNight(18000L), "Midnight is night");
+        helper.assertTrue(!GnoblarSleepGoal.isNight(23500L), "The morning is not night");
+        helper.assertTrue(GnoblarSleepGoal.isNight(24000L * 5 + 18000L), "Later days have nights too");
+        helper.succeed();
+    }
+
+    @GameTest(templateNamespace = Gnoblars.MODID, template = TEMPLATE, timeoutTicks = 900)
+    public static void aCakeStartsAParty(GameTestHelper helper) {
+        BlockPos cake = new BlockPos(15, 0, 12);
+        helper.setBlock(cake, Blocks.CAKE);
+        GnoblarEntity eater = spawn(helper);
+        GnoblarEntity bystander = helper.spawn(ModEntities.GNOBLAR.get(), 12, 1, 15);
+        helper.succeedWhen(() -> {
+            var state = helper.getBlockState(cake);
+            helper.assertTrue(!state.is(Blocks.CAKE) || state.getValue(net.minecraft.world.level.block.CakeBlock.BITES) > 0,
+                    "Nobody took a bite of the cake");
+            helper.assertTrue(eater.isDancing() || bystander.isDancing(), "The cake should start a party");
+            helper.assertTrue(eater.getTrust() > 0 || bystander.getTrust() > 0, "The party should win some trust");
+        });
+    }
+
+    @GameTest(templateNamespace = Gnoblars.MODID, template = TEMPLATE)
+    public static void aCakeCannotBefriendWithoutAPlayer(GameTestHelper helper) {
+        GnoblarEntity gnoblar = spawn(helper);
+        gnoblar.setTrust(GnoblarEntity.TAME_TRUST - 1);
+        gnoblar.celebrateCake(helper.absolutePos(new BlockPos(15, 0, 12)));
+        helper.assertTrue(!gnoblar.isTame() && gnoblar.getTrust() == GnoblarEntity.TAME_TRUST - 1,
+                "Only a player's own gesture should be able to tame a gnoblar");
+        helper.succeed();
+    }
+
+    @GameTest(templateNamespace = Gnoblars.MODID, template = TEMPLATE)
+    public static void kindnessSurvivesSaving(GameTestHelper helper) {
+        GnoblarEntity gnoblar = spawn(helper);
+        gnoblar.setMuddy(true);
+        gnoblar.setSashColor(DyeColor.PURPLE);
+        gnoblar.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.GREEN_BANNER));
+        CompoundTag tag = new CompoundTag();
+        gnoblar.addAdditionalSaveData(tag);
+        GnoblarEntity copy = ModEntities.GNOBLAR.get().create(helper.getLevel());
+        copy.readAdditionalSaveData(tag);
+        helper.assertTrue(copy.isMuddy() && copy.getSashColor() == DyeColor.PURPLE, "Mud or the dye was lost when saving");
         helper.succeed();
     }
 

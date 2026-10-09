@@ -10,7 +10,8 @@ result in Blockbench if wanted.
     ./gradlew dumpModel
     python3 -I tools/paint_texture.py [model.json] [output directory]
 
-Paints one texture per variant (see VARIANTS; the names must match GnoblarVariant.java). The geometry is the same for all,
+Paints one texture per variant (see VARIANTS; the names must match GnoblarVariant.java), plus for each a grey mask of the part
+of the outfit that dye colours (gnoblar_sash_<id>.png, tinted in the game), and one mud overlay for all (gnoblar_mud.png). The geometry is the same for all,
 so only the colours, the sash and the chest patch differ. Wart cubes share one texture patch, so a wart looks the same on
 every variant of a skin colour; which cube shows is decided by the model.
 """
@@ -328,7 +329,75 @@ def paint(part, pos, normal):
     return darker(color, jaw) if jaw < 1.0 else color
 
 
-def paint_image(data):
+GREY = ((150, 150, 150), (200, 200, 200), (240, 240, 240))
+MUD = ((62, 46, 32), (88, 66, 46), (112, 86, 58))
+
+
+def hash100(x, y, z):
+    """A fixed pseudo-random 0..99 per block position: splotches that do not change between runs."""
+    return (cell(x) * 73 + cell(y) * 151 + cell(z) * 257 + cell(x) * cell(z) * 13) % 100
+
+
+def paint_sash_mask(part, pos, normal):
+    """The part of the outfit that dye colours, in grey, to be tinted when drawn: the sash and its back strap, or for the
+    variant without a sash (sooty) the wrist and foot wraps."""
+    x, y, z = pos
+    nx, ny, nz = normal
+    face = "top" if ny < -0.5 else "bottom" if ny > 0.5 else "side"
+    ax = abs(x)
+    if SASH_DIR and part == "body" and face != "bottom":
+        if y > 20.0 or (nx > 0.5 and y > 19.0 and abs(z) < 1.0):
+            return None                              # belt and pouch stay as they are
+        if nz < -0.5:
+            if ax < 1.0:
+                return None                          # collar and lacing
+            u = (x * SASH_DIR + 4.0) - 1.6 * (y - 16.0)
+            if abs(u) <= 1.0:
+                return shade(GREY, 2 if u < -0.4 else 1 if u < 0.6 else 0, face)
+        if nz > 0.5:
+            u = (x * SASH_DIR + 4.0) + 1.6 * (y - 16.0) - 8.0
+            if abs(u) <= 0.6:
+                return shade(GREY, 0, face)
+        return None
+    if not SASH_DIR:
+        if part in ("left_arm", "right_arm") and 22.0 < y < 23.0:
+            return cloth(pos, face, GREY)
+        if part in ("left_leg", "right_leg") and y >= 23.0 and face != "bottom":
+            return cloth(pos, face, GREY)
+    return None
+
+
+def paint_mud(part, pos, normal):
+    """Splotches of mud on the legs, hands, belly and chin. Everything else stays transparent."""
+    x, y, z = pos
+    nx, ny, nz = normal
+    face = "top" if ny < -0.5 else "bottom" if ny > 0.5 else "side"
+    h = hash100(x, y, z)
+    tone = h % 3
+    if part in ("left_leg", "right_leg"):
+        if face != "top" and (h < 75 if y >= 22.0 else h < 30):
+            return shade(MUD, tone, face)
+    elif part in ("left_arm", "right_arm"):
+        if face != "top" and (h < 70 if y >= 21.5 else h < 22):
+            return shade(MUD, tone, face)
+    elif part == "body":
+        if face != "top" and y > 19.5 and h < 45:
+            return shade(MUD, tone, face)
+    elif part == "nose":
+        wy = y
+        if face != "top" and wy > 14.5 and h < 55:
+            return shade(MUD, tone, face)
+    elif part == "head":
+        if nz < -0.5 and abs(z + 4.0) < 0.1 and y > 13.5 and abs(x) > 2.0 and h < 45:
+            return shade(MUD, tone, face)      # a smear on each cheek
+    elif part == "loincloth":
+        if nz < -0.5 and y > 21.5 and h < 60:
+            return shade(MUD, tone, "side")
+    return None
+
+
+def paint_image(data, painter=None):
+    painter = painter or paint
     size = data["texSize"]
     img = np.zeros((size, size, 4), np.uint8)
 
@@ -354,7 +423,7 @@ def paint_image(data):
                 s = (tu + 0.5 - umin) / (umax - umin)
                 t = (tv + 0.5 - vmin) / (vmax - vmin)
                 pos = p00 + s * (p10 - p00) + t * (p01 - p00)
-                c = paint(part, pos, normal)
+                c = painter(part, pos, normal)
                 if c is None:
                     continue              # transparent: a nick or gap in a flat part
                 img[tv, tu] = (*[int(max(0, min(255, v))) for v in c], 255)
@@ -369,6 +438,12 @@ def main():
         path = f"{OUT_DIR.rstrip('/')}/gnoblar_{name}.png"
         Image.fromarray(paint_image(data), "RGBA").save(path)
         print("Wrote", path)
+        sash_path = f"{OUT_DIR.rstrip('/')}/gnoblar_sash_{name}.png"
+        Image.fromarray(paint_image(data, paint_sash_mask), "RGBA").save(sash_path)
+        print("Wrote", sash_path)
+    mud_path = f"{OUT_DIR.rstrip('/')}/gnoblar_mud.png"
+    Image.fromarray(paint_image(data, paint_mud), "RGBA").save(mud_path)
+    print("Wrote", mud_path)
 
 
 if __name__ == "__main__":

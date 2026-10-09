@@ -18,8 +18,8 @@ guidelines (pacifism, vanilla interaction, vanilla-style models) and the sandbox
 | `./gradlew build` | Builds `build/libs/gnoblars-0.1.0.jar` |
 | `./gradlew runGameTestServer` | Runs the GameTests headless. No Minecraft EULA is needed |
 | `./gradlew dumpModel` | Bakes the real `GnoblarModel` and writes `build/preview/model.json` |
-| `python3 -I tools/paint_texture.py` | Repaints `gnoblar.png` from the dumped geometry |
-| `python3 -I tools/render_preview.py` | Software-renders `build/preview/body.png`, `head.png`, `texture.png` |
+| `python3 -I tools/paint_texture.py` | Repaints every variant texture, the dye masks and the mud overlay from the dumped geometry |
+| `python3 -I tools/render_preview.py` | Software-renders `build/preview/body.png` (every pose), `head.png`, `variants.png`, `extras.png` (mud and dyed sashes), `texture.png` |
 | `python3 -I tools/check_clipping.py` | Fails if an arm cuts into the head or nose in any dumped pose, or if two coplanar faces overlap (z-fighting). Run it after changing a pose or a cube |
 | `python3 -I tools/make_item_textures.py` | Redraws the item textures (the nose pickle, from an ASCII map) |
 | `python3 -I tools/make_camp.py` | Rebuilds `data/gnoblars/structures/camp.nbt` block by block and draws `build/preview/camp.png` (top and side) |
@@ -74,6 +74,32 @@ biome tag `tags/worldgen/biome/has_structure/gnoblar_camp.json` (swamps, taigas,
 template, count its features and residents, check the loot table, check the registrations and the biome tag, and ask the structure to
 generate a start. Nothing has generated a camp in a real world yet, so the look and the fit to terrain are unseen.
 
+## Kindness
+
+Ways to be kind to a gnoblar, all peaceful and all using vanilla items or blocks. (Affection levels were considered and rejected by the
+user as overcomplicated: there is no hidden friendship score, only trust for the wild and what is below.)
+
+| Kindness | How | Effect |
+|---|---|---|
+| Brushing | right-click with a brush (anyone) | hearts, +1 trust for a wild gnoblar, +1 health for a friend, wears the brush, then a 10 second rest |
+| Washing | right-click a muddy gnoblar with a water bottle (anyone) | the mud is gone, the empty bottle comes back, same comfort as brushing, no rest needed |
+| Dyeing | owner right-clicks with a dye | recolours the sash (or the wrap on the one variant without a sash), a different dye recolours it again |
+| Banner hat | owner right-clicks with a banner | it wears it on its head (a second banner swaps and hands the first back), shears take it off, death drops it |
+| Beds | a hay block with any carpet on top | at night a wild or wandering gnoblar within 10 blocks climbs on and curls up until morning (`GnoblarSleepGoal`); followers and sitters do not |
+| Dancing | a jukebox playing within 3.46 blocks | the dance pose, client only, like a parrot (`setRecordPlayingNearby`) |
+| Cake parties | a cake block within 8 blocks | a gnoblar walks over and takes a bite (`GnoblarCakeGoal`), then everyone within 8 blocks of the cake cheers and dances for 10 seconds (`GnoblarPartyGoal`); a wild one gains trust up to one point short of taming, a friend heals |
+
+Mud: a gnoblar gets muddy by standing on mud or mud roots (checked with `getOnPos`, as mud is shorter than a block) and by digging when
+it sniffs, and loses it in water or rain. It is shown by a mud overlay layer. The dyed sash is a grey mask per variant tinted by the dye
+in `GnoblarSashLayer`, like a wolf's collar. Banners are drawn by `GnoblarBannerLayer` with the vanilla helmet transform scaled to
+this head (scale 0.5, 3/16 lower): that placement has never been seen, so check it first in a client. Muddy and sash colour are saved
+(`Muddy`, `SashColor`); the banner is the head equipment slot, kept by vanilla and set to drop on death.
+
+Everything that walks to a bed or a cake gives up after 300 or 200 ticks (and waits before trying again), so an unreachable one never
+traps a gnoblar. A hand-placed hay block with a carpet is not checked for headroom: a gnoblar on the carpet is under 2 blocks above
+the hay, so a tent ridge over it leaves room. The camp has two beds. Several GameTests share one world, so one that changes the time
+of day (the night test) restores it, and none may leave the clock changed.
+
 ## Variants
 
 Six looks, so gnoblars can be told apart in a crowd (`entity/GnoblarVariant.java`, chosen in `finalizeSpawn` by weight, saved as
@@ -98,21 +124,21 @@ side by side). Older saves with the removed `Wart` flag load as the plain green 
 ## Model and texture
 
 - `client/GnoblarModel.java`: 64x64 texture, parts baked unrotated, all rotation in `applyPose(...)`, a pure function of its
-  inputs that `ModelDump` calls. Poses: `idle`, `walk`, `scared`, `sit`, `sniff`.
+  inputs that `ModelDump` calls. Poses: `idle`, `walk`, `scared`, `sit`, `sniff`, `ride`, `dance`, `sleep` (flags 0 or 1 in `applyPose`).
 - The nose is one 4x6x3 block, taller than deep and hanging 1 px below the chin, with a nostril painted on each side face. Keep it a
   single box that is not longer than it is tall: a 4x4x5 block read as a snout, a drooping hook read as a trunk, and a bridge plus
   knob was too fussy for a minimalist vanilla style. The wart cubes are described under "Variants".
-  The ears are
-  three stepped 1 px thick slabs (the face looking forward is painted pink, the back is skin), climbing to a point with one nick
-  bitten out. The head sits on a 1 px neck box. The arms are single boxes with their top level with the neck, and the rag loincloth
-  is a 4x2x1 slab. Held items render through `ItemInHandLayer` and the model's `translateToHand`
-  (shrunk to 0.65 for a small hand).
+  The ears are three stepped 1 px boxes that climb to a point with one nick bitten out, painted on the front face only and two-toned
+  (skin rim, skin row, then pink with a vein) so the mirrored back looks right too: painting both faces put two sheets 1 px apart
+  that read as four ears. The head sits on a 1 px neck box. The arms are single boxes with their top level with the neck, and the
+  rag loincloth is a 4x2x1 box painted on its front face only, level with the front of the body. Held items render through
+  `ItemInHandLayer` and the model's `translateToHand` (shrunk to 0.65 for a small hand).
 - **Flat parts: do it the way vanilla does a chicken's leg.** The chicken leg is an ordinary 3x5x3 box (`addBox(-1,0,-3,3,5,3)`), but
   its texture paints one 1 px column on one face and the toes on the bottom face, and leaves every other face transparent. The cutout
   render drops transparent texels, so a single flat sheet shows, and no two visible faces share a place. So the ears and the loincloth
   are 1 px boxes with every face but the front left transparent (`paint_ear` and the loincloth branch in `paint_texture.py` return
-  `None` for the rest). The loincloth front is flush with the body front. The user does not want them as visible slabs and does not want other tricks (zero-thickness boxes flicker, a tiny
-  `CubeDeformation` was rejected): paint one face and leave the rest transparent.
+  `None` for the rest). The loincloth front is flush with the body front. The user does not want visible slabs and rejected other tricks (zero-thickness boxes flicker, a tiny `CubeDeformation`):
+  paint one face and leave the rest transparent.
 - **Z-fighting between parts.** Two faces in the same plane that face the same way and overlap are both drawn at the same depth and
   flicker (invisible in every preview). The hunch pushed the body's belt below the leg tops, over the legs' side faces, which had been
   flush with a 6 wide body. The body is now 8 wide over legs 1..3 (inset), so no two faces share a plane whatever the pose.
@@ -120,7 +146,7 @@ side by side). Older saves with the removed `Wart` flag load as the plain green 
   a cube, a pivot or a pose. It is only as good as the poses dumped, and nothing here has been seen in a real client.
 - Head turn and pitch are clamped in `applyPose` (yaw x0.6 up to 45 degrees, no looking up past level) because a hunched creature's
   head otherwise swings into its shoulders.
-- `paint_texture.py` overwrites `gnoblar.png` and colours texels by 3D position, with an explicit box table (`BOXES`) that has to
+- `paint_texture.py` overwrites the textures in `textures/entity/` and colours texels by 3D position, with an explicit box table (`BOXES`) that has to
   match the model code. When a cube in `GnoblarModel` moves, update that table.
 - Ear rotation: for the left ear a negative `yRot` sweeps it back and a positive `zRot` droops it. The right ear mirrors that.
   `HEAD_RAISE` in `paint_texture.py` shifts the head-part rows, so the face rows are written for a head 2 px lower than it sits.
@@ -134,7 +160,8 @@ more `tick()`. Goals that scan `level().players()` (pester) cannot be tested hea
 ## Not verified
 
 - The mod has never been loaded in a real client. Previews and GameTests are the only checks.
-- Untested: the pester feel and distance, held-item placement in the hand, sound balance, spawn frequency.
+- Untested: the pester feel and distance, held-item placement in the hand, how a banner sits on the head, the dance and sleep poses in
+  motion, the mud overlay and dyed sash in the real renderer, sound balance, spawn frequency.
 
 ## Ideas not done
 

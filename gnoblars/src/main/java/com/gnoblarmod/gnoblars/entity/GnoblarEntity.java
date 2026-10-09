@@ -2,7 +2,10 @@ package com.gnoblarmod.gnoblars.entity;
 
 import com.gnoblarmod.gnoblars.Gnoblars;
 import com.gnoblarmod.gnoblars.entity.goal.GnoblarAvoidMonstersGoal;
+import com.gnoblarmod.gnoblars.entity.goal.GnoblarCakeGoal;
 import com.gnoblarmod.gnoblars.entity.goal.GnoblarFollowOwnerGoal;
+import com.gnoblarmod.gnoblars.entity.goal.GnoblarPartyGoal;
+import com.gnoblarmod.gnoblars.entity.goal.GnoblarSleepGoal;
 import com.gnoblarmod.gnoblars.entity.goal.GnoblarPesterGoal;
 import com.gnoblarmod.gnoblars.entity.goal.GnoblarScavengeGoal;
 import com.gnoblarmod.gnoblars.entity.goal.GnoblarSniffGoal;
@@ -10,6 +13,16 @@ import com.gnoblarmod.gnoblars.registry.ModItems;
 import java.util.List;
 import net.minecraft.advancements.CriteriaTriggers;
 import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.item.alchemy.Potions;
+import net.minecraft.world.item.alchemy.PotionUtils;
+import net.minecraft.world.item.ItemUtils;
+import net.minecraft.world.item.DyeItem;
+import net.minecraft.world.item.DyeColor;
+import net.minecraft.tags.ItemTags;
+import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.syncher.EntityDataAccessor;
@@ -69,6 +82,15 @@ public class GnoblarEntity extends TamableAnimal {
             SynchedEntityData.defineId(GnoblarEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Boolean> SCARED =
             SynchedEntityData.defineId(GnoblarEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Boolean> NAPPING =
+            SynchedEntityData.defineId(GnoblarEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Boolean> DANCING =
+            SynchedEntityData.defineId(GnoblarEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Boolean> MUDDY =
+            SynchedEntityData.defineId(GnoblarEntity.class, EntityDataSerializers.BOOLEAN);
+    /** The dye colour id of a dyed sash, or -1 for the sash it was born with. */
+    private static final EntityDataAccessor<Integer> SASH_COLOR =
+            SynchedEntityData.defineId(GnoblarEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> VARIANT =
             SynchedEntityData.defineId(GnoblarEntity.class, EntityDataSerializers.INT);
 
@@ -95,6 +117,9 @@ public class GnoblarEntity extends TamableAnimal {
         goalSelector.addGoal(2, new GnoblarAvoidMonstersGoal(this));
         goalSelector.addGoal(3, new PanicGoal(this, 1.5D));
         goalSelector.addGoal(4, new GnoblarFollowOwnerGoal(this, 1.0D, 5.0F, 2.0F));
+        goalSelector.addGoal(4, new GnoblarPartyGoal(this));
+        goalSelector.addGoal(5, new GnoblarSleepGoal(this));
+        goalSelector.addGoal(5, new GnoblarCakeGoal(this));
         goalSelector.addGoal(5, new GnoblarSniffGoal(this));
         goalSelector.addGoal(6, new GnoblarScavengeGoal(this));
         goalSelector.addGoal(7, new GnoblarPesterGoal(this));
@@ -110,6 +135,10 @@ public class GnoblarEntity extends TamableAnimal {
         entityData.define(SNIFFING, false);
         entityData.define(SCARED, false);
         entityData.define(VARIANT, 0);
+        entityData.define(NAPPING, false);
+        entityData.define(DANCING, false);
+        entityData.define(MUDDY, false);
+        entityData.define(SASH_COLOR, -1);
     }
 
     // ---- gifts, trust and taming -------------------------------------------------------------
@@ -151,6 +180,20 @@ public class GnoblarEntity extends TamableAnimal {
         ItemStack held = player.getItemInHand(hand);
         boolean gift = isGift(held);
 
+        // kindness that anyone can show: brush it, or wash the mud off with a water bottle
+        if (held.is(Items.BRUSH)) {
+            if (!level().isClientSide) {
+                brush(player, hand, held);
+            }
+            return InteractionResult.sidedSuccess(level().isClientSide);
+        }
+        if (isWaterBottle(held) && isMuddy()) {
+            if (!level().isClientSide) {
+                wash(player, hand, held);
+            }
+            return InteractionResult.sidedSuccess(level().isClientSide);
+        }
+
         if (isTame()) {
             if (!isOwnedBy(player)) {
                 return InteractionResult.PASS;
@@ -161,6 +204,33 @@ public class GnoblarEntity extends TamableAnimal {
                     consume(player, held);
                     hearts(3);
                     playSound(SoundEvents.VILLAGER_YES, 1.0F, getVoicePitch());
+                }
+                return InteractionResult.sidedSuccess(level().isClientSide);
+            }
+            if (held.getItem() instanceof DyeItem dye) {
+                if (dye.getDyeColor().getId() == entityData.get(SASH_COLOR)) {
+                    return InteractionResult.PASS;   // already that colour
+                }
+                if (!level().isClientSide) {
+                    setSashColor(dye.getDyeColor());
+                    consume(player, held);
+                    playSound(SoundEvents.DYE_USE, 1.0F, 1.0F);
+                    hearts(3);
+                }
+                return InteractionResult.sidedSuccess(level().isClientSide);
+            }
+            if (held.is(ItemTags.BANNERS)) {
+                if (!level().isClientSide) {
+                    wearBanner(player, held);
+                }
+                return InteractionResult.sidedSuccess(level().isClientSide);
+            }
+            if (held.is(Items.SHEARS) && !getItemBySlot(EquipmentSlot.HEAD).isEmpty()) {
+                if (!level().isClientSide) {
+                    spawnAtLocation(getItemBySlot(EquipmentSlot.HEAD).copy());
+                    setItemSlot(EquipmentSlot.HEAD, ItemStack.EMPTY);
+                    held.hurtAndBreak(1, player, p -> p.broadcastBreakEvent(hand));
+                    playSound(SoundEvents.SHEEP_SHEAR, 1.0F, 1.2F);
                 }
                 return InteractionResult.sidedSuccess(level().isClientSide);
             }
@@ -232,6 +302,7 @@ public class GnoblarEntity extends TamableAnimal {
             return false;
         }
         if (!level().isClientSide) {
+            setNapping(false);
             if (isTame()) {
                 if (mode == GnoblarMode.SIT) {
                     setMode(GnoblarMode.FOLLOW);   // a hurt friend gets up and comes back to its owner
@@ -241,6 +312,151 @@ public class GnoblarEntity extends TamableAnimal {
             }
         }
         return super.hurt(source, amount);
+    }
+
+    // ---- kindness: brushing, washing, dyeing, banners, naps, dancing and cake ------------------------------
+
+    private int careCooldown;
+    /** Ticks of party left (server only). While it runs the gnoblar dances on the spot. */
+    private int partyTicks;
+    private int cakeCooldown;
+    private int napCooldown;
+    private BlockPos jukebox;
+    private boolean jukeboxDancing;
+
+    private static boolean isWaterBottle(ItemStack stack) {
+        return stack.is(Items.POTION) && PotionUtils.getPotion(stack) == Potions.WATER;
+    }
+
+    /** What being looked after does: a wild gnoblar trusts a little more, a friend feels better. */
+    private void comfort(Player player, int hearts) {
+        if (isTame()) {
+            heal(1.0F);
+        } else {
+            setTrust(getTrust() + 1);
+            if (getTrust() >= TAME_TRUST) {
+                befriend(player);
+            }
+        }
+        hearts(hearts);
+        playSound(SoundEvents.VILLAGER_YES, 1.0F, getVoicePitch());
+    }
+
+    private void brush(Player player, InteractionHand hand, ItemStack brush) {
+        if (careCooldown > 0) {
+            playSound(SoundEvents.VILLAGER_AMBIENT, 0.6F, getVoicePitch());   // content, but it has had enough for now
+            return;
+        }
+        careCooldown = 200;
+        brush.hurtAndBreak(1, player, p -> p.broadcastBreakEvent(hand));
+        playSound(SoundEvents.BRUSH_GENERIC, 1.0F, 1.0F);
+        comfort(player, 3);
+    }
+
+    private void wash(Player player, InteractionHand hand, ItemStack bottle) {
+        setMuddy(false);
+        player.setItemInHand(hand, ItemUtils.createFilledResult(bottle, player, new ItemStack(Items.GLASS_BOTTLE)));
+        playSound(SoundEvents.BOTTLE_EMPTY, 1.0F, 1.0F);
+        if (level() instanceof ServerLevel serverLevel) {
+            serverLevel.sendParticles(ParticleTypes.SPLASH, getX(), getY(0.6D), getZ(), 14, 0.3D, 0.3D, 0.3D, 0.05D);
+        }
+        comfort(player, 3);
+    }
+
+    private void wearBanner(Player player, ItemStack banner) {
+        ItemStack old = getItemBySlot(EquipmentSlot.HEAD);
+        ItemStack hat = banner.copy();
+        hat.setCount(1);
+        setItemSlot(EquipmentSlot.HEAD, hat);
+        setGuaranteedDrop(EquipmentSlot.HEAD);
+        consume(player, banner);
+        if (!old.isEmpty() && !player.getInventory().add(old)) {
+            spawnAtLocation(old);
+        }
+        playSound(SoundEvents.ARMOR_EQUIP_LEATHER, 1.0F, 1.2F);
+        hearts(3);
+    }
+
+    public boolean isMuddy() {
+        return entityData.get(MUDDY);
+    }
+
+    public void setMuddy(boolean muddy) {
+        entityData.set(MUDDY, muddy);
+    }
+
+    /** The dye the sash has been coloured with, or null for its original colour. */
+    public DyeColor getSashColor() {
+        int id = entityData.get(SASH_COLOR);
+        return id < 0 ? null : DyeColor.byId(id);
+    }
+
+    public void setSashColor(DyeColor color) {
+        entityData.set(SASH_COLOR, color == null ? -1 : color.getId());
+    }
+
+    public boolean isNapping() {
+        return entityData.get(NAPPING);
+    }
+
+    public void setNapping(boolean napping) {
+        entityData.set(NAPPING, napping);
+    }
+
+    /** Dancing to a jukebox (known only to the client, like a parrot) or at a party. */
+    public boolean isDancing() {
+        return entityData.get(DANCING) || jukeboxDancing;
+    }
+
+    public boolean isPartying() {
+        return partyTicks > 0;
+    }
+
+    public void startParty() {
+        partyTicks = 200;
+        entityData.set(DANCING, true);
+    }
+
+    public boolean canEatCake() {
+        return cakeCooldown <= 0;
+    }
+
+    public boolean canLookForABed() {
+        return napCooldown <= 0;
+    }
+
+    public void setNapCooldown(int ticks) {
+        napCooldown = ticks;
+    }
+
+    public void setCakeCooldown(int ticks) {
+        cakeCooldown = ticks;
+    }
+
+    /** A gnoblar has taken a bite of the cake: it and everyone near the cake cheer and dance. */
+    public void celebrateCake(BlockPos cake) {
+        playSound(SoundEvents.VILLAGER_CELEBRATE, 1.0F, getVoicePitch());
+        if (isTame()) {
+            heal(2.0F);
+        } else {
+            setTrust(Math.min(getTrust() + 1, TAME_TRUST - 1));   // a party warms it up, but only a player can befriend it
+        }
+        hearts(4);
+        for (GnoblarEntity other : level().getEntitiesOfClass(GnoblarEntity.class, new AABB(cake).inflate(8.0D))) {
+            other.startParty();
+        }
+    }
+
+    /** Like a parrot, a gnoblar only learns of a jukebox on the client. */
+    @Override
+    public void setRecordPlayingNearby(BlockPos pos, boolean playing) {
+        jukebox = pos;
+        jukeboxDancing = playing;
+    }
+
+    @Override
+    protected boolean isImmobile() {
+        return super.isImmobile() || isNapping();
     }
 
     // ---- modes: follow, sit, wander, and riding on the owner's back ---------------------------
@@ -354,6 +570,7 @@ public class GnoblarEntity extends TamableAnimal {
     /** Rolls the sniffing loot table and drops the result at the gnoblar's feet. */
     public void finishSniff() {
         sniffsCompleted++;
+        setMuddy(true);   // digging is dirty work
         sniffCooldown = 2400 + random.nextInt(2400);
         if (level() instanceof ServerLevel serverLevel) {
             LootParams params = new LootParams.Builder(serverLevel)
@@ -421,7 +638,34 @@ public class GnoblarEntity extends TamableAnimal {
     public void aiStep() {
         super.aiStep();
         if (level().isClientSide) {
+            if (jukebox == null || !jukebox.closerToCenterThan(position(), 3.46D)
+                    || !level().getBlockState(jukebox).is(Blocks.JUKEBOX)) {
+                jukeboxDancing = false;
+                jukebox = null;
+            }
             return;
+        }
+        if (careCooldown > 0) {
+            careCooldown--;
+        }
+        if (cakeCooldown > 0) {
+            cakeCooldown--;
+        }
+        if (napCooldown > 0) {
+            napCooldown--;
+        }
+        if (partyTicks > 0 && --partyTicks == 0) {
+            entityData.set(DANCING, false);
+        }
+        if (isMuddy()) {
+            if (isInWaterOrRain()) {
+                setMuddy(false);   // washed clean by the rain or a swim
+            }
+        } else if (onGround() && random.nextInt(60) == 0) {
+            BlockState below = level().getBlockState(getOnPos());   // getOnPos copes with a block shorter than a full one, like mud
+            if (below.is(Blocks.MUD) || below.is(Blocks.MUDDY_MANGROVE_ROOTS)) {
+                setMuddy(true);
+            }
         }
         if (sniffCooldown > 0) {
             sniffCooldown--;
@@ -442,6 +686,8 @@ public class GnoblarEntity extends TamableAnimal {
         tag.putInt("SniffCooldown", sniffCooldown);
         tag.putInt("HoardTicks", hoardTicks);
         tag.putString("Mode", mode.id());
+        tag.putBoolean("Muddy", isMuddy());
+        tag.putInt("SashColor", entityData.get(SASH_COLOR));
     }
 
     @Override
@@ -452,6 +698,8 @@ public class GnoblarEntity extends TamableAnimal {
         sniffCooldown = tag.getInt("SniffCooldown");
         hoardTicks = tag.getInt("HoardTicks");
         mode = GnoblarMode.byName(tag.getString("Mode"));
+        setMuddy(tag.getBoolean("Muddy"));
+        entityData.set(SASH_COLOR, tag.contains("SashColor") ? tag.getInt("SashColor") : -1);
         if (mode == GnoblarMode.WANDER && !hasRestriction()) {
             restrictTo(blockPosition(), WANDER_RADIUS);   // the restriction is not saved, so wander around the spot it was loaded at
         }

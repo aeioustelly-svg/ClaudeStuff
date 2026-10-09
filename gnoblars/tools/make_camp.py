@@ -112,20 +112,22 @@ cell = tent(1, 3, 5, "z", 0, "brown_wool", "spruce_planks")
 for y in (2,):
     put(*cell(4, y, 2), "air")
     put(*cell(4, 3, 2), "air")
-put(2, 2, 4, "hay_block")
-put(2, 2, 5, "brown_carpet")
+# a gnoblar bed: a hay block with a carpet on top (gnoblars climb on at night and sleep)
+put(3, 2, 5, "hay_block")
+put(3, 3, 5, "brown_carpet")
 put(3, 2, 4, "chest", facing="south", type="single", waterlogged=False)
 block_nbt[(3, 2, 4)] = {"id": "minecraft:chest", "LootTable": LOOT}
 put(3, 2, 6, "barrel", facing="up", open=False)
 block_nbt[(3, 2, 6)] = {"id": "minecraft:barrel", "LootTable": LOOT}
-put(3, 3, 5, "lantern", hanging=True)
+put(3, 3, 6, "lantern", hanging=True)
 
 # tent B: the store, ridge along x, south of the fire
 cell = tent(8, 10, 5, "x", 4, "light_gray_wool", "spruce_planks")
 put(*cell(1, 2, 1), "barrel", facing="up", open=False)
 put(*cell(1, 2, 2), "barrel", facing="up", open=False)
 block_nbt[cell(1, 2, 2)] = {"id": "minecraft:barrel", "LootTable": LOOT}
-put(*cell(3, 2, 2), "hay_block")
+put(*cell(2, 2, 2), "hay_block")
+put(*cell(2, 3, 2), "red_carpet")
 put(*cell(3, 2, 3), "composter", level=3)
 
 # ---- the scrap heap: junk that gnoblars find precious ----------------------------------------------
@@ -173,8 +175,8 @@ for (x, y, z), (name, _) in list(grid.items()):
             put(x, 0, z, "dirt")
 
 # ---- the residents -------------------------------------------------------------------------------
-gnoblars.extend([(3.5, 2.0, 5.5, "bark", 90.0), (8.5, 2.0, 5.5, "green", 180.0), (6.5, 2.0, 9.5, "mossy", 0.0),
-                 (11.5, 2.0, 6.5, "rusty", 270.0), (10.5, 2.0, 12.5, "pickle", 45.0)])
+gnoblars.extend([(4.5, 2.0, 5.5, "bark", 90.0), (8.5, 2.0, 5.5, "green", 180.0), (6.5, 2.0, 9.5, "mossy", 0.0),
+                 (11.5, 2.0, 6.5, "rusty", 270.0), (9.5, 2.0, 12.5, "pickle", 45.0)])
 
 # ---- NBT writer (just enough for a structure file) ----------------------------------------------------
 def tag(kind, payload):
@@ -251,7 +253,7 @@ def preview():
               "cobblestone": (120, 120, 120), "mossy_cobblestone": (96, 120, 96), "stone": (130, 130, 130),
               "cobblestone_wall": (110, 110, 110), "brown_wool": (110, 74, 40), "light_gray_wool": (160, 160, 156),
               "spruce_slab": (104, 78, 46), "spruce_planks": (114, 84, 52), "spruce_fence": (92, 66, 36),
-              "stripped_spruce_log": (140, 106, 64), "hay_block": (200, 170, 40), "brown_carpet": (120, 80, 50),
+              "stripped_spruce_log": (140, 106, 64), "hay_block": (200, 170, 40), "brown_carpet": (120, 80, 50), "red_carpet": (150, 40, 40),
               "chest": (170, 110, 30), "barrel": (130, 90, 50), "lantern": (255, 220, 120), "bone_block": (230, 226, 206),
               "carved_pumpkin": (220, 130, 20), "dried_kelp_block": (40, 56, 36), "composter": (110, 80, 40),
               "cauldron": (60, 60, 64), "oak_planks": (160, 130, 80), "iron_bars": (150, 150, 160), "cobweb": (230, 230, 230),

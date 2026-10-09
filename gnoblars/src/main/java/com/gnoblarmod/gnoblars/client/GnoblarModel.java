@@ -141,12 +141,17 @@ public class GnoblarModel<T extends GnoblarEntity> extends EntityModel<T> implem
                 entity.isInSittingPose() ? 1.0F : 0.0F,
                 entity.isSniffing() ? 1.0F : 0.0F,
                 entity.isScared() ? 1.0F : 0.0F,
-                entity.isPassenger() ? 1.0F : 0.0F);
+                entity.isPassenger() ? 1.0F : 0.0F,
+                entity.isDancing() ? 1.0F : 0.0F,
+                entity.isNapping() ? 1.0F : 0.0F);
     }
 
-    /** Pure function of its inputs; the preview tool calls it directly. sit, sniff, scared and ride are 0 or 1. */
+    /**
+     * Pure function of its inputs; the preview tool calls it directly. sit, sniff, scared, ride, dance and sleep are 0 or 1.
+     */
     public void applyPose(float limbSwing, float limbSwingAmount, float ageInTicks,
-                          float netHeadYaw, float headPitch, float sit, float sniff, float scared, float ride) {
+                          float netHeadYaw, float headPitch, float sit, float sniff, float scared, float ride,
+                          float dance, float sleep) {
         float walk = Mth.cos(limbSwing * 0.6662F);
         float walkOpposite = Mth.cos(limbSwing * 0.6662F + Mth.PI);
         float idleSway = Mth.sin(ageInTicks * 0.09F) * 0.05F + 0.05F;
@@ -154,6 +159,7 @@ public class GnoblarModel<T extends GnoblarEntity> extends EntityModel<T> implem
         // ---- reset ----
         body.setPos(0.0F, 21.0F, 0.0F);
         body.xRot = HUNCH;
+        head.zRot = 0.0F;
         head.xRot = -0.35F;
         head.yRot = 0.0F;
         nose.xRot = 0.0F;
@@ -249,6 +255,55 @@ public class GnoblarModel<T extends GnoblarEntity> extends EntityModel<T> implem
             leftArm.zRot = -0.25F;
             rightArm.zRot = 0.25F;
         }
+
+        // ---- dancing: hopping, arms up and swaying, ears flapping to the beat ----
+        if (dance > 0.5F) {
+            float beat = ageInTicks * 0.55F;
+            float hop = Math.abs(Mth.sin(beat)) * 1.5F;
+            body.setPos(0.0F, 21.0F - hop, 0.0F);
+            leftLeg.setPos(2.0F, 21.0F - hop, 0.0F);
+            rightLeg.setPos(-2.0F, 21.0F - hop, 0.0F);
+            body.xRot = 0.2F;
+            head.xRot = -0.3F + Mth.sin(beat * 2.0F) * 0.1F;
+            head.zRot = Mth.sin(beat) * 0.15F;
+            // hands up and out beside the head, one reaching higher as the other drops
+            leftArm.xRot = -HUNCH;
+            rightArm.xRot = -HUNCH;
+            leftArm.zRot = -1.9F - Mth.sin(beat) * 0.4F;
+            rightArm.zRot = 1.9F - Mth.sin(beat) * 0.4F;
+            leftLeg.xRot = Mth.sin(beat) * 0.7F;
+            rightLeg.xRot = -Mth.sin(beat) * 0.7F;
+            leftEar.zRot = 0.6F + Mth.sin(beat * 2.0F) * 0.3F;
+            rightEar.zRot = -0.6F - Mth.sin(beat * 2.0F) * 0.3F;
+        }
+
+        // ---- sleeping: curled up on the bed, head on the knees, breathing slowly ----
+        if (sleep > 0.5F) {
+            float breath = Mth.sin(ageInTicks * 0.08F) * 0.3F;
+            body.setPos(0.0F, 22.0F + breath * 0.3F, 0.0F);
+            body.xRot = 0.9F;
+            head.xRot = 0.7F;
+            head.yRot = 0.0F;
+            nose.xRot = breath * 0.05F;
+            leftLeg.setPos(2.0F, 22.0F, 0.0F);
+            rightLeg.setPos(-2.0F, 22.0F, 0.0F);
+            leftLeg.xRot = -1.5F;
+            rightLeg.xRot = -1.5F;
+            leftLeg.yRot = -0.25F;
+            rightLeg.yRot = 0.25F;
+            leftArm.xRot = -1.2F;
+            rightArm.xRot = -1.2F;
+            leftArm.zRot = -0.45F;
+            rightArm.zRot = 0.45F;
+            leftEar.zRot = 1.0F;
+            rightEar.zRot = -1.0F;
+        }
+    }
+
+    /** Moves the pose stack to the top of the head, for items worn there (a banner). */
+    public void translateToHead(PoseStack poseStack) {
+        body.translateAndRotate(poseStack);
+        head.translateAndRotate(poseStack);
     }
 
     @Override
