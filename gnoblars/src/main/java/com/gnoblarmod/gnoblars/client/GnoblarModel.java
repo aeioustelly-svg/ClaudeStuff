@@ -18,7 +18,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.entity.HumanoidArm;
 
 /**
- * Vanilla-style gnoblar: a hunched little body, an oversized head with a big knobbed nose, flat
+ * Vanilla-style gnoblar: a hunched little body, an oversized head with one big block of a nose, flat
  * pointed ears, and long single-box arms. Texture is 64x64, one texel per 1/16 block.
  *
  * Every part is baked unrotated so the texture painter can read axis-aligned geometry. All the
@@ -31,13 +31,14 @@ public class GnoblarModel<T extends GnoblarEntity> extends EntityModel<T> implem
     private static final float HUNCH = 0.5F;
 
     private final ModelPart root;
-    private final ModelPart body, head, nose, leftEar, rightEar, leftArm, rightArm, leftLeg, rightLeg;
+    private final ModelPart body, head, nose, wart, leftEar, rightEar, leftArm, rightArm, leftLeg, rightLeg;
 
     public GnoblarModel(ModelPart root) {
         this.root = root;
         this.body = root.getChild("body");
         this.head = body.getChild("head");
         this.nose = head.getChild("nose");
+        this.wart = nose.getChild("wart");
         this.leftEar = head.getChild("left_ear");
         this.rightEar = head.getChild("right_ear");
         this.leftArm = body.getChild("left_arm");
@@ -65,12 +66,15 @@ public class GnoblarModel<T extends GnoblarEntity> extends EntityModel<T> implem
         body.addOrReplaceChild("neck",
                 CubeListBuilder.create().texOffs(44, 20).addBox(-1.0F, -6.0F, -2.0F, 2, 1, 2),
                 PartPose.ZERO);
-        // the nose: a short bridge and a big round-ended knob, level with it (no droop)
-        head.addOrReplaceChild("nose",
-                CubeListBuilder.create()
-                        .texOffs(28, 0).addBox(-1.0F, -3.0F, -5.0F, 2, 2, 2)
-                        .texOffs(36, 0).addBox(-2.0F, -4.0F, -8.0F, 4, 4, 3),
+        // the nose: one big block, nothing more
+        PartDefinition nose = head.addOrReplaceChild("nose",
+                CubeListBuilder.create().texOffs(28, 0).addBox(-2.0F, -4.0F, -8.0F, 4, 4, 5),
                 PartPose.ZERO);
+        // some gnoblars have a wart on the nose (hidden on the rest)
+        nose.addOrReplaceChild("wart",
+                CubeListBuilder.create().texOffs(44, 24).addBox(0.0F, -5.0F, -7.0F, 1, 1, 1),
+                PartPose.ZERO);
+
         // pointed ears: stepped flat planes that climb and narrow to a tip, so the outline is not a rectangle
         head.addOrReplaceChild("left_ear",
                 CubeListBuilder.create()
@@ -103,9 +107,14 @@ public class GnoblarModel<T extends GnoblarEntity> extends EntityModel<T> implem
         return LayerDefinition.create(mesh, 64, 64);
     }
 
+    public void setWartVisible(boolean visible) {
+        wart.visible = visible;
+    }
+
     @Override
     public void setupAnim(T entity, float limbSwing, float limbSwingAmount, float ageInTicks,
                           float netHeadYaw, float headPitch) {
+        setWartVisible(entity.hasWart());
         applyPose(limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch,
                 entity.isInSittingPose() ? 1.0F : 0.0F,
                 entity.isSniffing() ? 1.0F : 0.0F,

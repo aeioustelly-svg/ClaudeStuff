@@ -22,7 +22,7 @@ OUT = sys.argv[2] if len(sys.argv) > 2 else "src/main/resources/assets/gnoblars/
 
 # Palettes: (dark = cooler shadow, base, light = warmer highlight), kept muted.
 SKIN = ((66, 78, 70), (94, 110, 94), (120, 136, 110))
-NOSE = ((80, 94, 82), (114, 130, 106), (144, 158, 124))
+NOSE = ((92, 106, 90), (128, 144, 112), (158, 172, 132))
 NOSE_TIP = ((112, 88, 84), (146, 114, 106), (172, 140, 128))
 EAR_INNER = ((112, 82, 80), (146, 110, 104), (170, 136, 126))
 HAIR = ((40, 38, 38), (62, 56, 52), (84, 76, 66))
@@ -36,7 +36,7 @@ MOUTH = (44, 28, 30)
 TUSK = (228, 220, 192)
 BUCKLE = (156, 146, 120)
 NOSTRIL = (34, 38, 36)
-WART = (128, 122, 94)
+WART_SHADES = ((112, 98, 72), (142, 126, 90), (172, 152, 108))
 
 FACE_LIGHT = {"top": 1.08, "side": 1.0, "bottom": 0.9}
 
@@ -50,8 +50,8 @@ BOXES = [
     ("rear_a", (-7, -4), (10, 14), (-1, -1)),
     ("rear_b", (-9, -7), (9, 12), (-1, -1)),
     ("rear_c", (-10, -9), (8, 10), (-1, -1)),
-    ("bridge", (-1, 1), (12, 14), (-6, -4)),
-    ("bulb", (-2, 2), (11, 15), (-9, -6)),
+    ("wart", (0, 1), (10, 11), (-8, -7)),
+    ("nose", (-2, 2), (11, 15), (-9, -4)),
     ("neck", (-1, 1), (15, 16), (-2, 0)),
     ("left_arm", (3, 5), (17, 24), (-1, 1)),
     ("right_arm", (-5, -3), (17, 24), (-1, 1)),
@@ -138,7 +138,7 @@ def paint_ear(part, pos, normal):
     return shade(SKIN, 2 if (cell(ax) + cell(y)) % 3 == 0 else 1, "side")
 
 
-HEAD_PARTS = ("head", "bridge", "bulb")
+HEAD_PARTS = ("head", "nose", "wart")
 HEAD_RAISE = 2.0     # the face rows below are written for a head 2 px lower than it now sits
 
 
@@ -156,24 +156,20 @@ def paint(part, pos, normal):
     if part == "neck":
         return skin(pos, face, ((46, 56, 50), (72, 86, 72), (98, 112, 88)))
 
-    if part == "bridge":
-        if face == "side" and abs(y - 15.0) < 0.1:
-            return shade(NOSE, 0, face)            # crease where it meets the cheeks
-        return skin(pos, face, NOSE)
+    if part == "wart":
+        return shade(WART_SHADES, 2 if face == "top" else 0 if face == "bottom" else 1, "side")
 
-    if part == "bulb":
-        if nz < -0.5 and abs(z + 9.0) < 0.1:       # the front of the knob
-            if abs(y - 14.5) < 0.1 and abs(ax - 1.5) < 0.1:
+    if part == "nose":
+        if nz < -0.5 and abs(z + 9.0) < 0.1:       # the front: one nostril each side
+            if abs(y - 13.5) < 0.1 and abs(ax - 1.5) < 0.1:
                 return NOSTRIL
-            if y < 13.0 and ax < 1.0:
+            if abs(y - 14.5) < 0.1:
+                return shade(NOSE, 0, face)        # shaded underlip
+            if abs(y - 11.5) < 0.1 and ax < 1.0:
                 return shade(NOSE, 2, face)        # a shiny highlight
             return skin(pos, face, NOSE)
         if face == "bottom":
             return shade(NOSE, 0, face)
-        if face == "top" and abs(x + 0.5) < 0.1 and abs(z + 7.5) < 0.1:
-            return WART
-        if face == "top" and abs(x - 1.5) < 0.1 and abs(z + 6.5) < 0.1:
-            return shade(NOSE, 0, face)            # a mole
         return skin(pos, face, NOSE)
 
     if part == "loincloth":

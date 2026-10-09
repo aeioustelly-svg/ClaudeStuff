@@ -16,7 +16,7 @@ sys.path.insert(0, __file__.rsplit("/", 1)[0])
 import paint_texture  # noqa: E402  (only for its BOXES table and part_of)
 
 MODEL = sys.argv[1] if len(sys.argv) > 1 else "build/preview/model.json"
-SOLID = ("head", "bulb", "bridge")
+SOLID = ("head", "nose")
 CHECKED = ("left_arm", "right_arm")
 
 

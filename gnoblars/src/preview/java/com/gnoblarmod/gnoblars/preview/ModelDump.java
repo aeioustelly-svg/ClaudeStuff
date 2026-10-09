@@ -88,6 +88,7 @@ public class ModelDump {
         StringBuilder json = new StringBuilder("{\"texSize\":" + TEX_SIZE + ",\"poses\":{");
         ModelPart root = GnoblarModel.createBodyLayer().bakeRoot();
         GnoblarModel<GnoblarEntity> model = new GnoblarModel<>(root);
+        model.setWartVisible(true);   // the preview and the painter need the wart cube too
         json.append("\"rest\":").append(dump(model, root));
         for (Map.Entry<String, float[]> pose : poses.entrySet()) {
             float[] p = pose.getValue();

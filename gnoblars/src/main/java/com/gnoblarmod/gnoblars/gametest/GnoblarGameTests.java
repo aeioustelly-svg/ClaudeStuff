@@ -8,6 +8,7 @@ import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.resources.ResourceLocation;
@@ -225,6 +226,34 @@ public class GnoblarGameTests {
                     MobSpawnType.NATURAL, helper.absolutePos(new BlockPos(12, 1, 12)), helper.getLevel().getRandom());
             helper.assertTrue(allowed, "Natural spawn rule rejected an open position on " + block);
         }
+        helper.succeed();
+    }
+
+    @GameTest(templateNamespace = Gnoblars.MODID, template = TEMPLATE)
+    public static void someSpawnWithWartsAndMostDoNot(GameTestHelper helper) {
+        int warts = 0;
+        for (int i = 0; i < 200; i++) {
+            GnoblarEntity gnoblar = ModEntities.GNOBLAR.get().create(helper.getLevel());
+            gnoblar.finalizeSpawn(helper.getLevel(), helper.getLevel().getCurrentDifficultyAt(gnoblar.blockPosition()),
+                    MobSpawnType.NATURAL, null, null);
+            if (gnoblar.hasWart()) {
+                warts++;
+            }
+        }
+        helper.assertTrue(warts > 0 && warts < 100, "Expected a minority of warty gnoblars, got " + warts + " of 200");
+        helper.succeed();
+    }
+
+    @GameTest(templateNamespace = Gnoblars.MODID, template = TEMPLATE)
+    public static void wartSurvivesSaving(GameTestHelper helper) {
+        GnoblarEntity gnoblar = spawn(helper);
+        gnoblar.setWart(true);
+        CompoundTag tag = new CompoundTag();
+        gnoblar.addAdditionalSaveData(tag);
+        GnoblarEntity copy = ModEntities.GNOBLAR.get().create(helper.getLevel());
+        helper.assertTrue(!copy.hasWart(), "A fresh gnoblar should have no wart");
+        copy.readAdditionalSaveData(tag);
+        helper.assertTrue(copy.hasWart(), "The wart was lost when saving");
         helper.succeed();
     }
 

@@ -18,6 +18,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
+import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.damagesource.DamageSource;
@@ -25,6 +26,8 @@ import net.minecraft.world.entity.AgeableMob;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.MobSpawnType;
+import net.minecraft.world.entity.SpawnGroupData;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
@@ -41,6 +44,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
@@ -62,6 +66,8 @@ public class GnoblarEntity extends TamableAnimal {
     private static final EntityDataAccessor<Boolean> SNIFFING =
             SynchedEntityData.defineId(GnoblarEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Boolean> SCARED =
+            SynchedEntityData.defineId(GnoblarEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Boolean> WART =
             SynchedEntityData.defineId(GnoblarEntity.class, EntityDataSerializers.BOOLEAN);
 
     private int sniffCooldown = 1200;
@@ -101,6 +107,7 @@ public class GnoblarEntity extends TamableAnimal {
         entityData.define(TRUST, 0);
         entityData.define(SNIFFING, false);
         entityData.define(SCARED, false);
+        entityData.define(WART, false);
     }
 
     // ---- gifts, trust and taming -------------------------------------------------------------
@@ -302,6 +309,22 @@ public class GnoblarEntity extends TamableAnimal {
         entityData.set(SNIFFING, sniffing);
     }
 
+    /** About one gnoblar in five has a wart on its nose, decided when it spawns. */
+    public boolean hasWart() {
+        return entityData.get(WART);
+    }
+
+    public void setWart(boolean wart) {
+        entityData.set(WART, wart);
+    }
+
+    @Override
+    public SpawnGroupData finalizeSpawn(ServerLevelAccessor level, DifficultyInstance difficulty,
+                                        MobSpawnType reason, SpawnGroupData data, CompoundTag tag) {
+        setWart(random.nextInt(5) == 0);
+        return super.finalizeSpawn(level, difficulty, reason, data, tag);
+    }
+
     public boolean isScared() {
         return entityData.get(SCARED);
     }
@@ -339,6 +362,7 @@ public class GnoblarEntity extends TamableAnimal {
     public void addAdditionalSaveData(CompoundTag tag) {
         super.addAdditionalSaveData(tag);
         tag.putInt("Trust", getTrust());
+        tag.putBoolean("Wart", hasWart());
         tag.putInt("SniffCooldown", sniffCooldown);
         tag.putInt("HoardTicks", hoardTicks);
     }
@@ -347,6 +371,7 @@ public class GnoblarEntity extends TamableAnimal {
     public void readAdditionalSaveData(CompoundTag tag) {
         super.readAdditionalSaveData(tag);
         setTrust(tag.getInt("Trust"));
+        setWart(tag.getBoolean("Wart"));
         sniffCooldown = tag.getInt("SniffCooldown");
         hoardTicks = tag.getInt("HoardTicks");
     }
