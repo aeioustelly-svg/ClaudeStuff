@@ -18,7 +18,9 @@ import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.entity.SpawnPlacements;
 import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.Blocks;
 import java.util.List;
@@ -125,5 +127,42 @@ public class DracoGameTests {
         player.setItemSlot(EquipmentSlot.HEAD, new ItemStack(ModItems.DACIAN_FELT_CAP.get()));
         helper.assertTrue(DracoEntity.isWearingCap(player), "Cap on the head was not recognised");
         helper.succeed();
+    }
+
+    @GameTest(templateNamespace = DacianDraco.MODID, template = TEMPLATE)
+    public static void bowlTradeGivesMamaliga(GameTestHelper helper) {
+        Player player = helper.makeMockPlayer();
+        player.getAbilities().instabuild = false;
+        ItemStack bowls = new ItemStack(Items.BOWL, 3);
+        player.setItemInHand(InteractionHand.MAIN_HAND, bowls);
+        DracoEntity draco = helper.spawn(ModEntities.DRACO.get(), 12, 2, 12);
+
+        draco.givePolenta(player, bowls);
+
+        helper.assertTrue(bowls.getCount() == 2, "A bowl was not consumed");
+        helper.assertTrue(player.getInventory().countItem(ModItems.MAMALIGA.get()) == 1, "No mamaliga was given");
+        helper.assertTrue(draco.getPolentaCooldown() > 0, "No cooldown after a successful trade");
+        helper.succeed();
+    }
+
+    @GameTest(templateNamespace = DacianDraco.MODID, template = TEMPLATE)
+    public static void capDoublesPolentaChance(GameTestHelper helper) {
+        Player player = helper.makeMockPlayer();
+        DracoEntity draco = helper.spawn(ModEntities.DRACO.get(), 12, 2, 12);
+        float bare = draco.getPolentaChance(player);
+        player.setItemSlot(EquipmentSlot.HEAD, new ItemStack(ModItems.DACIAN_FELT_CAP.get()));
+        helper.assertTrue(draco.getPolentaChance(player) == bare * 2.0F, "Cap did not double the chance");
+        helper.succeed();
+    }
+
+    @GameTest(templateNamespace = DacianDraco.MODID, template = TEMPLATE, timeoutTicks = 400)
+    public static void bowlInteractionEventuallySucceeds(GameTestHelper helper) {
+        Player player = helper.makeMockPlayer();
+        player.getAbilities().instabuild = false;
+        player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.BOWL, 64));
+        DracoEntity draco = helper.spawn(ModEntities.DRACO.get(), 12, 2, 12);
+        helper.onEachTick(() -> draco.interact(player, InteractionHand.MAIN_HAND));
+        helper.succeedWhen(() -> helper.assertTrue(
+                player.getInventory().countItem(ModItems.MAMALIGA.get()) > 0, "Right-click never produced mamaliga"));
     }
 }

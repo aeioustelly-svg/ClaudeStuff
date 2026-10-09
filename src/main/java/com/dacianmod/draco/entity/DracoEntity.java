@@ -7,6 +7,8 @@ import com.dacianmod.draco.entity.goal.DracoTailLashGoal;
 import com.dacianmod.draco.entity.goal.FollowCapWearerGoal;
 import com.dacianmod.draco.registry.ModItems;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
@@ -14,6 +16,8 @@ import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.Mth;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -31,6 +35,7 @@ import net.minecraft.world.entity.ai.navigation.PathNavigation;
 import net.minecraft.world.entity.animal.FlyingAnimal;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
@@ -52,6 +57,7 @@ public class DracoEntity extends PathfinderMob implements FlyingAnimal {
     private int lashCooldown;
     private int shedTimer;
     private boolean recovering;
+    private int polentaCooldown;
 
     // Client-side animation state (also ticked on the server, which is harmless).
     private float howlAnim, howlAnimO;
@@ -152,6 +158,7 @@ public class DracoEntity extends PathfinderMob implements FlyingAnimal {
         if (diveCooldown > 0) diveCooldown--;
         if (howlCooldown > 0) howlCooldown--;
         if (lashCooldown > 0) lashCooldown--;
+        if (polentaCooldown > 0) polentaCooldown--;
 
         if (--shedTimer <= 0) {
             shed();
@@ -215,6 +222,53 @@ public class DracoEntity extends PathfinderMob implements FlyingAnimal {
     public boolean isFlying() {
         return !this.onGround();
     }
+
+
+    // ---- polenta trade ----
+
+    /** Holding a bowl up to a calm Draco gives a chance of a bowl of mamaliga. */
+    @Override
+    public InteractionResult mobInteract(Player player, InteractionHand hand) {
+        ItemStack held = player.getItemInHand(hand);
+        if (!held.is(Items.BOWL) || getTarget() != null) {
+            return super.mobInteract(player, hand);
+        }
+        if (level().isClientSide) {
+            return InteractionResult.SUCCESS;
+        }
+        if (polentaCooldown > 0) {
+            return InteractionResult.CONSUME;
+        }
+        if (this.random.nextFloat() < getPolentaChance(player)) {
+            givePolenta(player, held);
+        } else {
+            polentaCooldown = 40;
+            playSound(SoundEvents.WOLF_WHINE, 0.8F, 0.7F);
+        }
+        return InteractionResult.CONSUME;
+    }
+
+    /** 30 percent, doubled for a player wearing the Dacian felt cap. */
+    public float getPolentaChance(Player player) {
+        return isWearingCap(player) ? 0.6F : 0.3F;
+    }
+
+    public void givePolenta(Player player, ItemStack bowls) {
+        if (!player.getAbilities().instabuild) {
+            bowls.shrink(1);
+        }
+        ItemStack polenta = new ItemStack(ModItems.MAMALIGA.get());
+        if (!player.getInventory().add(polenta)) {
+            player.drop(polenta, false);
+        }
+        polentaCooldown = 1200;
+        playSound(SoundEvents.WOLF_PANT, 1.0F, 0.8F);
+        if (level() instanceof ServerLevel server) {
+            server.sendParticles(ParticleTypes.HAPPY_VILLAGER, getX(), getY() + 0.6D, getZ(), 6, 0.5D, 0.3D, 0.5D, 0.0D);
+        }
+    }
+
+    public int getPolentaCooldown() { return polentaCooldown; }
 
     // ---- sounds (wolf sounds pitched down so the Draco is related to, but not, a wolf) ----
 

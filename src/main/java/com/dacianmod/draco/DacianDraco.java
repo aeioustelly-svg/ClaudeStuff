@@ -24,6 +24,8 @@ public class DacianDraco {
             event.accept(ModItems.DRACO_SPAWN_EGG);
         } else if (event.getTabKey() == CreativeModeTabs.COMBAT) {
             event.accept(ModItems.DACIAN_FELT_CAP);
+        } else if (event.getTabKey() == CreativeModeTabs.FOOD_AND_DRINKS) {
+            event.accept(ModItems.MAMALIGA);
         } else if (event.getTabKey() == CreativeModeTabs.INGREDIENTS) {
             event.accept(ModItems.SHED_SKIN);
         }

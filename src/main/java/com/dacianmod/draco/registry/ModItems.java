@@ -2,7 +2,9 @@ package com.dacianmod.draco.registry;
 
 import com.dacianmod.draco.DacianDraco;
 import com.dacianmod.draco.item.DacianFeltMaterial;
+import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.item.ArmorItem;
+import net.minecraft.world.item.BowlFoodItem;
 import net.minecraft.world.item.Item;
 import net.minecraftforge.common.ForgeSpawnEggItem;
 import net.minecraftforge.registries.DeferredRegister;
@@ -18,6 +20,11 @@ public class ModItems {
 
     public static final RegistryObject<Item> DACIAN_FELT_CAP = ITEMS.register("dacian_felt_cap",
             () -> new ArmorItem(DacianFeltMaterial.INSTANCE, ArmorItem.Type.HELMET, new Item.Properties()));
+
+    /** Polenta served in a bowl; eating it gives the bowl back, like stew. */
+    public static final RegistryObject<Item> MAMALIGA = ITEMS.register("mamaliga",
+            () -> new BowlFoodItem(new Item.Properties().stacksTo(1).food(
+                    new FoodProperties.Builder().nutrition(8).saturationMod(0.7F).build())));
 
     public static final RegistryObject<ForgeSpawnEggItem> DRACO_SPAWN_EGG = ITEMS.register("draco_spawn_egg",
             () -> new ForgeSpawnEggItem(ModEntities.DRACO, 0x4F5B45, 0xB07A2E, new Item.Properties()));
