@@ -121,8 +121,6 @@ def body(face, x, y, W, H, tx, ty):
         return fur(face, x, y, W, H, tx, ty)
     if y < 2:
         return BLACK
-    if face == "back" and y in (5, 10):
-        return BLACK                                # the lines between the back bands
     if face == "front":
         mid = W // 2
         if y == 2:
@@ -152,7 +150,8 @@ def body(face, x, y, W, H, tx, ty):
 
 
 def dome(face, x, y, W, H, tx, ty):
-    if face == "bottom":
+    """A shoulder plate. Its bottom edge, where it meets the torso, is outlined in black."""
+    if face == "bottom" or (face != "top" and y == H - 1):
         return BLACK
     return plate(face, x, y, W, H, tx, ty)
 
@@ -164,6 +163,8 @@ def arm(face, x, y, W, H, tx, ty):
         return STEEL[0]
     if y < 1:
         return BLACK
+    if y in (3, 6, 9) and face != "top":
+        return BLACK                                # three black lines round the arm
     if y >= H - 4:
         return STEEL[2] if y < H - 1 else STEEL[1]
     if y == H - 5:
@@ -220,9 +221,6 @@ BOXES = {
     "leg": (24, 96, 6, 8, 6, leg),
     "knee_plate": (68, 90, 1, 5, 4, plate),
     "hand_claws": (100, 96, 0, 3, 8, claws_down),
-    "back_band_1": (72, 0, 14, 4, 2, plate),
-    "back_band_2": (72, 6, 12, 4, 2, plate),
-    "back_band_3": (72, 12, 10, 4, 2, plate),
     "foot_claws": (20, 120, 6, 0, 2, claws_forward),
     "ball_x_bar": (0, 34, 20, 16, 14, ball_bar(0)),
     "ball_y_bar": (68, 34, 14, 20, 16, ball_bar(1)),

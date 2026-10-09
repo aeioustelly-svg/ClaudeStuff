@@ -48,12 +48,7 @@ public class CannonboltModel<T extends CannonboltEntity> extends EntityModel<T> 
         // Feet are at y = 24. The hips are at y = 16, the shoulders at y = 6.
         // One tall white torso carries the face (there is no separate head, as on the character).
         PartDefinition body = root.addOrReplaceChild("body",
-                CubeListBuilder.create().texOffs(0, 72).addBox(-7.0F, -15.0F, -4.0F, 14, 15, 8)
-                        // three yellow bands across the back with a gap between them, like an armadillo's
-                        // shell, narrowing towards the hips
-                        .texOffs(72, 0).addBox(-7.0F, -14.0F, 4.0F, 14, 4, 2)
-                        .texOffs(72, 6).addBox(-6.0F, -9.0F, 4.0F, 12, 4, 2)
-                        .texOffs(72, 12).addBox(-5.0F, -4.0F, 4.0F, 10, 4, 2),
+                CubeListBuilder.create().texOffs(0, 72).addBox(-7.0F, -15.0F, -4.0F, 14, 15, 8),
                 PartPose.offset(0.0F, 16.0F, 0.0F));
 
         // The yellow shoulder plates: one box each, against the torso and over the arm, tilted
