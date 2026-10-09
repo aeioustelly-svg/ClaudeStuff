@@ -49,21 +49,23 @@ public class CannonboltModel<T extends CannonboltEntity> extends EntityModel<T> 
         // One tall white torso carries the face (there is no separate head, as on the character).
         PartDefinition body = root.addOrReplaceChild("body",
                 CubeListBuilder.create().texOffs(0, 72).addBox(-7.0F, -15.0F, -4.0F, 14, 15, 8)
-                        // three yellow bands across the back with a gap between them, like an armadillo's shell
+                        // three yellow bands across the back with a gap between them, like an armadillo's
+                        // shell, narrowing towards the hips
                         .texOffs(72, 0).addBox(-7.0F, -14.0F, 4.0F, 14, 4, 2)
-                        .texOffs(72, 0).addBox(-7.0F, -9.0F, 4.0F, 14, 4, 2)
-                        .texOffs(72, 0).addBox(-7.0F, -4.0F, 4.0F, 14, 4, 2),
+                        .texOffs(72, 6).addBox(-6.0F, -9.0F, 4.0F, 12, 4, 2)
+                        .texOffs(72, 12).addBox(-5.0F, -4.0F, 4.0F, 10, 4, 2),
                 PartPose.offset(0.0F, 16.0F, 0.0F));
 
-        // The yellow shoulder plates: one box each, resting against the torso and over the arm, and
-        // tilted slightly outwards about their inner bottom corner so they never cut into the torso.
+        // The yellow shoulder plates: one box each, over the arm, tilted slightly inwards about their
+        // inner bottom corner. They start 1 px off the torso, which is more than the lean closes at
+        // the top, so no face of a plate ever shares a plane with the torso.
         // The left one mirrors the right.
         body.addOrReplaceChild("right_dome",
                 CubeListBuilder.create().texOffs(68, 72).addBox(-8.0F, -6.0F, -4.0F, 8, 6, 8),
-                PartPose.offsetAndRotation(-7.0F, -12.0F, 0.0F, 0.0F, 0.0F, -0.12F));
+                PartPose.offsetAndRotation(-8.0F, -12.0F, 0.0F, 0.0F, 0.0F, 0.12F));
         body.addOrReplaceChild("left_dome",
                 CubeListBuilder.create().mirror().texOffs(68, 72).addBox(0.0F, -6.0F, -4.0F, 8, 6, 8),
-                PartPose.offsetAndRotation(7.0F, -12.0F, 0.0F, 0.0F, 0.0F, 0.12F));
+                PartPose.offsetAndRotation(8.0F, -12.0F, 0.0F, 0.0F, 0.0F, -0.12F));
 
         // Arms: one long box from the shoulder down to the knees, a yellow plate on the outside
         // and a flat card of three claws hanging flush from the outer side of the hand.

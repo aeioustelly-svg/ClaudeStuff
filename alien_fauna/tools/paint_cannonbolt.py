@@ -118,8 +118,6 @@ def body(face, x, y, W, H, tx, ty):
     if face in ("left", "right"):
         if y < 6:
             return BLACK
-        if y == 6:
-            return dither(x, y, BLACK, STEEL[1])
         return fur(face, x, y, W, H, tx, ty)
     if y < 2:
         return BLACK
@@ -128,7 +126,7 @@ def body(face, x, y, W, H, tx, ty):
     if face == "front":
         mid = W // 2
         if y == 2:
-            return BLACK if mid - 1 <= x <= mid else dither(x, y, STEEL[1], BLACK)
+            return BLACK
         if mid - 1 <= x <= mid and (y <= 6 or y >= 11):
             return BLACK
         left = eye(x - 1, y - 3)
@@ -149,7 +147,7 @@ def body(face, x, y, W, H, tx, ty):
         if y == 10 and x in (2, 11):
             return BLACK
     elif y == 2:
-        return dither(x, y, STEEL[1], WHITE[1])
+        return BLACK
     return fur(face, x, y, W, H, tx, ty)
 
 
@@ -222,7 +220,9 @@ BOXES = {
     "leg": (24, 96, 6, 8, 6, leg),
     "knee_plate": (68, 90, 1, 5, 4, plate),
     "hand_claws": (100, 96, 0, 3, 8, claws_down),
-    "back_band": (72, 0, 14, 4, 2, plate),
+    "back_band_1": (72, 0, 14, 4, 2, plate),
+    "back_band_2": (72, 6, 12, 4, 2, plate),
+    "back_band_3": (72, 12, 10, 4, 2, plate),
     "foot_claws": (20, 120, 6, 0, 2, claws_forward),
     "ball_x_bar": (0, 34, 20, 16, 14, ball_bar(0)),
     "ball_y_bar": (68, 34, 14, 20, 16, ball_bar(1)),
