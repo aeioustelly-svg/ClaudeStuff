@@ -214,7 +214,7 @@ def ball_bar(shift):
 
 BOXES = {
     "body": (0, 72, 14, 15, 8, body),
-    "dome": (68, 72, 8, 6, 8, dome),
+    "dome": (68, 72, 8, 6, 7, dome),
     "arm": (0, 96, 6, 17, 6, arm),
     "arm_plate": (48, 96, 2, 6, 6, plate),
     "leg": (24, 96, 6, 8, 6, leg),

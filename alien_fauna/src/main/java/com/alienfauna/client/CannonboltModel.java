@@ -56,16 +56,16 @@ public class CannonboltModel<T extends CannonboltEntity> extends EntityModel<T> 
                         .texOffs(72, 12).addBox(-5.0F, -4.0F, 4.0F, 10, 4, 2),
                 PartPose.offset(0.0F, 16.0F, 0.0F));
 
-        // The yellow shoulder plates: one box each, over the arm, tilted slightly inwards about their
-        // inner bottom corner. They start 1 px off the torso, which is more than the lean closes at
-        // the top, so no face of a plate ever shares a plane with the torso.
+        // The yellow shoulder plates: one box each, against the torso and over the arm, tilted
+        // slightly inwards about their inner bottom corner. They are 7 px deep, so their front and
+        // back faces share a plane with neither the torso (8 deep) nor the arm (6 deep).
         // The left one mirrors the right.
         body.addOrReplaceChild("right_dome",
-                CubeListBuilder.create().texOffs(68, 72).addBox(-8.0F, -6.0F, -4.0F, 8, 6, 8),
-                PartPose.offsetAndRotation(-8.0F, -12.0F, 0.0F, 0.0F, 0.0F, 0.12F));
+                CubeListBuilder.create().texOffs(68, 72).addBox(-8.0F, -6.0F, -3.5F, 8, 6, 7),
+                PartPose.offsetAndRotation(-7.0F, -12.0F, 0.0F, 0.0F, 0.0F, 0.12F));
         body.addOrReplaceChild("left_dome",
-                CubeListBuilder.create().mirror().texOffs(68, 72).addBox(0.0F, -6.0F, -4.0F, 8, 6, 8),
-                PartPose.offsetAndRotation(8.0F, -12.0F, 0.0F, 0.0F, 0.0F, -0.12F));
+                CubeListBuilder.create().mirror().texOffs(68, 72).addBox(0.0F, -6.0F, -3.5F, 8, 6, 7),
+                PartPose.offsetAndRotation(7.0F, -12.0F, 0.0F, 0.0F, 0.0F, -0.12F));
 
         // Arms: one long box from the shoulder down to the knees, a yellow plate on the outside
         // and a flat card of three claws hanging flush from the outer side of the hand.
