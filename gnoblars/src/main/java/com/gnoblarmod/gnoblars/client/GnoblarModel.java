@@ -140,12 +140,13 @@ public class GnoblarModel<T extends GnoblarEntity> extends EntityModel<T> implem
         applyPose(limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch,
                 entity.isInSittingPose() ? 1.0F : 0.0F,
                 entity.isSniffing() ? 1.0F : 0.0F,
-                entity.isScared() ? 1.0F : 0.0F);
+                entity.isScared() ? 1.0F : 0.0F,
+                entity.isPassenger() ? 1.0F : 0.0F);
     }
 
-    /** Pure function of its inputs; the preview tool calls it directly. sit, sniff, scared are 0 or 1. */
+    /** Pure function of its inputs; the preview tool calls it directly. sit, sniff, scared and ride are 0 or 1. */
     public void applyPose(float limbSwing, float limbSwingAmount, float ageInTicks,
-                          float netHeadYaw, float headPitch, float sit, float sniff, float scared) {
+                          float netHeadYaw, float headPitch, float sit, float sniff, float scared, float ride) {
         float walk = Mth.cos(limbSwing * 0.6662F);
         float walkOpposite = Mth.cos(limbSwing * 0.6662F + Mth.PI);
         float idleSway = Mth.sin(ageInTicks * 0.09F) * 0.05F + 0.05F;
@@ -228,6 +229,25 @@ public class GnoblarModel<T extends GnoblarEntity> extends EntityModel<T> implem
             rightLeg.yRot = 0.25F;
             leftArm.xRot = -0.9F;
             rightArm.xRot = -0.9F;
+        }
+
+        // ---- riding on the owner's back: sitting upright behind them, legs round their waist, arms reaching over
+        // their shoulders ----
+        if (ride > 0.5F) {
+            body.setPos(0.0F, 22.0F, 0.0F);
+            body.xRot = 0.15F;
+            head.xRot = Math.max(-0.5F, -0.3F + headPitch * Mth.DEG_TO_RAD * 0.8F);
+            head.yRot = Mth.clamp(netHeadYaw, -30.0F, 30.0F) * Mth.DEG_TO_RAD * 0.5F;   // arms are forward, so turn less
+            leftLeg.setPos(2.0F, 22.0F, 0.0F);
+            rightLeg.setPos(-2.0F, 22.0F, 0.0F);
+            leftLeg.xRot = -1.2F;
+            rightLeg.xRot = -1.2F;
+            leftLeg.yRot = -0.6F;
+            rightLeg.yRot = 0.6F;
+            leftArm.xRot = -1.8F;
+            rightArm.xRot = -1.8F;
+            leftArm.zRot = -0.25F;
+            rightArm.zRot = 0.25F;
         }
     }
 

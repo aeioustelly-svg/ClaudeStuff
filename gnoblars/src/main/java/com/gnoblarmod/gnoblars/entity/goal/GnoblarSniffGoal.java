@@ -38,7 +38,7 @@ public class GnoblarSniffGoal extends Goal {
 
     @Override
     public boolean canUse() {
-        if (!gnoblar.isTame() || gnoblar.isOrderedToSit() || gnoblar.getSniffCooldown() > 0
+        if (!gnoblar.isTame() || gnoblar.isPassenger() || gnoblar.isOrderedToSit() || gnoblar.getSniffCooldown() > 0
                 || !gnoblar.onGround() || gnoblar.getRandom().nextInt(80) != 0) {
             return false;
         }

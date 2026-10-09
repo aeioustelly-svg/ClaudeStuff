@@ -2,6 +2,7 @@ package com.gnoblarmod.gnoblars.entity;
 
 import com.gnoblarmod.gnoblars.Gnoblars;
 import com.gnoblarmod.gnoblars.entity.goal.GnoblarAvoidMonstersGoal;
+import com.gnoblarmod.gnoblars.entity.goal.GnoblarFollowOwnerGoal;
 import com.gnoblarmod.gnoblars.entity.goal.GnoblarPesterGoal;
 import com.gnoblarmod.gnoblars.entity.goal.GnoblarScavengeGoal;
 import com.gnoblarmod.gnoblars.entity.goal.GnoblarSniffGoal;
@@ -10,6 +11,7 @@ import java.util.List;
 import net.minecraft.advancements.CriteriaTriggers;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
@@ -23,6 +25,7 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.AgeableMob;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
@@ -33,7 +36,6 @@ import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.FloatGoal;
-import net.minecraft.world.entity.ai.goal.FollowOwnerGoal;
 import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal;
 import net.minecraft.world.entity.ai.goal.PanicGoal;
 import net.minecraft.world.entity.ai.goal.RandomLookAroundGoal;
@@ -92,7 +94,7 @@ public class GnoblarEntity extends TamableAnimal {
         goalSelector.addGoal(1, new SitWhenOrderedToGoal(this));
         goalSelector.addGoal(2, new GnoblarAvoidMonstersGoal(this));
         goalSelector.addGoal(3, new PanicGoal(this, 1.5D));
-        goalSelector.addGoal(4, new FollowOwnerGoal(this, 1.0D, 5.0F, 2.0F, false));
+        goalSelector.addGoal(4, new GnoblarFollowOwnerGoal(this, 1.0D, 5.0F, 2.0F));
         goalSelector.addGoal(5, new GnoblarSniffGoal(this));
         goalSelector.addGoal(6, new GnoblarScavengeGoal(this));
         goalSelector.addGoal(7, new GnoblarPesterGoal(this));
@@ -163,10 +165,12 @@ public class GnoblarEntity extends TamableAnimal {
                 return InteractionResult.sidedSuccess(level().isClientSide);
             }
             if (!level().isClientSide) {
-                setOrderedToSit(!isOrderedToSit());
-                setJumping(false);
-                navigation.stop();
-                setTarget(null);
+                if (player.isShiftKeyDown()) {
+                    climbOnto(player);
+                } else {
+                    setMode(getMode().next());
+                    player.displayClientMessage(Component.translatable("message.gnoblars.mode." + mode.id(), getDisplayName()), true);
+                }
             }
             return InteractionResult.sidedSuccess(level().isClientSide);
         }
@@ -229,12 +233,84 @@ public class GnoblarEntity extends TamableAnimal {
         }
         if (!level().isClientSide) {
             if (isTame()) {
-                setOrderedToSit(false);
+                if (mode == GnoblarMode.SIT) {
+                    setMode(GnoblarMode.FOLLOW);   // a hurt friend gets up and comes back to its owner
+                }
             } else if (source.getEntity() instanceof Player) {
                 setTrust(0);   // unkindness is remembered
             }
         }
         return super.hurt(source, amount);
+    }
+
+    // ---- modes: follow, sit, wander, and riding on the owner's back ---------------------------
+
+    private GnoblarMode mode = GnoblarMode.FOLLOW;
+    /** How far a wandering friend strays from the spot where it was told to wander. */
+    public static final int WANDER_RADIUS = 10;
+
+    public GnoblarMode getMode() {
+        return mode;
+    }
+
+    /** Sets what the friend does and updates sitting and the wander restriction to match. */
+    public void setMode(GnoblarMode newMode) {
+        mode = newMode;
+        setOrderedToSit(newMode == GnoblarMode.SIT);
+        if (newMode == GnoblarMode.WANDER) {
+            restrictTo(blockPosition(), WANDER_RADIUS);
+        } else {
+            clearRestriction();
+        }
+        setJumping(false);
+        navigation.stop();
+        setTarget(null);
+    }
+
+    /** The owner picks the gnoblar up, piggyback style. */
+    private void climbOnto(Player player) {
+        if (isPassenger() || !player.getPassengers().isEmpty()) {
+            return;
+        }
+        setMode(GnoblarMode.FOLLOW);
+        if (startRiding(player, true)) {
+            player.displayClientMessage(Component.translatable("message.gnoblars.mounted", getDisplayName()), true);
+        }
+    }
+
+    /** Puts every gnoblar that rides on this player's back on the ground. Returns whether there was one. */
+    public static boolean putDownPassengers(Player player) {
+        boolean any = false;
+        for (Entity passenger : List.copyOf(player.getPassengers())) {
+            if (passenger instanceof GnoblarEntity gnoblar) {
+                gnoblar.stopRiding();
+                gnoblar.moveTo(player.getX(), player.getY(), player.getZ(), player.getYRot(), 0.0F);
+                gnoblar.playSound(SoundEvents.VILLAGER_YES, 0.8F, gnoblar.getVoicePitch());
+                any = true;
+            }
+        }
+        return any;
+    }
+
+    /** While on its owner's back it sits behind them, facing the same way, and does not wander off. */
+    @Override
+    public void rideTick() {
+        super.rideTick();
+        if (getVehicle() instanceof LivingEntity vehicle) {
+            double yaw = Math.toRadians(vehicle.yBodyRot);
+            double back = 0.4D;
+            setPos(vehicle.getX() + Math.sin(yaw) * back, vehicle.getY() + (vehicle.isShiftKeyDown() ? 0.7D : 0.9D),
+                    vehicle.getZ() - Math.cos(yaw) * back);
+            setYRot(vehicle.yBodyRot);
+            setYBodyRot(vehicle.yBodyRot);
+            setYHeadRot(vehicle.yBodyRot);
+            navigation.stop();
+        }
+    }
+
+    @Override
+    public boolean shouldRiderSit() {
+        return true;
     }
 
     // ---- hoarding ----------------------------------------------------------------------------
@@ -365,15 +441,20 @@ public class GnoblarEntity extends TamableAnimal {
         tag.putString("Variant", getVariant().id());
         tag.putInt("SniffCooldown", sniffCooldown);
         tag.putInt("HoardTicks", hoardTicks);
+        tag.putString("Mode", mode.id());
     }
 
     @Override
     public void readAdditionalSaveData(CompoundTag tag) {
         super.readAdditionalSaveData(tag);
         setTrust(tag.getInt("Trust"));
-        setVariant(GnoblarVariant.byName(tag.getString("Variant")));
+        setVariant(tag.contains("Variant") ? GnoblarVariant.byName(tag.getString("Variant")) : GnoblarVariant.roll(random));
         sniffCooldown = tag.getInt("SniffCooldown");
         hoardTicks = tag.getInt("HoardTicks");
+        mode = GnoblarMode.byName(tag.getString("Mode"));
+        if (mode == GnoblarMode.WANDER && !hasRestriction()) {
+            restrictTo(blockPosition(), WANDER_RADIUS);   // the restriction is not saved, so wander around the spot it was loaded at
+        }
     }
 
     // ---- sounds: vanilla villager sounds pitched up into a squeak --------------------------------

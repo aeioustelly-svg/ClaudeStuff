@@ -22,6 +22,7 @@ guidelines (pacifism, vanilla interaction, vanilla-style models) and the sandbox
 | `python3 -I tools/render_preview.py` | Software-renders `build/preview/body.png`, `head.png`, `texture.png` |
 | `python3 -I tools/check_clipping.py` | Fails if an arm cuts into the head or nose in any dumped pose, or if two coplanar faces overlap (z-fighting). Run it after changing a pose or a cube |
 | `python3 -I tools/make_item_textures.py` | Rebuilds the item textures from vanilla textures |
+| `python3 -I tools/make_camp.py` | Rebuilds `data/gnoblars/structures/camp.nbt` block by block and draws `build/preview/camp.png` (top and side) |
 
 Use `--offline` only after a full online build: the runtime classpath needs artifacts that only an online build caches.
 Do not use `runServer` or `runClient` in the sandbox (EULA and no display).
@@ -38,13 +39,40 @@ Do not use `runServer` or `runClient` in the sandbox (EULA and no display).
   nose pickle: 2). At 4 trust the gnoblar is tamed, like a wolf. Hitting a wild gnoblar resets its trust to 0.
   A gift also makes a holding gnoblar drop what it carries. It drops the item by itself after 5 minutes, and on death
   (`setGuaranteedDrop`: the vanilla drop chance only applies to player kills otherwise).
-- **Friends:** follow the owner, empty hand toggles sitting, food heals. `GnoblarSniffGoal` walks to soft ground (dirt, sand,
-  gravel, clay), sniffs for 3 seconds and rolls `data/gnoblars/loot_tables/gameplay/gnoblar_sniffing.json`
-  (flint, clay, sticks, bone, mushroom, string, leather, a rare gold nugget), then rests for 2 to 4 minutes.
+- **Friends:** follow the owner, food heals, and an empty-hand click cycles the mode (`GnoblarMode`): follow, then sit, then wander,
+  with an action-bar message for each (lang `message.gnoblars.mode.*`). Wander uses `Mob.restrictTo` around the spot where it was told
+  (radius `WANDER_RADIUS` 10, not saved by vanilla, so `readAdditionalSaveData` sets it again), sit uses vanilla's ordered-to-sit, and
+  `GnoblarFollowOwnerGoal` only runs in follow mode. A hurt sitting friend gets up and follows. `GnoblarSniffGoal` walks to soft
+  ground (dirt, sand, gravel, clay), sniffs for 3 seconds and rolls `data/gnoblars/loot_tables/gameplay/gnoblar_sniffing.json`
+  (flint, clay, sticks, bone, mushroom, string, leather, a rare gold nugget), then rests for 2 to 4 minutes. It works in follow and
+  wander mode, not while sitting or riding.
+- **Riding:** sneak and click your own gnoblar to carry it piggyback (too big for a shoulder). It becomes a passenger of the player
+  (`startRiding`), `rideTick` places it 0.4 behind and 0.9 above them in their body direction (the player's own passenger offset
+  would put it inside them), and the model shows the `ride` pose (`entity.isPassenger()`). Sneak and use a block with an empty hand to
+  put it down (`GnoblarEvents`, `putDownPassengers`). A player can carry one. The mounted gnoblar cannot be clicked from the player's
+  view (it is behind them), which is why putting it down is a block click and not an entity click.
 - **Pacifism check:** nothing needs killing. Every gift and every loot entry has a peaceful source (fishing, farming, crafting,
   finding). Death drops nothing except what the gnoblar was carrying.
 - **Items:** Nose Pickle (dried kelp + brown mushroom -> 2 pickles, texture recoloured from the vanilla sea pickle) and the spawn egg.
 - **Spawns:** swamps, mangrove swamps, taigas and badlands, groups of 2 to 4, on any solid ground (`ModEntities`).
+
+## The camp
+
+A generated structure, `data/gnoblars/structures/camp.nbt` (15 x 8 x 15), built by `tools/make_camp.py` (edit the script and rerun it;
+the NBT is not meant to be edited by hand). A trodden clearing with a cooking pot (a water cauldron on a campfire, in a ring of
+cobblestone), two hide tents (brown wool and grey wool A-frames: a bedroom with a loot chest, a hay bed and a barrel, and a store of
+barrels with a composter), a scrap heap with a cauldron and iron bars, a totem of bone blocks with a carved pumpkin face, a drying
+rack, log seats, lanterns on posts and five gnoblars of different variants (the variant is in the entity NBT, because structure
+entities skip `finalizeSpawn`). Layer 0 is foundation and layer 1 the ground, and a built cell with no earth below it gets a foundation.
+Loot, `data/gnoblars/loot_tables/chests/camp.json`, is junk and small goods (rotten flesh, bones, kelp, mushrooms, sticks, string,
+nuggets, a chance of a lead, name tag, bell, emerald or nose pickles): everything peaceful.
+
+Worldgen is data driven, vanilla format: `worldgen/structure/gnoblar_camp.json` (a jigsaw structure with one single-piece pool,
+`start_height` -2 so the two foundation layers sit in the ground, projected on `WORLD_SURFACE_WG`, `beard_thin` terrain adaptation),
+`worldgen/template_pool/camp/start.json`, `worldgen/structure_set/gnoblar_camps.json` (random spread, spacing 20, separation 8) and the
+biome tag `tags/worldgen/biome/has_structure/gnoblar_camp.json` (swamps, taigas, badlands, as for the spawns). GameTests place the
+template, count its features and residents, check the loot table, check the registrations and the biome tag, and ask the structure to
+generate a start. Nothing has generated a camp in a real world yet, so the look and the fit to terrain are unseen.
 
 ## Variants
 
@@ -110,6 +138,6 @@ more `tick()`. Goals that scan `level().players()` (pester) cannot be tested hea
 
 ## Ideas not done
 
-Camps (structures with a scrap heap, chest, cooking pot and bone totem), more variants (Trapper with a bell, Sneak with a sack,
-Chieftain), shoulder perch, bell alarm, hats and armour on friends, a pack slot, a wandering gnoblar trader, a gnoblar horn,
+More variants (Trapper with a bell, Sneak with a sack, Chieftain), bell alarm, a camp variant in the badlands or swamp with its
+own materials, hats and armour on friends, a pack slot, a wandering gnoblar trader, a gnoblar horn,
 scrap armour, an Ogre mob, a custom squeak sound.

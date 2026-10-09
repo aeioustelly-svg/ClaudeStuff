@@ -1,5 +1,9 @@
 {
   "entity.gnoblars.gnoblar": "Gnoblar",
   "item.gnoblars.gnoblar_spawn_egg": "Gnoblar Spawn Egg",
-  "item.gnoblars.nose_pickle": "Nose Pickle"
+  "item.gnoblars.nose_pickle": "Nose Pickle",
+  "message.gnoblars.mode.follow": "%s will follow you.",
+  "message.gnoblars.mode.sit": "%s will sit and stay.",
+  "message.gnoblars.mode.wander": "%s will wander around here.",
+  "message.gnoblars.mounted": "%s climbs on your back. Sneak and use a block to put it down."
 }

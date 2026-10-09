@@ -2,6 +2,7 @@ package com.gnoblarmod.gnoblars.gametest;
 
 import com.gnoblarmod.gnoblars.Gnoblars;
 import com.gnoblarmod.gnoblars.entity.GnoblarEntity;
+import com.gnoblarmod.gnoblars.entity.GnoblarMode;
 import com.gnoblarmod.gnoblars.entity.GnoblarVariant;
 import com.gnoblarmod.gnoblars.registry.ModEntities;
 import com.gnoblarmod.gnoblars.registry.ModItems;
@@ -116,15 +117,163 @@ public class GnoblarGameTests {
     }
 
     @GameTest(templateNamespace = Gnoblars.MODID, template = TEMPLATE)
-    public static void ownerTogglesSitting(GameTestHelper helper) {
+    public static void ownerCyclesFollowSitWander(GameTestHelper helper) {
         GnoblarEntity gnoblar = spawn(helper);
         Player player = player(helper);
         tame(gnoblar, player);
-        gnoblar.setOrderedToSit(false);
+        helper.assertTrue(gnoblar.getMode() == GnoblarMode.FOLLOW, "A new friend should follow");
         give(gnoblar, player, ItemStack.EMPTY);
-        helper.assertTrue(gnoblar.isOrderedToSit(), "Empty hand did not make the gnoblar sit");
+        helper.assertTrue(gnoblar.getMode() == GnoblarMode.SIT && gnoblar.isOrderedToSit(), "First click should sit");
         give(gnoblar, player, ItemStack.EMPTY);
-        helper.assertTrue(!gnoblar.isOrderedToSit(), "Empty hand did not make the gnoblar stand");
+        helper.assertTrue(gnoblar.getMode() == GnoblarMode.WANDER && !gnoblar.isOrderedToSit(), "Second click should wander");
+        helper.assertTrue(gnoblar.hasRestriction(), "A wandering friend should be tied to its spot");
+        give(gnoblar, player, ItemStack.EMPTY);
+        helper.assertTrue(gnoblar.getMode() == GnoblarMode.FOLLOW && !gnoblar.hasRestriction(), "Third click should follow again");
+        helper.succeed();
+    }
+
+    @GameTest(templateNamespace = Gnoblars.MODID, template = TEMPLATE, timeoutTicks = 600)
+    public static void wanderingFriendStaysNearItsSpot(GameTestHelper helper) {
+        GnoblarEntity gnoblar = spawn(helper);
+        Player player = player(helper);
+        tame(gnoblar, player);
+        give(gnoblar, player, ItemStack.EMPTY);   // sit
+        give(gnoblar, player, ItemStack.EMPTY);   // wander
+        net.minecraft.world.phys.Vec3 home = gnoblar.position();
+        // a mock owner is not in the level, and vanilla's sit goal keeps a pet with a missing owner seated
+        gnoblar.goalSelector.removeAllGoals(goal -> goal instanceof SitWhenOrderedToGoal);
+        helper.runAfterDelay(300, () -> {
+            helper.assertTrue(gnoblar.position().distanceTo(home) <= GnoblarEntity.WANDER_RADIUS + 2.0D,
+                    "A wandering friend strayed too far from its spot");
+            helper.succeed();
+        });
+    }
+
+    @GameTest(templateNamespace = Gnoblars.MODID, template = TEMPLATE)
+    public static void hurtSittingFriendGetsUpAndFollows(GameTestHelper helper) {
+        GnoblarEntity gnoblar = spawn(helper);
+        Player player = player(helper);
+        tame(gnoblar, player);
+        gnoblar.setMode(GnoblarMode.SIT);
+        gnoblar.hurt(helper.getLevel().damageSources().generic(), 1.0F);
+        helper.assertTrue(gnoblar.getMode() == GnoblarMode.FOLLOW && !gnoblar.isOrderedToSit(), "A hurt friend should get up");
+        helper.succeed();
+    }
+
+    @GameTest(templateNamespace = Gnoblars.MODID, template = TEMPLATE)
+    public static void modeSurvivesSaving(GameTestHelper helper) {
+        GnoblarEntity gnoblar = spawn(helper);
+        tame(gnoblar, player(helper));
+        gnoblar.setMode(GnoblarMode.WANDER);
+        CompoundTag tag = new CompoundTag();
+        gnoblar.addAdditionalSaveData(tag);
+        GnoblarEntity copy = ModEntities.GNOBLAR.get().create(helper.getLevel());
+        copy.readAdditionalSaveData(tag);
+        helper.assertTrue(copy.getMode() == GnoblarMode.WANDER && copy.hasRestriction(), "Wander mode was lost when saving");
+        helper.succeed();
+    }
+
+    @GameTest(templateNamespace = Gnoblars.MODID, template = TEMPLATE)
+    public static void friendRidesOnOwnersBackAndIsPutDown(GameTestHelper helper) {
+        GnoblarEntity gnoblar = spawn(helper);
+        Player owner = player(helper);
+        tame(gnoblar, owner);
+        owner.setShiftKeyDown(true);
+        give(gnoblar, owner, ItemStack.EMPTY);
+        helper.assertTrue(gnoblar.getVehicle() == owner, "Sneaking and clicking should put the gnoblar on the owner's back");
+        gnoblar.rideTick();
+        helper.assertTrue(gnoblar.position().distanceTo(owner.position().add(0.0D, 0.9D, 0.0D)) < 0.6D,
+                "A riding gnoblar should sit on the owner's back");
+        helper.assertTrue(GnoblarEntity.putDownPassengers(owner), "There should be a gnoblar to put down");
+        helper.assertTrue(!gnoblar.isPassenger(), "The gnoblar should be on the ground again");
+        helper.succeed();
+    }
+
+    @GameTest(templateNamespace = Gnoblars.MODID, template = TEMPLATE)
+    public static void strangersCannotCarryAFriend(GameTestHelper helper) {
+        GnoblarEntity gnoblar = spawn(helper);
+        Player owner = player(helper);
+        Player stranger = player(helper);
+        tame(gnoblar, owner);
+        stranger.setShiftKeyDown(true);
+        give(gnoblar, stranger, ItemStack.EMPTY);
+        helper.assertTrue(!gnoblar.isPassenger(), "A stranger picked up somebody else's gnoblar");
+        helper.succeed();
+    }
+
+    @GameTest(templateNamespace = Gnoblars.MODID, template = TEMPLATE)
+    public static void campStructurePlacesWithItsFeatures(GameTestHelper helper) {
+        var template = helper.getLevel().getStructureManager().get(new ResourceLocation(Gnoblars.MODID, "camp"))
+                .orElse(null);
+        helper.assertTrue(template != null, "The camp structure file was not found");
+        BlockPos origin = helper.absolutePos(new BlockPos(2, 0, 2));
+        boolean placed = template.placeInWorld(helper.getLevel(), origin, origin,
+                new net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings(),
+                helper.getLevel().getRandom(), 2);
+        helper.assertTrue(placed, "The camp could not be placed");
+        int campfires = 0, cauldrons = 0, lootContainers = 0, totems = 0;
+        var size = template.getSize();
+        for (BlockPos pos : BlockPos.betweenClosed(origin, origin.offset(size.getX() - 1, size.getY() - 1, size.getZ() - 1))) {
+            var state = helper.getLevel().getBlockState(pos);
+            if (state.is(Blocks.CAMPFIRE)) campfires++;
+            if (state.is(Blocks.WATER_CAULDRON)) cauldrons++;
+            if (state.is(Blocks.CARVED_PUMPKIN)) totems++;
+            var entity = helper.getLevel().getBlockEntity(pos);
+            if (entity != null && entity.saveWithFullMetadata().getString("LootTable").equals("gnoblars:chests/camp")) {
+                lootContainers++;
+            }
+        }
+        helper.assertTrue(campfires == 1 && cauldrons == 1, "The camp should have one fire with one cooking pot");
+        helper.assertTrue(totems == 1, "The camp should have its pumpkin totem");
+        helper.assertTrue(lootContainers >= 2, "The camp should have loot containers, found " + lootContainers);
+        var residents = helper.getLevel().getEntitiesOfClass(GnoblarEntity.class,
+                new net.minecraft.world.phys.AABB(origin, origin.offset(size.getX(), size.getY(), size.getZ())));
+        helper.assertTrue(residents.size() >= 4, "The camp should have gnoblars living in it, found " + residents.size());
+        helper.assertTrue(residents.stream().map(GnoblarEntity::getVariant).distinct().count() >= 3,
+                "The residents should look different from each other");
+        helper.succeed();
+    }
+
+    @GameTest(templateNamespace = Gnoblars.MODID, template = TEMPLATE)
+    public static void campLootIsPeacefulAndNeverEmpty(GameTestHelper helper) {
+        var table = helper.getLevel().getServer().getLootData().getLootTable(new ResourceLocation(Gnoblars.MODID, "chests/camp"));
+        LootParams params = new LootParams.Builder(helper.getLevel()).create(LootContextParamSets.EMPTY);
+        for (int i = 0; i < 30; i++) {
+            helper.assertTrue(!table.getRandomItems(params).isEmpty(), "A camp chest rolled nothing");
+        }
+        helper.succeed();
+    }
+
+    @GameTest(templateNamespace = Gnoblars.MODID, template = TEMPLATE)
+    public static void campStructureGeneratesAStart(GameTestHelper helper) {
+        var level = helper.getLevel();
+        var structure = level.registryAccess().registryOrThrow(Registries.STRUCTURE)
+                .get(new ResourceLocation(Gnoblars.MODID, "gnoblar_camp"));
+        helper.assertTrue(structure != null, "The camp structure is not registered");
+        var generator = level.getChunkSource().getGenerator();
+        var start = structure.generate(level.registryAccess(), generator, generator.getBiomeSource(),
+                level.getChunkSource().randomState(), level.getStructureManager(), level.getSeed(),
+                new net.minecraft.world.level.ChunkPos(40, 40), 0, level, biome -> true);
+        helper.assertTrue(start.isValid(), "The camp did not produce a structure start (the jigsaw set-up is wrong)");
+        helper.assertTrue(start.getPieces().size() == 1, "The camp should be a single piece, found " + start.getPieces().size());
+        helper.succeed();
+    }
+
+    @GameTest(templateNamespace = Gnoblars.MODID, template = TEMPLATE)
+    public static void campIsRegisteredForWorldGeneration(GameTestHelper helper) {
+        var access = helper.getLevel().registryAccess();
+        helper.assertTrue(access.registryOrThrow(Registries.STRUCTURE).containsKey(new ResourceLocation(Gnoblars.MODID, "gnoblar_camp")),
+                "The camp structure is not registered");
+        helper.assertTrue(access.registryOrThrow(Registries.STRUCTURE_SET).containsKey(new ResourceLocation(Gnoblars.MODID, "gnoblar_camps")),
+                "The camp structure set is not registered");
+        helper.assertTrue(access.registryOrThrow(Registries.TEMPLATE_POOL).containsKey(new ResourceLocation(Gnoblars.MODID, "camp/start")),
+                "The camp template pool is not registered");
+        var tag = net.minecraft.tags.TagKey.create(Registries.BIOME, new ResourceLocation(Gnoblars.MODID, "has_structure/gnoblar_camp"));
+        var biomes = access.registryOrThrow(Registries.BIOME);
+        helper.assertTrue(biomes.getHolderOrThrow(net.minecraft.resources.ResourceKey.create(Registries.BIOME,
+                new ResourceLocation("minecraft", "swamp"))).is(tag), "Swamps should be able to hold camps");
+        helper.assertTrue(!biomes.getHolderOrThrow(net.minecraft.resources.ResourceKey.create(Registries.BIOME,
+                new ResourceLocation("minecraft", "plains"))).is(tag), "Plains should not hold camps");
         helper.succeed();
     }
 

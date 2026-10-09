@@ -72,18 +72,20 @@ public class ModelDump {
 
         // name -> {limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch, sit, sniff, scared}
         Map<String, float[]> poses = new LinkedHashMap<>();
-        poses.put("idle", new float[]{0, 0.0F, 20, 0, 0, 0, 0, 0});
-        poses.put("walk", new float[]{1.6F, 0.9F, 40, 0, 0, 0, 0, 0});
-        poses.put("scared", new float[]{2.4F, 1.0F, 30, 0, 0, 0, 0, 1});
-        poses.put("sit", new float[]{0, 0.0F, 20, 0, 0, 1, 0, 0});
-        poses.put("sniff", new float[]{0, 0.0F, 12, 0, 0, 0, 1, 0});
+        poses.put("idle", new float[]{0, 0.0F, 20, 0, 0, 0, 0, 0, 0});
+        poses.put("walk", new float[]{1.6F, 0.9F, 40, 0, 0, 0, 0, 0, 0});
+        poses.put("scared", new float[]{2.4F, 1.0F, 30, 0, 0, 0, 0, 1, 0});
+        poses.put("sit", new float[]{0, 0.0F, 20, 0, 0, 1, 0, 0, 0});
+        poses.put("sniff", new float[]{0, 0.0F, 12, 0, 0, 0, 1, 0, 0});
+        poses.put("ride", new float[]{0, 0.0F, 20, 0, 0, 0, 0, 0, 1});
         // extra phases, so tools/check_clipping.py sees the whole range of each animation
         for (int i = 0; i < 8; i++) {
-            poses.put("walk_" + i, new float[]{i * 0.8F, 1.0F, 10 + i * 5, 0, 0, 0, 0, 0});
-            poses.put("walk_look_" + i, new float[]{i * 0.8F, 1.0F, 10 + i * 5, (i - 4) * 12F, (i - 4) * 8F, 0, 0, 0});
-            poses.put("scared_" + i, new float[]{i * 0.8F, 1.0F, i * 3.5F, 0, 0, 0, 0, 1});
-            poses.put("sniff_" + i, new float[]{0, 0.0F, i * 2.2F, 0, 0, 0, 1, 0});
-            poses.put("sit_look_" + i, new float[]{0, 0.0F, 20, (i - 4) * 15F, (i - 4) * 10F, 1, 0, 0});
+            poses.put("walk_" + i, new float[]{i * 0.8F, 1.0F, 10 + i * 5, 0, 0, 0, 0, 0, 0});
+            poses.put("walk_look_" + i, new float[]{i * 0.8F, 1.0F, 10 + i * 5, (i - 4) * 12F, (i - 4) * 8F, 0, 0, 0, 0});
+            poses.put("scared_" + i, new float[]{i * 0.8F, 1.0F, i * 3.5F, 0, 0, 0, 0, 1, 0});
+            poses.put("sniff_" + i, new float[]{0, 0.0F, i * 2.2F, 0, 0, 0, 1, 0, 0});
+            poses.put("ride_look_" + i, new float[]{0, 0.0F, 20, (i - 4) * 12F, (i - 4) * 10F, 0, 0, 0, 1});
+            poses.put("sit_look_" + i, new float[]{0, 0.0F, 20, (i - 4) * 15F, (i - 4) * 10F, 1, 0, 0, 0});
         }
 
         StringBuilder json = new StringBuilder("{\"texSize\":" + TEX_SIZE + ",\"poses\":{");
@@ -93,7 +95,7 @@ public class ModelDump {
         json.append("\"rest\":").append(dump(model, root));
         for (Map.Entry<String, float[]> pose : poses.entrySet()) {
             float[] p = pose.getValue();
-            model.applyPose(p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
+            model.applyPose(p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8]);
             json.append(",\"").append(pose.getKey()).append("\":").append(dump(model, root));
         }
         json.append("},\"variants\":{");
@@ -101,7 +103,7 @@ public class ModelDump {
         boolean first = true;
         for (GnoblarVariant variant : GnoblarVariant.values()) {
             model.setWartSpot(variant.wart());
-            model.applyPose(0, 0.0F, 20, 0, 0, 0, 0, 0);
+            model.applyPose(0, 0.0F, 20, 0, 0, 0, 0, 0, 0);
             json.append(first ? "" : ",").append("\"").append(variant.id()).append("\":").append(dump(model, root));
             first = false;
         }

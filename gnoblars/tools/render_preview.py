@@ -120,7 +120,7 @@ def main():
     # whole body, every pose, three views
     views = [("3/4", 215, 14), ("front", 180, 4), ("side", 90, 4)]
     cells = []
-    for pose in ("idle", "walk", "scared", "sit", "sniff"):
+    for pose in ("idle", "walk", "scared", "sit", "sniff", "ride"):
         quads = load_quads(data, pose)
         for name, yaw, pitch in views:
             cells.append((f"{pose} / {name}", render(quads, tex, yaw, pitch, 15.0, (330, 330))))
