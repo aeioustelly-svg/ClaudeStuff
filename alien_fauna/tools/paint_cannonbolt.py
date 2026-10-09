@@ -170,8 +170,8 @@ def body(face, x, y, W, H, tx, ty):
 
 
 def round_plate(face, x, y, W, H, tx, ty):
-    """A plate on a limb, trimmed to look round: the four corners of each big face are cut away
-    (transparent) and the rest has a one-pixel black outline. The thin edge faces are black along
+    """A plate on a limb: each big face has a closed one-pixel black outline, corners included,
+    so nothing is left transparent for the limb to show through. The thin edge faces are black along
     their whole length, so the outline runs unbroken round the plate from every angle and no
     notch is left at the corners. The face against the limb is left empty: it is hidden by the limb
     except through the trimmed corners, where its black border showed up as stray black blocks."""
@@ -179,10 +179,8 @@ def round_plate(face, x, y, W, H, tx, ty):
         return None
     if min(W, H) < 4:
         return BLACK                                # edges run the full length: no notch at the ends
-    if x in (0, W - 1) and y in (0, H - 1):
-        return None
     if x in (0, W - 1) or y in (0, H - 1):
-        return BLACK
+        return BLACK                                # corners included: nothing transparent
     lit = (x - W / 2.0) + (y - H / 2.0)
     if lit < -W * 0.2:
         return YELLOW[2]
