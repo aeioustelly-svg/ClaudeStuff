@@ -191,7 +191,7 @@ def claws_down(face, x, y, W, H, tx, ty):
         return None
     if y < 2:
         return CLAW
-    return CLAW if x == {0: 1, 1: 3, 2: 6}[claw] else None   # rows 2 and 3: the tip only
+    return CLAW if x == {0: 1, 1: 3, 2: 6}[claw] else None   # row 2: the tip only
 
 
 def claws_forward(face, x, y, W, H, tx, ty):
@@ -216,11 +216,11 @@ BOXES = {
     "body": (0, 72, 14, 15, 8, body),
     "dome": (68, 72, 8, 6, 8, dome),
     "arm": (0, 96, 6, 17, 6, arm),
-    "arm_plate": (48, 96, 2, 9, 7, plate),
+    "arm_plate": (48, 96, 2, 6, 6, plate),
     "leg": (24, 96, 6, 8, 6, leg),
     "knee_plate": (68, 90, 1, 5, 4, plate),
-    "hand_claws": (0, 120, 8, 4, 0, claws_down),
-    "back_plate": (72, 0, 6, 10, 2, plate),
+    "hand_claws": (0, 120, 8, 3, 0, claws_down),
+    "back_band": (72, 0, 14, 4, 2, plate),
     "foot_claws": (20, 120, 6, 0, 2, claws_forward),
     "ball_x_bar": (0, 34, 20, 16, 14, ball_bar(0)),
     "ball_y_bar": (68, 34, 14, 20, 16, ball_bar(1)),
