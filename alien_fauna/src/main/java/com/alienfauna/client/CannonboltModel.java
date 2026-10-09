@@ -69,28 +69,28 @@ public class CannonboltModel<T extends CannonboltEntity> extends EntityModel<T> 
                 PartPose.offsetAndRotation(7.0F, -15.0F, 0.0F, 0.0F, 0.0F, -0.12F));
 
         // Arms: one long box from the shoulder down to the knees and a round yellow plate on the
-        // outside of the forearm. The plate is three boxes (a middle column and two short sides), so its
+        // outside of the forearm, joined to the black of the shoulder by a painted line. The plate is three boxes (a middle column and two short sides), so its
         // cut corners are real faces and nothing hollow shows through them. A yellow box sits on the black
         // plate and sticks out exactly one pixel beyond it, which gives the plate its shape. The fingers are faint lines painted on the hand, with no claw geometry.
         body.addOrReplaceChild("right_arm",
                 CubeListBuilder.create().texOffs(0, 102).addBox(-3.0F, -1.0F, -3.0F, 6, 20, 6)
-                        .texOffs(48, 102).addBox(-4.0F, 6.0F, -2.0F, 1, 6, 4)
-                        .texOffs(58, 102).addBox(-4.0F, 7.0F, -3.0F, 1, 4, 1)
-                        .texOffs(58, 102).addBox(-4.0F, 7.0F, 2.0F, 1, 4, 1)
-                        .texOffs(48, 112).addBox(-5.0F, 7.0F, -2.0F, 1, 4, 4),
+                        .texOffs(48, 102).addBox(-4.0F, 6.0F, -2.0F, 1, 8, 4)
+                        .texOffs(58, 102).addBox(-4.0F, 7.0F, -3.0F, 1, 6, 1)
+                        .texOffs(58, 102).addBox(-4.0F, 7.0F, 2.0F, 1, 6, 1)
+                        .texOffs(48, 114).addBox(-5.0F, 7.0F, -2.0F, 1, 6, 4),
                 PartPose.offset(-10.0F, -15.0F, 0.0F));
         body.addOrReplaceChild("left_arm",
                 CubeListBuilder.create().mirror().texOffs(0, 102).addBox(-3.0F, -1.0F, -3.0F, 6, 20, 6)
-                        .texOffs(48, 102).addBox(3.0F, 6.0F, -2.0F, 1, 6, 4)
-                        .texOffs(58, 102).addBox(3.0F, 7.0F, -3.0F, 1, 4, 1)
-                        .texOffs(58, 102).addBox(3.0F, 7.0F, 2.0F, 1, 4, 1)
-                        .texOffs(48, 112).addBox(4.0F, 7.0F, -2.0F, 1, 4, 4),
+                        .texOffs(48, 102).addBox(3.0F, 6.0F, -2.0F, 1, 8, 4)
+                        .texOffs(58, 102).addBox(3.0F, 7.0F, -3.0F, 1, 6, 1)
+                        .texOffs(58, 102).addBox(3.0F, 7.0F, 2.0F, 1, 6, 1)
+                        .texOffs(48, 114).addBox(4.0F, 7.0F, -2.0F, 1, 6, 4),
                 PartPose.offset(10.0F, -15.0F, 0.0F));
 
-        // Legs: one box from the hip, a plate on the outside of the thigh, flat claws on the toes.
+        // Legs: one box from the hip and a plate on the outside of the thigh. The toes are faint lines painted
+        // on the foot, like the fingers, with no claw geometry.
         root.addOrReplaceChild("right_leg",
                 CubeListBuilder.create().texOffs(24, 102).addBox(-3.0F, 0.0F, -3.0F, 6, 8, 6)
-                        .texOffs(28, 120).addBox(-3.0F, 8.0F, -5.0F, 6, 0, 2)
                         .texOffs(68, 90).addBox(-4.0F, 1.0F, -1.0F, 1, 5, 2)
                         .texOffs(74, 90).addBox(-4.0F, 2.0F, -2.0F, 1, 3, 1)
                         .texOffs(74, 90).addBox(-4.0F, 2.0F, 1.0F, 1, 3, 1)
@@ -98,7 +98,6 @@ public class CannonboltModel<T extends CannonboltEntity> extends EntityModel<T> 
                 PartPose.offset(-4.0F, 16.0F, 0.0F));
         root.addOrReplaceChild("left_leg",
                 CubeListBuilder.create().mirror().texOffs(24, 102).addBox(-3.0F, 0.0F, -3.0F, 6, 8, 6)
-                        .texOffs(28, 120).addBox(-3.0F, 8.0F, -5.0F, 6, 0, 2)
                         .texOffs(68, 90).addBox(3.0F, 1.0F, -1.0F, 1, 5, 2)
                         .texOffs(74, 90).addBox(3.0F, 2.0F, -2.0F, 1, 3, 1)
                         .texOffs(74, 90).addBox(3.0F, 2.0F, 1.0F, 1, 3, 1)

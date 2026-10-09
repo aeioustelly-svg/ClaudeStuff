@@ -200,6 +200,8 @@ def dome(face, x, y, W, H, tx, ty):
 
 
 def arm(face, x, y, W, H, tx, ty):
+    if face == "right" and x in (2, 3) and 1 <= y <= 6:
+        return BLACK                                # joins the plate to the black of the shoulder
     if face == "top":
         return BLACK
     if face == "bottom":
@@ -218,6 +220,10 @@ def arm(face, x, y, W, H, tx, ty):
 
 
 def leg(face, x, y, W, H, tx, ty):
+    if face == "right" and y in (H - 3, H - 2) and x in (0, 2, 4):
+        return FINGER                               # three faint toe lines on the outer side
+    if face == "front" and y in (H - 3, H - 2) and x == 1:
+        return FINGER                               # one faint line on the front, like the thumb
     if face == "top":
         return WHITE[1]
     if face == "bottom":
@@ -225,16 +231,6 @@ def leg(face, x, y, W, H, tx, ty):
     if y >= H - 2:
         return STEEL[1] if y == H - 2 else STEEL[0]
     return fur(face, x, y, W, H, tx, ty)
-
-
-def claws_forward(face, x, y, W, H, tx, ty):
-    """Three flat claws lying forward from the toes; the tip row is the last row (front)."""
-    if face not in ("top", "bottom"):
-        return None
-    k, cx = divmod(x, 2)
-    if y < H - 1:
-        return CLAW_LIGHT if cx == 0 else CLAW
-    return CLAW if cx == 1 else None
 
 
 def ball_bar(shift):
@@ -252,14 +248,13 @@ BOXES = {
     "back_band_3": (72, 15, 14, 5, 2, back_band(2)),
     "dome": (68, 72, 8, 6, 7, dome),
     "arm": (0, 102, 6, 20, 6, arm),
-    "arm_plate_mid": (48, 102, 1, 6, 4, plate_mid),
-    "arm_plate_side": (58, 102, 1, 4, 1, plate_side),
-    "arm_bulge": (48, 112, 1, 4, 4, bulge),
+    "arm_plate_mid": (48, 102, 1, 8, 4, plate_mid),
+    "arm_plate_side": (58, 102, 1, 6, 1, plate_side),
+    "arm_bulge": (48, 114, 1, 6, 4, bulge),
     "leg": (24, 102, 6, 8, 6, leg),
     "knee_plate_mid": (68, 90, 1, 5, 2, plate_mid),
     "knee_plate_side": (74, 90, 1, 3, 1, plate_side),
     "knee_bulge": (74, 95, 1, 3, 2, bulge),
-    "foot_claws": (28, 120, 6, 0, 2, claws_forward),
     "ball_x_bar": (0, 34, 20, 16, 14, ball_bar(0)),
     "ball_y_bar": (68, 34, 14, 20, 16, ball_bar(1)),
     "ball_z_bar": (0, 0, 16, 14, 20, ball_bar(-1)),
