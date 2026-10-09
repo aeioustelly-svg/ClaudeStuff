@@ -48,42 +48,45 @@ public class CannonboltModel<T extends CannonboltEntity> extends EntityModel<T> 
         // Feet are at y = 24. The hips are at y = 16, the shoulders at y = 6.
         // One tall white torso carries the face (there is no separate head, as on the character).
         PartDefinition body = root.addOrReplaceChild("body",
-                CubeListBuilder.create().texOffs(0, 72).addBox(-7.0F, -15.0F, -4.0F, 14, 15, 8),
+                CubeListBuilder.create().texOffs(0, 72).addBox(-7.0F, -18.0F, -5.0F, 14, 18, 10)
+                        // three yellow bands across the back with a gap between them, like an armadillo's
+                        // shell, narrowing towards the hips. Each has its own part of the texture.
+                        .texOffs(72, 0).addBox(-7.0F, -17.0F, 5.0F, 14, 5, 2)
+                        .texOffs(72, 7).addBox(-6.0F, -11.0F, 5.0F, 12, 5, 2)
+                        .texOffs(72, 14).addBox(-5.0F, -5.0F, 5.0F, 10, 5, 2),
                 PartPose.offset(0.0F, 16.0F, 0.0F));
 
         // The yellow shoulder plates: one box each, against the torso and over the arm, tilted
         // slightly inwards about their inner bottom corner. They are 7 px deep, so their front and
-        // back faces share a plane with neither the torso (8 deep) nor the arm (6 deep).
+        // back faces share a plane with neither the torso (10 deep) nor the arm (6 deep).
         // The left one mirrors the right.
         body.addOrReplaceChild("right_dome",
                 CubeListBuilder.create().texOffs(68, 72).addBox(-8.0F, -6.0F, -3.5F, 8, 6, 7),
-                PartPose.offsetAndRotation(-7.0F, -12.0F, 0.0F, 0.0F, 0.0F, 0.12F));
+                PartPose.offsetAndRotation(-7.0F, -15.0F, 0.0F, 0.0F, 0.0F, 0.12F));
         body.addOrReplaceChild("left_dome",
                 CubeListBuilder.create().mirror().texOffs(68, 72).addBox(0.0F, -6.0F, -3.5F, 8, 6, 7),
-                PartPose.offsetAndRotation(7.0F, -12.0F, 0.0F, 0.0F, 0.0F, -0.12F));
+                PartPose.offsetAndRotation(7.0F, -15.0F, 0.0F, 0.0F, 0.0F, -0.12F));
 
-        // Arms: one long box from the shoulder down to the knees, a yellow plate on the outside
-        // and a flat card of three claws hanging flush from the outer side of the hand.
+        // Arms: one long box from the shoulder down to the knees and a yellow plate on the outside
+        // of the forearm. The fingers are faint lines painted on the hand, with no claw geometry.
         body.addOrReplaceChild("right_arm",
-                CubeListBuilder.create().texOffs(0, 96).addBox(-3.0F, -1.0F, -3.0F, 6, 17, 6)
-                        .texOffs(100, 96).addBox(-3.0F, 16.0F, -4.0F, 0, 3, 8)
-                        .texOffs(48, 96).addBox(-5.0F, 4.0F, -3.0F, 2, 6, 6),
-                PartPose.offset(-10.0F, -12.0F, 0.0F));
+                CubeListBuilder.create().texOffs(0, 102).addBox(-3.0F, -1.0F, -3.0F, 6, 20, 6)
+                        .texOffs(48, 102).addBox(-5.0F, 6.0F, -3.0F, 2, 6, 6),
+                PartPose.offset(-10.0F, -15.0F, 0.0F));
         body.addOrReplaceChild("left_arm",
-                CubeListBuilder.create().mirror().texOffs(0, 96).addBox(-3.0F, -1.0F, -3.0F, 6, 17, 6)
-                        .texOffs(100, 96).addBox(3.0F, 16.0F, -4.0F, 0, 3, 8)
-                        .texOffs(48, 96).addBox(3.0F, 4.0F, -3.0F, 2, 6, 6),
-                PartPose.offset(10.0F, -12.0F, 0.0F));
+                CubeListBuilder.create().mirror().texOffs(0, 102).addBox(-3.0F, -1.0F, -3.0F, 6, 20, 6)
+                        .texOffs(48, 102).addBox(3.0F, 6.0F, -3.0F, 2, 6, 6),
+                PartPose.offset(10.0F, -15.0F, 0.0F));
 
         // Legs: one box from the hip, a plate on the outside of the thigh, flat claws on the toes.
         root.addOrReplaceChild("right_leg",
-                CubeListBuilder.create().texOffs(24, 96).addBox(-3.0F, 0.0F, -3.0F, 6, 8, 6)
-                        .texOffs(20, 120).addBox(-3.0F, 8.0F, -5.0F, 6, 0, 2)
+                CubeListBuilder.create().texOffs(24, 102).addBox(-3.0F, 0.0F, -3.0F, 6, 8, 6)
+                        .texOffs(28, 120).addBox(-3.0F, 8.0F, -5.0F, 6, 0, 2)
                         .texOffs(68, 90).addBox(-4.0F, 1.0F, -2.0F, 1, 5, 4),
                 PartPose.offset(-4.0F, 16.0F, 0.0F));
         root.addOrReplaceChild("left_leg",
-                CubeListBuilder.create().mirror().texOffs(24, 96).addBox(-3.0F, 0.0F, -3.0F, 6, 8, 6)
-                        .texOffs(20, 120).addBox(-3.0F, 8.0F, -5.0F, 6, 0, 2)
+                CubeListBuilder.create().mirror().texOffs(24, 102).addBox(-3.0F, 0.0F, -3.0F, 6, 8, 6)
+                        .texOffs(28, 120).addBox(-3.0F, 8.0F, -5.0F, 6, 0, 2)
                         .texOffs(68, 90).addBox(3.0F, 1.0F, -2.0F, 1, 5, 4),
                 PartPose.offset(4.0F, 16.0F, 0.0F));
 

@@ -22,6 +22,7 @@ STEEL = ((70, 72, 86), (104, 106, 120), (140, 142, 156))
 BLACK = (24, 24, 28)
 AMBER = (228, 150, 36)
 AMBER_LIGHT = (250, 196, 84)
+FINGER = (58, 60, 72)
 CLAW = (28, 28, 34)
 CLAW_LIGHT = (120, 122, 138)
 
@@ -74,6 +75,23 @@ def plate(face, x, y, W, H, tx, ty):
     return YELLOW[1]
 
 
+def back_band(kind):
+    """Each back band gets its own surface so the three never look like one texture repeated:
+    vertical ridges on the first, a diagonal scratch on the second, a row of rivets on the third."""
+    def paint(face, x, y, W, H, tx, ty):
+        c = plate(face, x, y, W, H, tx, ty)
+        if face != "back" or c != YELLOW[1]:
+            return c
+        if kind == 0 and x % 3 == 0:
+            return YELLOW[0]
+        if kind == 1 and (x + y) % 6 == 0:
+            return YELLOW[0]
+        if kind == 2 and y == H // 2 and x % 3 == 1:
+            return YELLOW[2]
+        return c
+    return paint
+
+
 def crack(face, x, y, W, H, tx, ty, row):
     """Stepped black crack across a ball face with a dark edge beneath it."""
     def line(col):
@@ -121,6 +139,8 @@ def body(face, x, y, W, H, tx, ty):
         return fur(face, x, y, W, H, tx, ty)
     if y < 2:
         return BLACK
+    if face == "back" and y in (6, 12):
+        return BLACK                                # the lines between the back bands
     if face == "front":
         mid = W // 2
         if y == 2:
@@ -163,8 +183,8 @@ def arm(face, x, y, W, H, tx, ty):
         return STEEL[0]
     if y < 1:
         return BLACK
-    if y in (3, 6, 9) and face != "top":
-        return BLACK                                # three black lines round the arm
+    if face == "front" and y in (H - 3, H - 2) and x in (0, 2, 4):
+        return FINGER                               # three faint finger lines, front only
     if y >= H - 4:
         return STEEL[2] if y < H - 1 else STEEL[1]
     if y == H - 5:
@@ -180,19 +200,6 @@ def leg(face, x, y, W, H, tx, ty):
     if y >= H - 2:
         return STEEL[1] if y == H - 2 else STEEL[0]
     return fur(face, x, y, W, H, tx, ty)
-
-
-def claws_down(face, x, y, W, H, tx, ty):
-    """Three claws hanging flush from the outer side of the hand, each two pixels wide at the base
-    and curling inwards to a single-pixel tip. The gaps between them stay transparent."""
-    if face not in ("right", "left"):
-        return None
-    claw = {0: 0, 1: 0, 3: 1, 4: 1, 6: 2, 7: 2}.get(x)
-    if claw is None:
-        return None
-    if y < 2:
-        return CLAW
-    return CLAW if x == {0: 1, 1: 3, 2: 6}[claw] else None   # row 2: the tip only
 
 
 def claws_forward(face, x, y, W, H, tx, ty):
@@ -214,14 +221,16 @@ def ball_bar(shift):
 
 
 BOXES = {
-    "body": (0, 72, 14, 15, 8, body),
+    "body": (0, 72, 14, 18, 10, body),
+    "back_band_1": (72, 0, 14, 5, 2, back_band(0)),
+    "back_band_2": (72, 7, 12, 5, 2, back_band(1)),
+    "back_band_3": (72, 14, 10, 5, 2, back_band(2)),
     "dome": (68, 72, 8, 6, 7, dome),
-    "arm": (0, 96, 6, 17, 6, arm),
-    "arm_plate": (48, 96, 2, 6, 6, plate),
-    "leg": (24, 96, 6, 8, 6, leg),
+    "arm": (0, 102, 6, 20, 6, arm),
+    "arm_plate": (48, 102, 2, 6, 6, plate),
+    "leg": (24, 102, 6, 8, 6, leg),
     "knee_plate": (68, 90, 1, 5, 4, plate),
-    "hand_claws": (100, 96, 0, 3, 8, claws_down),
-    "foot_claws": (20, 120, 6, 0, 2, claws_forward),
+    "foot_claws": (28, 120, 6, 0, 2, claws_forward),
     "ball_x_bar": (0, 34, 20, 16, 14, ball_bar(0)),
     "ball_y_bar": (68, 34, 14, 20, 16, ball_bar(1)),
     "ball_z_bar": (0, 0, 16, 14, 20, ball_bar(-1)),
