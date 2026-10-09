@@ -57,17 +57,17 @@ def dither(x, y, a, b):
 
 
 def plate(face, x, y, W, H, tx, ty):
-    """Yellow shell with a black outline painted into the texture itself (nothing is layered on
-    top): every face of the box has a one-pixel black border, and faces two pixels or thinner are
-    black throughout. Inside: a light top, a dark crescent on one side."""
-    if min(W, H) <= 2 or x == 0 or y == 0 or x == W - 1 or y == H - 1:
-        return BLACK
+    """Yellow shell: lighter tops, darker undersides, a dark rim and a dark crescent on one side."""
+    if face == "top":
+        return YELLOW[2] if min(x, y, W - 1 - x, H - 1 - y) > 0 else YELLOW[1]
     if face == "bottom":
         return YELLOW[0]
-    if face == "top":
-        return YELLOW[2]
+    if W < 3 or H < 3:
+        return YELLOW[1]
+    if x == 0 or x == W - 1 or y == H - 1:
+        return YELLOW[0]
     crescent = (W // 4) * (1.0 - ((2.0 * y - H) / H) ** 2)
-    if x <= crescent or y >= H - 2:
+    if x <= crescent:
         return YELLOW[0]
     if y == 1 and x < W - 2:
         return YELLOW[2]
