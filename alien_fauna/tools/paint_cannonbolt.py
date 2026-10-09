@@ -139,7 +139,7 @@ def body(face, x, y, W, H, tx, ty):
         return fur(face, x, y, W, H, tx, ty)
     if y < 2:
         return BLACK
-    if face == "back" and y in (6, 12):
+    if face == "back" and y in (5, 12):
         return BLACK                                # the lines between the back bands
     if face == "front":
         mid = W // 2
@@ -223,10 +223,10 @@ def ball_bar(shift):
 
 
 BOXES = {
-    "body": (0, 72, 14, 18, 10, body),
+    "body": (0, 72, 14, 18, 12, body),
     "back_band_1": (72, 0, 14, 5, 2, back_band(0)),
-    "back_band_2": (72, 7, 12, 5, 2, back_band(1)),
-    "back_band_3": (72, 14, 10, 5, 2, back_band(2)),
+    "back_band_2": (72, 7, 14, 6, 2, back_band(1)),
+    "back_band_3": (72, 15, 14, 5, 2, back_band(2)),
     "dome": (68, 72, 8, 6, 7, dome),
     "arm": (0, 102, 6, 20, 6, arm),
     "arm_plate": (48, 102, 2, 6, 6, plate),

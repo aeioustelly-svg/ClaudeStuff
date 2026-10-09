@@ -48,17 +48,18 @@ public class CannonboltModel<T extends CannonboltEntity> extends EntityModel<T> 
         // Feet are at y = 24. The hips are at y = 16, the shoulders at y = 6.
         // One tall white torso carries the face (there is no separate head, as on the character).
         PartDefinition body = root.addOrReplaceChild("body",
-                CubeListBuilder.create().texOffs(0, 72).addBox(-7.0F, -18.0F, -5.0F, 14, 18, 10)
-                        // three yellow bands across the back with a gap between them, like an armadillo's
-                        // shell, narrowing towards the hips. Each has its own part of the texture.
-                        .texOffs(72, 0).addBox(-7.0F, -17.0F, 5.0F, 14, 5, 2)
-                        .texOffs(72, 7).addBox(-6.0F, -11.0F, 5.0F, 12, 5, 2)
-                        .texOffs(72, 14).addBox(-5.0F, -5.0F, 5.0F, 10, 5, 2),
+                CubeListBuilder.create().texOffs(0, 72).addBox(-7.0F, -18.0F, -6.0F, 14, 18, 12)
+                        // three yellow bands, each as wide as the torso, with a gap between them like an
+                        // armadillo's shell; the middle one is a little longer. Each has its own part
+                        // of the texture.
+                        .texOffs(72, 0).addBox(-7.0F, -18.0F, 6.0F, 14, 5, 2)
+                        .texOffs(72, 7).addBox(-7.0F, -12.0F, 6.0F, 14, 6, 2)
+                        .texOffs(72, 15).addBox(-7.0F, -5.0F, 6.0F, 14, 5, 2),
                 PartPose.offset(0.0F, 16.0F, 0.0F));
 
         // The yellow shoulder plates: one box each, against the torso and over the arm, tilted
         // slightly inwards about their inner bottom corner. They are 7 px deep, so their front and
-        // back faces share a plane with neither the torso (10 deep) nor the arm (6 deep).
+        // back faces share a plane with neither the torso (12 deep) nor the arm (6 deep).
         // The left one mirrors the right.
         body.addOrReplaceChild("right_dome",
                 CubeListBuilder.create().texOffs(68, 72).addBox(-8.0F, -6.0F, -3.5F, 8, 6, 7),
