@@ -69,13 +69,14 @@ public class ModelDump {
         Path out = Path.of(args[0]);
         Files.createDirectories(out.getParent());
 
-        // name -> {limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch, howl, dive, lash}
+        // name -> {limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch, howl, dive, lash, sit}
         Map<String, float[]> poses = new LinkedHashMap<>();
-        poses.put("idle", new float[]{0, 0.05F, 20, 0, 0, 0, 0, 0});
-        poses.put("fly", new float[]{6, 0.8F, 40, 0, 0, 0, 0, 0});
-        poses.put("howl", new float[]{0, 0.0F, 30, 0, 0, 1, 0, 0});
-        poses.put("dive", new float[]{4, 1.0F, 30, 0, 0, 0, 1, 0});
-        poses.put("lash", new float[]{0, 0.1F, 12, 0, 0, 0, 0, 1});
+        poses.put("idle", new float[]{0, 0.05F, 20, 0, 0, 0, 0, 0, 0});
+        poses.put("fly", new float[]{6, 0.8F, 40, 0, 0, 0, 0, 0, 0});
+        poses.put("howl", new float[]{0, 0.0F, 30, 0, 0, 1, 0, 0, 0});
+        poses.put("dive", new float[]{4, 1.0F, 30, 0, 0, 0, 1, 0, 0});
+        poses.put("lash", new float[]{0, 0.1F, 12, 0, 0, 0, 0, 1, 0});
+        poses.put("perch", new float[]{0, 0.0F, 20, 0, 0, 0, 0, 0, 1});
 
         StringBuilder json = new StringBuilder("{\"texSize\":" + TEX_SIZE + ",\"poses\":{");
         ModelPart root = DracoModel.createBodyLayer().bakeRoot();
@@ -83,7 +84,7 @@ public class ModelDump {
         json.append("\"rest\":").append(dump(model, root));
         for (Map.Entry<String, float[]> pose : poses.entrySet()) {
             float[] p = pose.getValue();
-            model.applyPose(p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
+            model.applyPose(p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8]);
             json.append(",\"").append(pose.getKey()).append("\":").append(dump(model, root));
         }
         json.append("}}");

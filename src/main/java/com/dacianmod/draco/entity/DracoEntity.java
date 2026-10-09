@@ -2,6 +2,7 @@ package com.dacianmod.draco.entity;
 
 import com.dacianmod.draco.entity.goal.DracoDiveGoal;
 import com.dacianmod.draco.entity.goal.DracoHowlGoal;
+import com.dacianmod.draco.entity.goal.DracoPerchGoal;
 import com.dacianmod.draco.entity.goal.DracoStalkGoal;
 import com.dacianmod.draco.entity.goal.DracoTailLashGoal;
 import com.dacianmod.draco.entity.goal.FollowCapWearerGoal;
@@ -22,14 +23,18 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.PathfinderMob;
+import net.minecraft.world.entity.AgeableMob;
+import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.control.FlyingMoveControl;
+import net.minecraft.world.entity.ai.goal.FollowOwnerGoal;
 import net.minecraft.world.entity.ai.goal.RandomLookAroundGoal;
 import net.minecraft.world.entity.ai.goal.WaterAvoidingRandomFlyingGoal;
 import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal;
 import net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal;
+import net.minecraft.world.entity.ai.goal.target.OwnerHurtByTargetGoal;
+import net.minecraft.world.entity.ai.goal.target.OwnerHurtTargetGoal;
 import net.minecraft.world.entity.ai.navigation.FlyingPathNavigation;
 import net.minecraft.world.entity.ai.navigation.PathNavigation;
 import net.minecraft.world.entity.animal.FlyingAnimal;
@@ -39,12 +44,15 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
+import net.minecraftforge.event.ForgeEventFactory;
 
 /**
- * A neutral, wolf-headed flying serpent. It only fights whoever hurts it.
+ * A neutral, wolf-headed flying serpent. Wild, it only fights whoever hurts it.
  * Attacks: diving bite, howl cone, tail lash. Sheds skin periodically (no killing required).
+ * Tamed with bones like a wolf: it then follows and defends its owner, perches when told to
+ * sit, and its owner can get mamaliga from it with a bowl.
  */
-public class DracoEntity extends PathfinderMob implements FlyingAnimal {
+public class DracoEntity extends TamableAnimal implements FlyingAnimal {
     private static final EntityDataAccessor<Boolean> HOWLING =
             SynchedEntityData.defineId(DracoEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Boolean> DIVING =
@@ -63,6 +71,7 @@ public class DracoEntity extends PathfinderMob implements FlyingAnimal {
     private float howlAnim, howlAnimO;
     private float diveAnim, diveAnimO;
     private float lashAnim, lashAnimO;
+    private float sitAnim, sitAnimO;
     private float bodyPitch, bodyPitchO;
 
     public DracoEntity(EntityType<? extends DracoEntity> type, Level level) {
@@ -84,15 +93,19 @@ public class DracoEntity extends PathfinderMob implements FlyingAnimal {
 
     @Override
     protected void registerGoals() {
+        this.goalSelector.addGoal(0, new DracoPerchGoal(this));
         this.goalSelector.addGoal(0, new DracoDiveGoal(this));
         this.goalSelector.addGoal(1, new DracoHowlGoal(this));
         this.goalSelector.addGoal(2, new DracoTailLashGoal(this));
         this.goalSelector.addGoal(3, new DracoStalkGoal(this));
         this.goalSelector.addGoal(4, new FollowCapWearerGoal(this));
-        this.goalSelector.addGoal(5, new WaterAvoidingRandomFlyingGoal(this, 1.0D));
-        this.goalSelector.addGoal(6, new LookAtPlayerGoal(this, Player.class, 8.0F));
-        this.goalSelector.addGoal(7, new RandomLookAroundGoal(this));
-        this.targetSelector.addGoal(1, new HurtByTargetGoal(this));
+        this.goalSelector.addGoal(5, new FollowOwnerGoal(this, 1.0D, 8.0F, 3.0F, true));
+        this.goalSelector.addGoal(6, new WaterAvoidingRandomFlyingGoal(this, 1.0D));
+        this.goalSelector.addGoal(7, new LookAtPlayerGoal(this, Player.class, 8.0F));
+        this.goalSelector.addGoal(8, new RandomLookAroundGoal(this));
+        this.targetSelector.addGoal(1, new OwnerHurtByTargetGoal(this));
+        this.targetSelector.addGoal(2, new OwnerHurtTargetGoal(this));
+        this.targetSelector.addGoal(3, new HurtByTargetGoal(this).setAlertOthers());
     }
 
     @Override
@@ -138,6 +151,8 @@ public class DracoEntity extends PathfinderMob implements FlyingAnimal {
         howlAnim = approach(howlAnim, isHowling() ? 1.0F : 0.0F, 0.2F);
         diveAnim = approach(diveAnim, isDiving() ? 1.0F : 0.0F, 0.25F);
         lashAnim = approach(lashAnim, isLashing() ? 1.0F : 0.0F, 0.15F);
+        sitAnimO = sitAnim;
+        sitAnim = approach(sitAnim, isInSittingPose() ? 1.0F : 0.0F, 0.08F);
 
         bodyPitchO = bodyPitch;
         Vec3 motion = getDeltaMovement();
@@ -206,6 +221,9 @@ public class DracoEntity extends PathfinderMob implements FlyingAnimal {
         if (recovering) {
             amount *= 1.25F;
         }
+        if (!level().isClientSide) {
+            setOrderedToSit(false);
+        }
         return super.hurt(source, amount);
     }
 
@@ -224,28 +242,105 @@ public class DracoEntity extends PathfinderMob implements FlyingAnimal {
     }
 
 
-    // ---- polenta trade ----
+    // ---- taming, sitting and the polenta trade ----
 
-    /** Holding a bowl up to a calm Draco gives a chance of a bowl of mamaliga. */
     @Override
     public InteractionResult mobInteract(Player player, InteractionHand hand) {
         ItemStack held = player.getItemInHand(hand);
-        if (!held.is(Items.BOWL) || getTarget() != null) {
-            return super.mobInteract(player, hand);
-        }
+
         if (level().isClientSide) {
+            boolean handled = isTame() ? isOwnedBy(player) : (held.is(Items.BONE) && getTarget() == null);
+            return handled ? InteractionResult.CONSUME : InteractionResult.PASS;
+        }
+
+        if (isTame()) {
+            if (!isOwnedBy(player)) {
+                return super.mobInteract(player, hand);
+            }
+            if (held.is(Items.BOWL) && getTarget() == null) {
+                // only a tamed Draco gives mamaliga, and only to its owner
+                if (polentaCooldown > 0) {
+                    return InteractionResult.CONSUME;
+                }
+                if (this.random.nextFloat() < getPolentaChance(player)) {
+                    givePolenta(player, held);
+                } else {
+                    polentaCooldown = 40;
+                    playSound(SoundEvents.WOLF_WHINE, 0.8F, 0.7F);
+                }
+                return InteractionResult.CONSUME;
+            }
+            if (isFood(held) && getHealth() < getMaxHealth()) {
+                heal(held.getFoodProperties(this).getNutrition());
+                if (!player.getAbilities().instabuild) {
+                    held.shrink(1);
+                }
+                gameEvent(net.minecraft.world.level.gameevent.GameEvent.EAT);
+                return InteractionResult.SUCCESS;
+            }
+            // anything else toggles sitting, like a wolf
+            setOrderedToSit(!isOrderedToSit());
+            this.jumping = false;
+            this.navigation.stop();
+            setTarget(null);
             return InteractionResult.SUCCESS;
         }
-        if (polentaCooldown > 0) {
-            return InteractionResult.CONSUME;
+
+        if (held.is(Items.BONE) && getTarget() == null) {
+            if (!player.getAbilities().instabuild) {
+                held.shrink(1);
+            }
+            if (this.random.nextInt(3) == 0 && !ForgeEventFactory.onAnimalTame(this, player)) {
+                tame(player);
+                this.navigation.stop();
+                setTarget(null);
+                setOrderedToSit(true);
+                level().broadcastEntityEvent(this, (byte) 7);
+            } else {
+                level().broadcastEntityEvent(this, (byte) 6);
+            }
+            return InteractionResult.SUCCESS;
         }
-        if (this.random.nextFloat() < getPolentaChance(player)) {
-            givePolenta(player, held);
+        return super.mobInteract(player, hand);
+    }
+
+    /** Compares UUIDs, so ownership still resolves when the owner entity cannot be looked up. */
+    @Override
+    public boolean isOwnedBy(net.minecraft.world.entity.LivingEntity entity) {
+        return entity != null && entity.getUUID().equals(getOwnerUUID());
+    }
+
+    @Override
+    public void setTame(boolean tamed) {
+        super.setTame(tamed);
+        if (tamed) {
+            getAttribute(Attributes.MAX_HEALTH).setBaseValue(40.0D);
+            setHealth(40.0F);
         } else {
-            polentaCooldown = 40;
-            playSound(SoundEvents.WOLF_WHINE, 0.8F, 0.7F);
+            getAttribute(Attributes.MAX_HEALTH).setBaseValue(30.0D);
         }
-        return InteractionResult.CONSUME;
+    }
+
+    /** Meat heals a tamed Draco. Mamaliga is for people. */
+    @Override
+    public boolean isFood(ItemStack stack) {
+        var food = stack.getFoodProperties(this);
+        return food != null && food.isMeat();
+    }
+
+    @Override
+    public AgeableMob getBreedOffspring(ServerLevel level, AgeableMob partner) {
+        return null;
+    }
+
+    @Override
+    public boolean canFallInLove() {
+        return false;
+    }
+
+    @Override
+    public float getWalkTargetValue(BlockPos pos, net.minecraft.world.level.LevelReader level) {
+        return 0.0F;
     }
 
     /** 30 percent, doubled for a player wearing the Dacian felt cap. */
@@ -314,5 +409,6 @@ public class DracoEntity extends PathfinderMob implements FlyingAnimal {
     public float getHowlAnim(float partialTick) { return Mth.lerp(partialTick, howlAnimO, howlAnim); }
     public float getDiveAnim(float partialTick) { return Mth.lerp(partialTick, diveAnimO, diveAnim); }
     public float getLashAnim(float partialTick) { return Mth.lerp(partialTick, lashAnimO, lashAnim); }
+    public float getSitAnim(float partialTick) { return Mth.lerp(partialTick, sitAnimO, sitAnim); }
     public float getBodyPitch(float partialTick) { return Mth.lerp(partialTick, bodyPitchO, bodyPitch); }
 }

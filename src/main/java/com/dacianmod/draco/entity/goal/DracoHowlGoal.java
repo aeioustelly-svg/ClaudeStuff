@@ -31,7 +31,7 @@ public class DracoHowlGoal extends Goal {
     @Override
     public boolean canUse() {
         LivingEntity target = draco.getTarget();
-        if (target == null || !target.isAlive()) return false;
+        if (target == null || !target.isAlive() || draco.isOrderedToSit()) return false;
         if (draco.getHowlCooldown() > 0 || draco.isDiving() || draco.isLashing() || draco.isRecovering()) return false;
         double distSq = draco.distanceToSqr(target);
         return distSq > 16.0D && distSq < RANGE * RANGE
@@ -81,7 +81,7 @@ public class DracoHowlGoal extends Goal {
 
         for (LivingEntity entity : draco.level().getEntitiesOfClass(LivingEntity.class,
                 draco.getBoundingBox().inflate(RANGE), e -> e != draco)) {
-            if (entity instanceof DracoEntity || entity instanceof Wolf) continue;
+            if (entity instanceof DracoEntity || entity instanceof Wolf || draco.isAlliedTo(entity)) continue;
             if (entity instanceof Player player && (player.isCreative() || player.isSpectator())) continue;
             Vec3 toEntity = entity.getEyePosition().subtract(origin);
             if (toEntity.length() > RANGE || toEntity.normalize().dot(direction) < CONE_COS) continue;

@@ -29,7 +29,7 @@ public class DracoTailLashGoal extends Goal {
     @Override
     public boolean canUse() {
         LivingEntity target = draco.getTarget();
-        if (target == null || !target.isAlive()) return false;
+        if (target == null || !target.isAlive() || draco.isOrderedToSit()) return false;
         if (draco.getLashCooldown() > 0 || draco.isDiving() || draco.isHowling() || draco.isRecovering()) return false;
         return draco.distanceToSqr(target) < 4.5D * 4.5D;
     }
@@ -75,7 +75,7 @@ public class DracoTailLashGoal extends Goal {
         draco.playSound(SoundEvents.PLAYER_ATTACK_SWEEP, 1.2F, 0.7F);
         for (LivingEntity entity : draco.level().getEntitiesOfClass(LivingEntity.class,
                 draco.getBoundingBox().inflate(REACH), e -> e != draco)) {
-            if (entity instanceof DracoEntity || entity instanceof Wolf) continue;
+            if (entity instanceof DracoEntity || entity instanceof Wolf || draco.isAlliedTo(entity)) continue;
             if (entity instanceof Player player && (player.isCreative() || player.isSpectator())) continue;
             if (entity.hurt(draco.damageSources().mobAttack(draco), damage)) {
                 Vec3 away = entity.position().subtract(draco.position()).normalize();

@@ -114,16 +114,17 @@ public class DracoModel<T extends DracoEntity> extends EntityModel<T> {
                           float netHeadYaw, float headPitch) {
         float partialTick = ageInTicks - entity.tickCount;
         applyPose(limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch,
-                entity.getHowlAnim(partialTick), entity.getDiveAnim(partialTick), entity.getLashAnim(partialTick));
+                entity.getHowlAnim(partialTick), entity.getDiveAnim(partialTick), entity.getLashAnim(partialTick),
+                entity.getSitAnim(partialTick));
     }
 
     /** Pure function of its inputs so the preview tool can pose the model without an entity. */
     public void applyPose(float limbSwing, float limbSwingAmount, float ageInTicks,
-                          float netHeadYaw, float headPitch, float howl, float dive, float lash) {
+                          float netHeadYaw, float headPitch, float howl, float dive, float lash, float sit) {
         root.getAllParts().forEach(ModelPart::resetPose);
 
         // Serpentine wave: the faster it flies the wider the wave, and a dive straightens the body.
-        float amplitude = (0.12F + 0.16F * Math.min(1.0F, limbSwingAmount)) * (1.0F - 0.7F * dive);
+        float amplitude = (0.12F + 0.16F * Math.min(1.0F, limbSwingAmount)) * (1.0F - 0.7F * dive) * (1.0F - sit);
         float phase = ageInTicks * 0.15F + limbSwing * 0.6F;
         for (int i = 0; i < chain.length; i++) {
             float growth = 1.0F + i * 0.06F;
@@ -143,6 +144,15 @@ public class DracoModel<T extends DracoEntity> extends EntityModel<T> {
         head.yRot += yaw * 0.5F;
         neck2.xRot += pitch * 0.4F;
         head.xRot += pitch * 0.5F;
+
+        // Perch (sitting): body settles onto the ground and coils, neck raised like a resting cobra.
+        body.y += 4.0F * sit;
+        for (int i = 2; i < chain.length; i++) {
+            chain[i].yRot += sit * (i < 7 ? 0.7F : 0.45F);
+        }
+        neck1.xRot -= sit * 0.7F;
+        neck2.xRot -= sit * 0.5F;
+        head.xRot += sit * 0.6F;
 
         // Howl: neck arched and head thrown back. Dive: head tucked down.
         neck1.xRot -= howl * 0.5F;

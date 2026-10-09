@@ -27,7 +27,7 @@ public class DracoDiveGoal extends Goal {
     @Override
     public boolean canUse() {
         LivingEntity target = draco.getTarget();
-        if (target == null || !target.isAlive()) return false;
+        if (target == null || !target.isAlive() || draco.isOrderedToSit()) return false;
         if (draco.getDiveCooldown() > 0 || draco.isHowling() || draco.isLashing()) return false;
         double distSq = draco.distanceToSqr(target);
         return distSq > 25.0D && distSq < 28.0D * 28.0D && draco.getRandom().nextInt(10) == 0;
@@ -62,8 +62,10 @@ public class DracoDiveGoal extends Goal {
 
     @Override
     public void tick() {
+        // The selector may tick a running goal once more after it has finished (odd ticks skip
+        // the canContinueToUse check), so a finished goal has to ignore that tick.
         LivingEntity target = draco.getTarget();
-        if (target == null) return;
+        if (target == null || phase == null) return;
         ticks++;
 
         switch (phase) {

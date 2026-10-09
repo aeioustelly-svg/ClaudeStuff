@@ -21,7 +21,7 @@ public class FollowCapWearerGoal extends Goal {
 
     @Override
     public boolean canUse() {
-        if (draco.getTarget() != null) return false;
+        if (draco.getTarget() != null || draco.isTame()) return false;
         Player best = null;
         double bestDistSq = START_RANGE * START_RANGE;
         for (Player player : draco.level().players()) {

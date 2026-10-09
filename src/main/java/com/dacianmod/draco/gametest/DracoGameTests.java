@@ -161,8 +161,67 @@ public class DracoGameTests {
         player.getAbilities().instabuild = false;
         player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.BOWL, 64));
         DracoEntity draco = helper.spawn(ModEntities.DRACO.get(), 12, 2, 12);
+        draco.tame(player);
+        draco.setOrderedToSit(false);
         helper.onEachTick(() -> draco.interact(player, InteractionHand.MAIN_HAND));
         helper.succeedWhen(() -> helper.assertTrue(
                 player.getInventory().countItem(ModItems.MAMALIGA.get()) > 0, "Right-click never produced mamaliga"));
+    }
+
+    @GameTest(templateNamespace = DacianDraco.MODID, template = TEMPLATE, timeoutTicks = 400)
+    public static void bonesTameADraco(GameTestHelper helper) {
+        Player player = helper.makeMockPlayer();
+        player.getAbilities().instabuild = false;
+        player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.BONE, 64));
+        DracoEntity draco = helper.spawn(ModEntities.DRACO.get(), 12, 2, 12);
+        helper.onEachTick(() -> {
+            if (!draco.isTame()) {
+                draco.interact(player, InteractionHand.MAIN_HAND);
+            }
+        });
+        helper.succeedWhen(() -> {
+            helper.assertTrue(draco.isTame(), "Bones never tamed the Draco");
+            helper.assertTrue(draco.isOwnedBy(player), "Draco has the wrong owner");
+            helper.assertTrue(draco.isOrderedToSit(), "Newly tamed Draco should sit, like a wolf");
+            helper.assertTrue(player.getItemInHand(InteractionHand.MAIN_HAND).getCount() < 64, "No bone was used up");
+        });
+    }
+
+    @GameTest(templateNamespace = DacianDraco.MODID, template = TEMPLATE)
+    public static void wildDracoGivesNoPolenta(GameTestHelper helper) {
+        Player player = helper.makeMockPlayer();
+        player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.BOWL, 64));
+        DracoEntity draco = helper.spawn(ModEntities.DRACO.get(), 12, 2, 12);
+        for (int i = 0; i < 200; i++) {
+            draco.interact(player, InteractionHand.MAIN_HAND);
+        }
+        helper.assertTrue(!draco.isTame(), "A bowl tamed the Draco");
+        helper.assertTrue(player.getInventory().countItem(ModItems.MAMALIGA.get()) == 0, "A wild Draco gave mamaliga");
+        helper.succeed();
+    }
+
+    @GameTest(templateNamespace = DacianDraco.MODID, template = TEMPLATE)
+    public static void emptyHandTogglesSitting(GameTestHelper helper) {
+        Player player = helper.makeMockPlayer();
+        DracoEntity draco = helper.spawn(ModEntities.DRACO.get(), 12, 2, 12);
+        draco.tame(player);
+        draco.setOrderedToSit(false);
+        draco.interact(player, InteractionHand.MAIN_HAND);
+        helper.assertTrue(draco.isOrderedToSit(), "First click should sit the Draco");
+        draco.interact(player, InteractionHand.MAIN_HAND);
+        helper.assertTrue(!draco.isOrderedToSit(), "Second click should release the Draco");
+        helper.succeed();
+    }
+
+    @GameTest(templateNamespace = DacianDraco.MODID, template = TEMPLATE, timeoutTicks = 600)
+    public static void sittingDracoLandsAndPerches(GameTestHelper helper) {
+        Player player = helper.makeMockPlayer();
+        DracoEntity draco = helper.spawn(ModEntities.DRACO.get(), 12, 8, 12);
+        draco.tame(player);
+        draco.setOrderedToSit(true);
+        helper.succeedWhen(() -> {
+            helper.assertTrue(draco.onGround(), "Sitting Draco never reached the ground");
+            helper.assertTrue(draco.isInSittingPose(), "Landed Draco is not in the perch pose");
+        });
     }
 }
