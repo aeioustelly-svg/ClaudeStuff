@@ -213,17 +213,15 @@ def arm(face, x, y, W, H, tx, ty):
     if face == "front" and y in (H - 3, H - 2) and x == 1:
         return FINGER                               # one faint thumb line on the front, one pixel in from the outer edge
     if y >= H - 4:
-        return STEEL[2] if y < H - 1 else STEEL[1]
+        return STEEL[2]                             # no darker line along the bottom of the hand
     if y == H - 5:
         return dither(x, y, STEEL[1], WHITE[1])
     return fur(face, x, y, W, H, tx, ty)
 
 
 def leg(face, x, y, W, H, tx, ty):
-    if face == "right" and y in (H - 3, H - 2) and x in (0, 2, 4):
-        return FINGER                               # three faint toe lines on the outer side
-    if face == "front" and y in (H - 3, H - 2) and x == 1:
-        return FINGER                               # one faint line on the front, like the thumb
+    if face == "front" and y in (H - 3, H - 2) and x in (0, 2, 4):
+        return FINGER                               # three faint toe lines, facing forwards, no thumb
     if face == "top":
         return WHITE[1]
     if face == "bottom":
