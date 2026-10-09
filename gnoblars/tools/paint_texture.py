@@ -22,7 +22,7 @@ OUT = sys.argv[2] if len(sys.argv) > 2 else "src/main/resources/assets/gnoblars/
 
 # Palettes: (dark = cooler shadow, base, light = warmer highlight), kept muted.
 SKIN = ((66, 78, 70), (94, 110, 94), (120, 136, 110))
-NOSE = ((74, 86, 76), (106, 120, 100), (134, 148, 118))
+NOSE = ((80, 94, 82), (114, 130, 106), (144, 158, 124))
 NOSE_TIP = ((112, 88, 84), (146, 114, 106), (172, 140, 128))
 EAR_INNER = ((112, 82, 80), (146, 110, 104), (170, 136, 126))
 HAIR = ((40, 38, 38), (62, 56, 52), (84, 76, 66))
@@ -44,16 +44,21 @@ FACE_LIGHT = {"top": 1.08, "side": 1.0, "bottom": 0.9}
 # Order matters: the first box whose surface contains a quad owns it.
 BOXES = [
     ("loincloth", (-2, 2), (21, 23), (-2, -2)),
-    ("left_ear", (4, 10), (14, 14), (-3, 1)),
-    ("right_ear", (-10, -4), (14, 14), (-3, 1)),
-    ("hook", (-2, 2), (16, 18), (-9, -7)),
-    ("nose", (-2, 2), (13, 16), (-9, -4)),
-    ("left_arm", (3, 5), (16, 24), (-1, 1)),
-    ("right_arm", (-5, -3), (16, 24), (-1, 1)),
+    ("lear_a", (4, 7), (10, 14), (-1, -1)),
+    ("lear_b", (7, 9), (9, 12), (-1, -1)),
+    ("lear_c", (9, 10), (8, 10), (-1, -1)),
+    ("rear_a", (-7, -4), (10, 14), (-1, -1)),
+    ("rear_b", (-9, -7), (9, 12), (-1, -1)),
+    ("rear_c", (-10, -9), (8, 10), (-1, -1)),
+    ("bridge", (-1, 1), (12, 14), (-6, -4)),
+    ("bulb", (-2, 2), (11, 15), (-9, -6)),
+    ("neck", (-1, 1), (15, 16), (-2, 0)),
+    ("left_arm", (3, 5), (17, 24), (-1, 1)),
+    ("right_arm", (-5, -3), (17, 24), (-1, 1)),
     ("left_leg", (1, 3), (21, 24), (-1, 1)),
     ("right_leg", (-3, -1), (21, 24), (-1, 1)),
     ("body", (-3, 3), (16, 21), (-2, 2)),
-    ("head", (-4, 4), (11, 17), (-4, 2)),
+    ("head", (-4, 4), (9, 15), (-4, 2)),
 ]
 
 
@@ -89,8 +94,8 @@ def part_of(verts):
 def skin(pos, face, palette=SKIN):
     """Leathery skin: a diagonal crease pattern in three shades."""
     x, y, z = (cell(c) for c in pos)
-    k = (x * 3 + y * 5 + z * 7) % 9
-    return shade(palette, 0 if k == 0 else 2 if k == 4 else 1, face)
+    k = (x * 3 + y * 5 + z * 7) % 11
+    return shade(palette, 0 if k == 0 else 2 if k == 5 else 1, face)
 
 
 def leather(pos, face, palette=LEATHER):
@@ -106,46 +111,96 @@ def cloth(pos, face, palette=CLOTH):
     return shade(palette, 1 if (x + y + z) % 2 else 2, face)
 
 
+def darker(color, k):
+    return tuple(int(v * k) for v in color)
+
+
+def paint_ear(part, pos, normal):
+    """Pointed ear. The side facing forward is the inside: pink, with a vein climbing to the tip.
+    The back is skin with a dark rim along the top edge. One nick is bitten out of the lower edge."""
+    piece = part[-1]
+    x, y, z = pos
+    ax = abs(x)
+    top, bottom = {"a": (10, 14), "b": (9, 12), "c": (8, 10)}[piece]
+    vein = {"a": 12.5, "b": 10.5, "c": 8.5}[piece]
+    top_row = y < top + 1.0
+    bottom_row = y > bottom - 1.0
+    if piece == "b" and bottom_row and 8.0 < ax < 9.0:
+        return None                                  # the nick
+    if normal[2] < 0:                                # inside, facing forward
+        if piece == "c" or top_row:
+            return shade(EAR_INNER, 0, "side")
+        if abs(y - vein) < 0.1:
+            return shade(EAR_INNER, 0, "side")
+        return shade(EAR_INNER, 2 if bottom_row else 1, "side")
+    if piece == "c" or top_row:                      # outside
+        return shade(SKIN, 0, "side")
+    return shade(SKIN, 2 if (cell(ax) + cell(y)) % 3 == 0 else 1, "side")
+
+
+HEAD_PARTS = ("head", "bridge", "bulb")
+HEAD_RAISE = 2.0     # the face rows below are written for a head 2 px lower than it now sits
+
+
 def paint(part, pos, normal):
     x, y, z = pos
+    if part in HEAD_PARTS or part[1:4] == "ear":
+        y += HEAD_RAISE
     nx, ny, nz = normal
     face = "top" if ny < -0.5 else "bottom" if ny > 0.5 else "side"
     ax = abs(x)
 
-    if part in ("left_ear", "right_ear"):
+    if part[1:4] == "ear" and len(part) == 6:
+        return paint_ear(part, pos, normal)
+
+    if part == "neck":
+        return skin(pos, face, ((46, 56, 50), (72, 86, 72), (98, 112, 88)))
+
+    if part == "bridge":
+        if face == "side" and abs(y - 15.0) < 0.1:
+            return shade(NOSE, 0, face)            # crease where it meets the cheeks
+        return skin(pos, face, NOSE)
+
+    if part == "bulb":
+        if nz < -0.5 and abs(z + 9.0) < 0.1:       # the front of the knob
+            if abs(y - 14.5) < 0.1 and abs(ax - 1.5) < 0.1:
+                return NOSTRIL
+            if y < 13.0 and ax < 1.0:
+                return shade(NOSE, 2, face)        # a shiny highlight
+            return skin(pos, face, NOSE)
         if face == "bottom":
-            return shade(EAR_INNER, 1 if (cell(ax) + cell(z)) % 2 else 2, face)
-        return shade(SKIN, 0 if ax > 8.5 else 1 if (cell(ax) + cell(z)) % 3 else 2, "side")
-
-    if part == "hook":
-        if face == "bottom" and z < -8.0 and abs(ax - 1.5) < 0.1:
-            return NOSTRIL
-        return skin(pos, face, NOSE_TIP if face == "bottom" else NOSE)
-
-    if part == "nose":
-        if face == "top" and abs(x - 0.5) < 0.1 and abs(z + 6.5) < 0.1:
+            return shade(NOSE, 0, face)
+        if face == "top" and abs(x + 0.5) < 0.1 and abs(z + 7.5) < 0.1:
             return WART
+        if face == "top" and abs(x - 1.5) < 0.1 and abs(z + 6.5) < 0.1:
+            return shade(NOSE, 0, face)            # a mole
         return skin(pos, face, NOSE)
 
     if part == "loincloth":
         if y > 22.0:
-            return shade(CLOTH, 0, "side")      # frayed hem
+            return shade(CLOTH, 0, "side")          # frayed hem
+        if ax < 1.0:
+            return shade(SASH, 1, "side")           # a stripe in the sash's colour
         return cloth(pos, "side")
 
     if part in ("left_arm", "right_arm"):
-        if y < 17.0:
-            return leather(pos, face)            # shoulder strap of the vest
+        if y < 18.0:
+            return leather(pos, face)               # shoulder strap of the vest
         if 22.0 < y < 23.0:
-            return cloth(pos, face)              # wrist wrap
+            return cloth(pos, face)                 # wrist wrap
         if y >= 23.0:
-            return skin(pos, face, ((46, 56, 50), (72, 86, 72), (98, 112, 88)))   # hands, darker
+            hand = ((46, 56, 50), (72, 86, 72), (98, 112, 88))
+            return skin(pos, face, hand) if (cell(x) + cell(z)) % 2 else shade(hand, 0, face)
+        if part == "left_arm" and nz < -0.5 and abs(z + 1.0) < 0.1 and (
+                (abs(x - 3.5) < 0.1 and abs(y - 20.5) < 0.1) or (abs(x - 4.5) < 0.1 and abs(y - 21.5) < 0.1)):
+            return (168, 158, 134)                  # an old scar
         return skin(pos, face)
 
     if part in ("left_leg", "right_leg"):
         if y >= 23.0:
-            return cloth(pos, face)              # foot wrap
+            return cloth(pos, face) if face != "bottom" else shade(BELT, 0, face)   # foot wrap and sole
         if 22.0 < y < 23.0:
-            return shade(BELT, 1, face)          # rope tie
+            return shade(BELT, 1, face)             # rope tie
         return skin(pos, face)
 
     if part == "body":
@@ -155,33 +210,55 @@ def paint(part, pos, normal):
             if abs(x) < 1.0 and nz < -0.5:
                 return BUCKLE
             return shade(BELT, 1 if (cell(x) + cell(z)) % 2 else 0, face)
-        if nz < -0.5:                            # front
+        if nx > 0.5 and y > 19.0 and abs(z) < 1.0:
+            return shade(LEATHER, 0 if y < 19.9 and abs(z + 0.5) < 0.1 else 2, face)   # belt pouch flap
+        if nz < -0.5:                               # front
             if ax < 1.0 and y < 17.0:
-                return skin(pos, face)           # open collar of the vest
+                return skin(pos, face)              # open collar of the vest
+            if ax < 1.0:
+                return shade(BELT, 0 if cell(y) % 2 else 2, face)    # lacing
             u = (x + 3.0) - 1.2 * (y - 16.0)
-            if abs(u) <= 1.0:                    # sash from left shoulder to right hip
+            if abs(u) <= 1.0:                       # sash from left shoulder to right hip
                 return shade(SASH, 2 if u < -0.4 else 1 if u < 0.6 else 0, face)
-        if nz > 0.5:                             # back: a thin sash strap
+            if abs(ax - 2.5) < 0.1 and abs(y - 18.5) < 0.1:
+                return BUCKLE                       # a rivet
+        if nz > 0.5:                                # back
             u = (x + 3.0) + 1.2 * (y - 16.0) - 6.0
             if abs(u) <= 0.6:
-                return shade(SASH, 0, face)
+                return shade(SASH, 0, face)         # thin sash strap
+            if -2.0 <= x <= 1.0 and 17.0 <= y <= 19.0:
+                edge = x < -1.0 or x > 0.0 or y < 17.9 and y < 17.1 or y > 18.1
+                return shade(BELT, 1, face) if edge else shade(LEATHER, 2, face)   # a stitched patch
         if face == "top":
             return skin(pos, face)
         return leather(pos, face)
 
     # head
-    if nz < -0.5 and abs(z + 4.0) < 0.1:         # face
-        if 11.0 <= y < 12.0 and 1.0 <= ax <= 3.0:
-            return shade(SKIN, 0, face)          # heavy brow
-        if 12.0 <= y < 13.0 and 1.0 <= ax <= 3.0:
-            return PUPIL if ax < 2.0 else IRIS   # eyes
+    jaw = 0.9 if y >= 16.0 else 1.0
+    if nz < -0.5 and abs(z + 4.0) < 0.1:            # face
+        if 11.0 <= y < 12.0 and ax >= 1.0:
+            return shade(SKIN, 0, face)             # heavy brow
+        if 12.0 <= y < 13.0:
+            if 2.0 <= ax < 4.0:
+                return PUPIL if ax < 3.0 else IRIS   # eyes, set wide
+            if ax < 2.0 and ax >= 1.0:
+                return shade(SKIN, 0, face)
+        if 13.0 <= y < 14.0 and 2.0 <= ax < 4.0:
+            return shade(SKIN, 0, face)             # bags under the eyes
+        if 14.0 <= y < 15.0 and ax >= 3.0:
+            return shade(SKIN, 0, face)             # a crease down each cheek
         if 16.0 <= y < 17.0 and ax <= 3.0:
-            return TUSK if ax >= 2.0 else MOUTH  # mouth with a tusk at each corner
+            return TUSK if ax >= 2.0 else MOUTH     # mouth with a tusk at each corner
+        if 16.0 <= y < 17.0:
+            return shade(SKIN, 0, face)
+    if face == "side" and abs(ax - 4.0) < 0.1 and 14.0 <= y < 15.0 and -3.0 <= z < -1.0:
+        return shade(SKIN, 0, face)                 # the ear hole
     if face == "top" and z > 0.0 and ax <= 3.0 and cell(x) % 2 == 0:
-        return shade(HAIR, 1, face)   # a few wisps combed back
+        return shade(HAIR, 1, face)                 # a few wisps combed back
     if nz > 0.5 and y < 13.0 and ax <= 3.0 and cell(x) % 2 == 0:
         return shade(HAIR, 0, face)
-    return skin(pos, face)
+    color = skin(pos, face)
+    return darker(color, jaw) if jaw < 1.0 else color
 
 
 def main():
@@ -213,6 +290,8 @@ def main():
                 t = (tv + 0.5 - vmin) / (vmax - vmin)
                 pos = p00 + s * (p10 - p00) + t * (p01 - p00)
                 c = paint(part, pos, normal)
+                if c is None:
+                    continue              # transparent: a nick or gap in a flat part
                 img[tv, tu] = (*[int(max(0, min(255, v))) for v in c], 255)
 
     Image.fromarray(img, "RGBA").save(OUT)

@@ -21,7 +21,7 @@ public class ModEntities {
 
     public static final RegistryObject<EntityType<GnoblarEntity>> GNOBLAR = ENTITIES.register("gnoblar",
             () -> EntityType.Builder.of(GnoblarEntity::new, MobCategory.CREATURE)
-                    .sized(0.5F, 0.85F)
+                    .sized(0.5F, 0.9F)
                     .clientTrackingRange(8)
                     .build(Gnoblars.MODID + ":gnoblar"));
 

@@ -18,8 +18,8 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.entity.HumanoidArm;
 
 /**
- * Vanilla-style gnoblar: a hunched little body, an oversized head with a huge hooked nose, flat
- * drooping ears, and long single-box arms. Texture is 64x64, one texel per 1/16 block.
+ * Vanilla-style gnoblar: a hunched little body, an oversized head with a big knobbed nose, flat
+ * pointed ears, and long single-box arms. Texture is 64x64, one texel per 1/16 block.
  *
  * Every part is baked unrotated so the texture painter can read axis-aligned geometry. All the
  * rotation lives in {@link #applyPose}, which is a pure function of its inputs.
@@ -60,28 +60,38 @@ public class GnoblarModel<T extends GnoblarEntity> extends EntityModel<T> implem
 
         PartDefinition head = body.addOrReplaceChild("head",
                 CubeListBuilder.create().texOffs(0, 0).addBox(-4.0F, -6.0F, -3.0F, 8, 6, 6),
-                PartPose.offset(0.0F, -4.0F, -1.0F));
-        // the nose: a long block with a drooping hook at the tip
+                PartPose.offset(0.0F, -6.0F, -1.0F));
+        // a thin neck between the shoulders and the big head
+        body.addOrReplaceChild("neck",
+                CubeListBuilder.create().texOffs(44, 20).addBox(-1.0F, -6.0F, -2.0F, 2, 1, 2),
+                PartPose.ZERO);
+        // the nose: a short bridge and a big round-ended knob, level with it (no droop)
         head.addOrReplaceChild("nose",
                 CubeListBuilder.create()
-                        .texOffs(28, 0).addBox(-2.0F, -4.0F, -8.0F, 4, 3, 5)
-                        .texOffs(46, 0).addBox(-2.0F, -1.0F, -8.0F, 4, 2, 2),
+                        .texOffs(28, 0).addBox(-1.0F, -3.0F, -5.0F, 2, 2, 2)
+                        .texOffs(36, 0).addBox(-2.0F, -4.0F, -8.0F, 4, 4, 3),
                 PartPose.ZERO);
-        // flat, see-through-thin ears
+        // pointed ears: stepped flat planes that climb and narrow to a tip, so the outline is not a rectangle
         head.addOrReplaceChild("left_ear",
-                CubeListBuilder.create().texOffs(0, 12).addBox(0.0F, 0.0F, -2.0F, 6, 0, 4),
+                CubeListBuilder.create()
+                        .texOffs(0, 32).addBox(0.0F, -2.0F, 0.0F, 3, 4, 0)
+                        .texOffs(6, 32).addBox(3.0F, -3.0F, 0.0F, 2, 3, 0)
+                        .texOffs(10, 32).addBox(5.0F, -4.0F, 0.0F, 1, 2, 0),
                 PartPose.offset(4.0F, -3.0F, 0.0F));
         head.addOrReplaceChild("right_ear",
-                CubeListBuilder.create().texOffs(20, 12).addBox(-6.0F, 0.0F, -2.0F, 6, 0, 4),
+                CubeListBuilder.create()
+                        .texOffs(20, 32).addBox(-3.0F, -2.0F, 0.0F, 3, 4, 0)
+                        .texOffs(26, 32).addBox(-5.0F, -3.0F, 0.0F, 2, 3, 0)
+                        .texOffs(30, 32).addBox(-6.0F, -4.0F, 0.0F, 1, 2, 0),
                 PartPose.offset(-4.0F, -3.0F, 0.0F));
 
         // long arms, one box each, swinging from the shoulder
         body.addOrReplaceChild("right_arm",
-                CubeListBuilder.create().texOffs(28, 16).addBox(-1.0F, -1.0F, -1.0F, 2, 8, 2),
-                PartPose.offset(-4.0F, -4.0F, 0.0F));
+                CubeListBuilder.create().texOffs(28, 16).addBox(-1.0F, -1.0F, -1.0F, 2, 7, 2),
+                PartPose.offset(-4.0F, -3.0F, 0.0F));
         body.addOrReplaceChild("left_arm",
-                CubeListBuilder.create().texOffs(36, 16).addBox(-1.0F, -1.0F, -1.0F, 2, 8, 2),
-                PartPose.offset(4.0F, -4.0F, 0.0F));
+                CubeListBuilder.create().texOffs(36, 16).addBox(-1.0F, -1.0F, -1.0F, 2, 7, 2),
+                PartPose.offset(4.0F, -3.0F, 0.0F));
 
         root.addOrReplaceChild("right_leg",
                 CubeListBuilder.create().texOffs(0, 25).addBox(-1.0F, 0.0F, -1.0F, 2, 3, 2),
@@ -115,12 +125,12 @@ public class GnoblarModel<T extends GnoblarEntity> extends EntityModel<T> implem
         head.xRot = -0.35F;
         head.yRot = 0.0F;
         nose.xRot = 0.0F;
-        leftEar.zRot = 0.95F;
-        rightEar.zRot = -0.95F;
-        leftEar.yRot = -0.35F;
-        rightEar.yRot = 0.35F;
-        leftArm.zRot = -idleSway;
-        rightArm.zRot = idleSway;
+        leftEar.zRot = 0.6F;
+        rightEar.zRot = -0.6F;
+        leftEar.yRot = -0.5F;
+        rightEar.yRot = 0.5F;
+        leftArm.zRot = -idleSway - 0.12F;
+        rightArm.zRot = idleSway + 0.12F;
         leftArm.yRot = 0.0F;
         rightArm.yRot = 0.0F;
         leftLeg.setPos(2.0F, 21.0F, 0.0F);
@@ -137,8 +147,10 @@ public class GnoblarModel<T extends GnoblarEntity> extends EntityModel<T> implem
         nose.xRot = Mth.sin(ageInTicks * 0.2F) * 0.03F;
 
         // ---- head follows the look direction ----
-        head.yRot = netHeadYaw * Mth.DEG_TO_RAD * 0.8F;
-        head.xRot += headPitch * Mth.DEG_TO_RAD * 0.8F;
+        head.yRot = Mth.clamp(netHeadYaw, -45.0F, 45.0F) * Mth.DEG_TO_RAD * 0.6F;
+        // The hunched body already tips the head forward, so looking up is limited to level; any
+        // further and the back of the head would swing down into the shoulders and arms.
+        head.xRot = Math.max(-0.5F, head.xRot + headPitch * Mth.DEG_TO_RAD * 0.8F);
         // ears flap with the walk
         leftEar.zRot += Mth.sin(limbSwing * 0.6662F) * 0.25F * limbSwingAmount;
         rightEar.zRot -= Mth.sin(limbSwing * 0.6662F) * 0.25F * limbSwingAmount;
@@ -151,28 +163,32 @@ public class GnoblarModel<T extends GnoblarEntity> extends EntityModel<T> implem
             nose.xRot = Mth.sin(ageInTicks * 1.4F) * 0.12F;
             leftArm.xRot = -1.1F;
             rightArm.xRot = -1.1F;
-            leftEar.zRot = 1.2F;
-            rightEar.zRot = -1.2F;
+            leftArm.zRot = -0.6F;
+            rightArm.zRot = 0.6F;
+            leftEar.zRot = 0.8F;
+            rightEar.zRot = -0.8F;
+            leftEar.yRot = -0.8F;
+            rightEar.yRot = 0.8F;
         }
 
         // ---- scared: arms flung up and flailing, ears pinned back ----
         if (scared > 0.5F) {
             float flail = Mth.sin(ageInTicks * 0.9F) * 0.5F;
-            leftArm.xRot = -2.9F + flail;
-            rightArm.xRot = -2.9F - flail;
-            leftArm.zRot = -0.35F;
-            rightArm.zRot = 0.35F;
-            leftEar.zRot = 0.3F;
-            rightEar.zRot = -0.3F;
-            leftEar.yRot = -0.9F;
-            rightEar.yRot = 0.9F;
+            leftArm.xRot = -HUNCH + flail * 0.6F;
+            rightArm.xRot = -HUNCH - flail * 0.6F;
+            leftArm.zRot = -2.2F;
+            rightArm.zRot = 2.2F;
+            leftEar.zRot = 0.1F;
+            rightEar.zRot = -0.1F;
+            leftEar.yRot = -1.1F;
+            rightEar.yRot = 1.1F;
         }
 
         // ---- sitting: on its bottom, legs out in front ----
         if (sit > 0.5F) {
             body.setPos(0.0F, 22.0F, 0.0F);
             body.xRot = 0.3F;
-            head.xRot = -0.2F + headPitch * Mth.DEG_TO_RAD * 0.8F;
+            head.xRot = Math.max(-0.5F, -0.2F + headPitch * Mth.DEG_TO_RAD * 0.8F);
             leftLeg.setPos(2.0F, 22.0F, 0.0F);
             rightLeg.setPos(-2.0F, 22.0F, 0.0F);
             leftLeg.xRot = -1.5F;
