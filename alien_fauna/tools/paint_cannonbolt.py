@@ -183,8 +183,10 @@ def arm(face, x, y, W, H, tx, ty):
         return STEEL[0]
     if y < 1:
         return BLACK
+    if face == "right" and y in (H - 3, H - 2) and x in (0, 2, 4):
+        return FINGER                               # three faint finger lines on the outer side
     if face == "front" and y in (H - 3, H - 2) and x == 4:
-        return FINGER                               # one faint thumb line, on the front, towards the body
+        return FINGER                               # one faint thumb line on the front, towards the body
     if y >= H - 4:
         return STEEL[2] if y < H - 1 else STEEL[1]
     if y == H - 5:
