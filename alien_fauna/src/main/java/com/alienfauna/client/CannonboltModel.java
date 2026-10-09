@@ -51,24 +51,26 @@ public class CannonboltModel<T extends CannonboltEntity> extends EntityModel<T> 
                 CubeListBuilder.create().texOffs(0, 72).addBox(-7.0F, -15.0F, -4.0F, 14, 15, 8),
                 PartPose.offset(0.0F, 16.0F, 0.0F));
 
-        // The big yellow shoulder plates: one box each, tilted outwards. The left one mirrors the right.
+        // The yellow shoulder plates: one box each, tilted slightly outwards. The left one mirrors the right.
         body.addOrReplaceChild("right_dome",
-                CubeListBuilder.create().texOffs(68, 72).addBox(-10.0F, -4.0F, -5.0F, 10, 7, 10),
-                PartPose.offsetAndRotation(-8.0F, -14.0F, 0.0F, 0.0F, 0.0F, -0.3F));
+                CubeListBuilder.create().texOffs(68, 72).addBox(-4.0F, -4.0F, -4.0F, 8, 6, 8),
+                PartPose.offsetAndRotation(-9.0F, -14.0F, 0.0F, 0.0F, 0.0F, -0.12F));
         body.addOrReplaceChild("left_dome",
-                CubeListBuilder.create().mirror().texOffs(68, 72).addBox(0.0F, -4.0F, -5.0F, 10, 7, 10),
-                PartPose.offsetAndRotation(8.0F, -14.0F, 0.0F, 0.0F, 0.0F, 0.3F));
+                CubeListBuilder.create().mirror().texOffs(68, 72).addBox(-4.0F, -4.0F, -4.0F, 8, 6, 8),
+                PartPose.offsetAndRotation(9.0F, -14.0F, 0.0F, 0.0F, 0.0F, 0.12F));
 
         // Arms: one long box from the shoulder down to the knees, a yellow plate on the outside
-        // and a flat comb of claws under the hand.
+        // and two crossed flat cards of claws under the hand.
         body.addOrReplaceChild("right_arm",
-                CubeListBuilder.create().texOffs(0, 96).addBox(-3.0F, -1.0F, -3.0F, 6, 18, 6)
-                        .texOffs(0, 120).addBox(-3.0F, 17.0F, 0.0F, 6, 3, 0)
+                CubeListBuilder.create().texOffs(0, 96).addBox(-3.0F, -1.0F, -3.0F, 6, 17, 6)
+                        .texOffs(0, 120).addBox(-3.0F, 16.0F, 0.0F, 6, 4, 0)
+                        .texOffs(28, 118).addBox(0.0F, 16.0F, -3.0F, 0, 4, 6)
                         .texOffs(48, 96).addBox(-5.0F, 1.0F, -3.0F, 2, 9, 7),
                 PartPose.offset(-10.0F, -12.0F, 0.0F));
         body.addOrReplaceChild("left_arm",
-                CubeListBuilder.create().mirror().texOffs(0, 96).addBox(-3.0F, -1.0F, -3.0F, 6, 18, 6)
-                        .texOffs(0, 120).addBox(-3.0F, 17.0F, 0.0F, 6, 3, 0)
+                CubeListBuilder.create().mirror().texOffs(0, 96).addBox(-3.0F, -1.0F, -3.0F, 6, 17, 6)
+                        .texOffs(0, 120).addBox(-3.0F, 16.0F, 0.0F, 6, 4, 0)
+                        .texOffs(28, 118).addBox(0.0F, 16.0F, -3.0F, 0, 4, 6)
                         .texOffs(48, 96).addBox(3.0F, 1.0F, -3.0F, 2, 9, 7),
                 PartPose.offset(10.0F, -12.0F, 0.0F));
 

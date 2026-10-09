@@ -23,7 +23,7 @@ BLACK = (24, 24, 28)
 AMBER = (228, 150, 36)
 AMBER_LIGHT = (250, 196, 84)
 CLAW = (28, 28, 34)
-CLAW_LIGHT = (96, 98, 112)
+CLAW_LIGHT = (120, 122, 138)
 
 
 def faces(u, v, w, h, d):
@@ -108,20 +108,22 @@ def body(face, x, y, W, H, tx, ty):
         return BLACK
     if face == "front":
         mid = W // 2
-        eye = x in (2, 3, 4, 9, 10, 11)
+        # Small amber eyes (2x1) in a black outline, mirrored about the centre line.
+        eye_core = y == 4 and x in (3, 4, 9, 10)
+        eye_ring = (y == 4 and x in (2, 5, 8, 11)) or (y in (3, 5) and x in (3, 4, 9, 10))
+        if eye_core:
+            return AMBER_LIGHT if x in (3, 9) else AMBER
+        if eye_ring:
+            return BLACK
         if y == 2:
-            return BLACK if mid - 1 <= x <= mid else (STEEL[1] if eye else dither(x, y, STEEL[1], WHITE[1]))
+            return BLACK if mid - 1 <= x <= mid else dither(x, y, STEEL[1], WHITE[1])
         if mid - 1 <= x <= mid and y <= 6:
             return BLACK
-        if y in (3, 4) and eye:
-            return AMBER_LIGHT if y == 3 and x in (2, 9) else AMBER
-        if y == 5 and eye:
-            return STEEL[0]
         if y == 8 and 3 <= x <= 10:
             return BLACK
         if y == 9 and x in (3, 10):
             return BLACK
-        if mid <= x <= mid + 1 and 11 <= y <= 14:
+        if mid - 1 <= x <= mid and 10 <= y <= 14:
             return BLACK
     elif y == 2:
         return dither(x, y, STEEL[1], WHITE[1])
@@ -155,19 +157,19 @@ def leg(face, x, y, W, H, tx, ty):
         return STEEL[0]
     if y >= H - 2:
         return STEEL[1] if y == H - 2 else STEEL[0]
-    if face == "front" and W // 2 - 1 <= x <= W // 2 and y < H - 2:
-        return BLACK
     return fur(face, x, y, W, H, tx, ty)
 
 
 def claws_down(face, x, y, W, H, tx, ty):
-    """Three claws hanging from a hand, tips converging; everything else stays transparent."""
-    if face not in ("front", "back"):
+    """Three claws hanging from a hand, tips curling inwards and ending in a single texel.
+
+    Used on two crossed flat cards, so the claws show from the front and from the side."""
+    if face not in ("front", "back", "left", "right") or H != 4:
         return None
     k, cx = divmod(x, 2)
-    tip_col = 1 if k == 0 else 0 if k == 2 else 1
-    if y < H - 1:
-        return CLAW_LIGHT if y == 0 and cx == 0 else CLAW
+    tip_col = 1 if k == 0 else 0
+    if y < 2:
+        return CLAW_LIGHT if cx == 0 else CLAW
     return CLAW if cx == tip_col else None
 
 
@@ -191,12 +193,13 @@ def ball_bar(shift):
 
 BOXES = {
     "body": (0, 72, 14, 15, 8, body),
-    "dome": (68, 72, 10, 7, 10, dome),
-    "arm": (0, 96, 6, 18, 6, arm),
+    "dome": (68, 72, 8, 6, 8, dome),
+    "arm": (0, 96, 6, 17, 6, arm),
     "arm_plate": (48, 96, 2, 9, 7, plate),
     "leg": (24, 96, 6, 8, 6, leg),
     "knee_plate": (68, 90, 1, 5, 4, plate),
-    "hand_claws": (0, 120, 6, 3, 0, claws_down),
+    "hand_claws": (0, 120, 6, 4, 0, claws_down),
+    "hand_claws_side": (28, 118, 0, 4, 6, claws_down),
     "foot_claws": (12, 120, 6, 0, 2, claws_forward),
     "ball_x_bar": (0, 34, 20, 16, 14, ball_bar(0)),
     "ball_y_bar": (68, 34, 14, 20, 16, ball_bar(1)),
