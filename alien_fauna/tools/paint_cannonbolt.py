@@ -253,7 +253,7 @@ BOXES = {
     "back_band_3": (72, 15, 14, 5, 2, back_band(2)),
     "dome": (68, 72, 8, 6, 7, dome),
     "arm": (0, 102, 6, 20, 6, arm),
-    "arm_plate": (48, 102, 2, 6, 6, round_plate),
+    "arm_plate": (48, 102, 1, 6, 6, round_plate),
     "leg": (24, 102, 6, 8, 6, leg),
     "knee_plate": (68, 90, 1, 5, 4, round_plate),
     "foot_claws": (28, 120, 6, 0, 2, claws_forward),

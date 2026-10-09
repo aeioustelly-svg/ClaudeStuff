@@ -72,11 +72,11 @@ public class CannonboltModel<T extends CannonboltEntity> extends EntityModel<T> 
         // of the forearm. The fingers are faint lines painted on the hand, with no claw geometry.
         body.addOrReplaceChild("right_arm",
                 CubeListBuilder.create().texOffs(0, 102).addBox(-3.0F, -1.0F, -3.0F, 6, 20, 6)
-                        .texOffs(48, 102).addBox(-5.0F, 6.0F, -3.0F, 2, 6, 6),
+                        .texOffs(48, 102).addBox(-4.0F, 6.0F, -3.0F, 1, 6, 6),
                 PartPose.offset(-10.0F, -15.0F, 0.0F));
         body.addOrReplaceChild("left_arm",
                 CubeListBuilder.create().mirror().texOffs(0, 102).addBox(-3.0F, -1.0F, -3.0F, 6, 20, 6)
-                        .texOffs(48, 102).addBox(3.0F, 6.0F, -3.0F, 2, 6, 6),
+                        .texOffs(48, 102).addBox(3.0F, 6.0F, -3.0F, 1, 6, 6),
                 PartPose.offset(10.0F, -15.0F, 0.0F));
 
         // Legs: one box from the hip, a plate on the outside of the thigh, flat claws on the toes.
