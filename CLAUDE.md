@@ -2,6 +2,8 @@
 
 A wolf-headed flying serpent inspired by the Dacian Draco battle standard. Read this before changing anything.
 
+**Other mods in this repository:** `gnoblars/` is a separate mod (own Gradle project, own `CLAUDE.md`). Run its commands from inside that folder. Nothing in this project depends on it.
+
 ## Stack
 
 - Minecraft 1.20.1, Forge 47.4.26, official (Mojang) mappings, Gradle 8.8 wrapper.
