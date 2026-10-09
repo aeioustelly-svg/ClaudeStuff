@@ -127,7 +127,7 @@ def body(face, x, y, W, H, tx, ty):
         mid = W // 2
         if y == 2:
             return BLACK if mid - 1 <= x <= mid else dither(x, y, STEEL[1], BLACK)
-        if mid - 1 <= x <= mid and (y <= 6 or y >= 10):
+        if mid - 1 <= x <= mid and (y <= 6 or y >= 11):
             return BLACK
         left = eye(x - 1, y - 3)
         right = eye(x - 9, y - 3)
@@ -135,9 +135,16 @@ def body(face, x, y, W, H, tx, ty):
             return left
         if right is not None:
             return right
-        if y == 9 and 3 <= x <= 10:
+        # The mouth: a thick frown that touches neither stripe, with a grey lip shadow under the
+        # middle and the corners drooping.
+        if y == 8 and 4 <= x <= 9:
             return BLACK
-        if y == 10 and x in (3, 10):
+        if y == 9:
+            if x in (3, 10):
+                return BLACK
+            if 4 <= x <= 9:
+                return STEEL[2]
+        if y == 10 and x in (2, 11):
             return BLACK
     elif y == 2:
         return dither(x, y, STEEL[1], WHITE[1])
@@ -171,25 +178,20 @@ def leg(face, x, y, W, H, tx, ty):
         return STEEL[0]
     if y >= H - 2:
         return STEEL[1] if y == H - 2 else STEEL[0]
-    if face in ("front", "back") and W // 2 - 1 <= x <= W // 2 and y < H - 2:
-        return BLACK
     return fur(face, x, y, W, H, tx, ty)
 
 
 def claws_down(face, x, y, W, H, tx, ty):
-    """A dark knuckle row with three two-pixel claws hanging from it, narrowing to a tip. The gaps
-    between the claws stay transparent."""
+    """Three claws hanging flush from the front of the hand, each two pixels wide at the base and
+    curling inwards to a single-pixel tip. The gaps between them stay transparent."""
     if face not in ("front", "back"):
         return None
-    if y == 0:
-        return CLAW_LIGHT
     claw = {0: 0, 1: 0, 3: 1, 4: 1, 6: 2, 7: 2}.get(x)
     if claw is None:
         return None
-    if y <= 2:
+    if y < 2:
         return CLAW
-    tip = {0: 1, 1: 3, 2: 6}[claw]          # the tip pixel of each claw (curling inwards)
-    return CLAW if x == tip and y <= 4 else None
+    return CLAW if x == {0: 1, 1: 3, 2: 6}[claw] else None   # rows 2 and 3: the tip only
 
 
 def claws_forward(face, x, y, W, H, tx, ty):
@@ -217,8 +219,8 @@ BOXES = {
     "arm_plate": (48, 96, 2, 9, 7, plate),
     "leg": (24, 96, 6, 8, 6, leg),
     "knee_plate": (68, 90, 1, 5, 4, plate),
-    "hand_claws": (0, 120, 8, 5, 0, claws_down),
-    "hand_claws_side": (28, 118, 0, 4, 6, claws_down),
+    "hand_claws": (0, 120, 8, 4, 0, claws_down),
+    "back_plate": (72, 0, 6, 10, 2, plate),
     "foot_claws": (20, 120, 6, 0, 2, claws_forward),
     "ball_x_bar": (0, 34, 20, 16, 14, ball_bar(0)),
     "ball_y_bar": (68, 34, 14, 20, 16, ball_bar(1)),

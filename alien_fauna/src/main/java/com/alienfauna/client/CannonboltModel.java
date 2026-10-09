@@ -17,7 +17,7 @@ import net.minecraft.util.Mth;
 
 /**
  * Vanilla-style Cannonbolt. Standing it is one tall white torso with the face on its front
- * (no separate head), a big yellow plate on each shoulder, long one-box arms, short one-box legs,
+ * (no separate head), a big yellow plate on each shoulder and two on the back, long one-box arms, short one-box legs,
  * yellow plates on the outside of arms and legs and flat claws. Curled up it is a rounded yellow ball built from three
  * crossing bars, and it spins by the distance rolled.
  *
@@ -48,41 +48,42 @@ public class CannonboltModel<T extends CannonboltEntity> extends EntityModel<T> 
         // Feet are at y = 24. The hips are at y = 16, the shoulders at y = 6.
         // One tall white torso carries the face (there is no separate head, as on the character).
         PartDefinition body = root.addOrReplaceChild("body",
-                CubeListBuilder.create().texOffs(0, 72).addBox(-7.0F, -15.0F, -4.0F, 14, 15, 8),
+                CubeListBuilder.create().texOffs(0, 72).addBox(-7.0F, -15.0F, -4.0F, 14, 15, 8)
+                        // two yellow plates on the back, one each side of the spine
+                        .texOffs(72, 0).addBox(-7.0F, -14.0F, 4.0F, 6, 10, 2)
+                        .mirror().texOffs(72, 0).addBox(1.0F, -14.0F, 4.0F, 6, 10, 2),
                 PartPose.offset(0.0F, 16.0F, 0.0F));
 
         // The yellow shoulder plates: one box each, tilted slightly outwards. The left one mirrors the right.
         body.addOrReplaceChild("right_dome",
                 CubeListBuilder.create().texOffs(68, 72).addBox(-4.0F, -4.0F, -4.0F, 8, 6, 8),
-                PartPose.offsetAndRotation(-9.0F, -14.0F, 0.0F, 0.0F, 0.0F, -0.12F));
+                PartPose.offsetAndRotation(-12.0F, -14.0F, 0.0F, 0.0F, 0.0F, -0.12F));
         body.addOrReplaceChild("left_dome",
                 CubeListBuilder.create().mirror().texOffs(68, 72).addBox(-4.0F, -4.0F, -4.0F, 8, 6, 8),
-                PartPose.offsetAndRotation(9.0F, -14.0F, 0.0F, 0.0F, 0.0F, 0.12F));
+                PartPose.offsetAndRotation(12.0F, -14.0F, 0.0F, 0.0F, 0.0F, 0.12F));
 
         // Arms: one long box from the shoulder down to the knees, a yellow plate on the outside
-        // and two crossed flat cards of claws under the hand.
+        // and a flat card of three claws hanging flush from the front of the hand.
         body.addOrReplaceChild("right_arm",
                 CubeListBuilder.create().texOffs(0, 96).addBox(-3.0F, -1.0F, -3.0F, 6, 17, 6)
-                        .texOffs(0, 120).addBox(-4.0F, 15.0F, -4.0F, 8, 5, 0)
-                        .texOffs(28, 118).addBox(0.0F, 16.0F, -3.0F, 0, 4, 6)
+                        .texOffs(0, 120).addBox(-4.0F, 16.0F, -3.0F, 8, 4, 0)
                         .texOffs(48, 96).addBox(-5.0F, 1.0F, -3.0F, 2, 9, 7),
                 PartPose.offset(-10.0F, -12.0F, 0.0F));
         body.addOrReplaceChild("left_arm",
                 CubeListBuilder.create().mirror().texOffs(0, 96).addBox(-3.0F, -1.0F, -3.0F, 6, 17, 6)
-                        .texOffs(0, 120).addBox(-4.0F, 15.0F, -4.0F, 8, 5, 0)
-                        .texOffs(28, 118).addBox(0.0F, 16.0F, -3.0F, 0, 4, 6)
+                        .texOffs(0, 120).addBox(-4.0F, 16.0F, -3.0F, 8, 4, 0)
                         .texOffs(48, 96).addBox(3.0F, 1.0F, -3.0F, 2, 9, 7),
                 PartPose.offset(10.0F, -12.0F, 0.0F));
 
         // Legs: one box from the hip, a plate on the outside of the thigh, flat claws on the toes.
         root.addOrReplaceChild("right_leg",
                 CubeListBuilder.create().texOffs(24, 96).addBox(-3.0F, 0.0F, -3.0F, 6, 8, 6)
-                        .texOffs(20, 120).addBox(-3.0F, 7.0F, -5.0F, 6, 0, 2)
+                        .texOffs(20, 120).addBox(-3.0F, 8.0F, -5.0F, 6, 0, 2)
                         .texOffs(68, 90).addBox(-4.0F, 1.0F, -2.0F, 1, 5, 4),
                 PartPose.offset(-4.0F, 16.0F, 0.0F));
         root.addOrReplaceChild("left_leg",
                 CubeListBuilder.create().mirror().texOffs(24, 96).addBox(-3.0F, 0.0F, -3.0F, 6, 8, 6)
-                        .texOffs(20, 120).addBox(-3.0F, 7.0F, -5.0F, 6, 0, 2)
+                        .texOffs(20, 120).addBox(-3.0F, 8.0F, -5.0F, 6, 0, 2)
                         .texOffs(68, 90).addBox(3.0F, 1.0F, -2.0F, 1, 5, 4),
                 PartPose.offset(4.0F, 16.0F, 0.0F));
 
