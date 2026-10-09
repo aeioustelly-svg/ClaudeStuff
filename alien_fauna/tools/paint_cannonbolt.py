@@ -9,6 +9,7 @@ Placeholder art: repaint over it in Blockbench if wanted. Running this overwrite
 
     python3 -I tools/paint_cannonbolt.py [out.png]
 """
+import math
 import sys
 
 from PIL import Image
@@ -151,6 +152,24 @@ def eye(x, y):
     return AMBER_LIGHT if (x, y) == (1, 1) else AMBER
 
 
+BAYER = ((0, 8, 2, 10), (12, 4, 14, 6), (3, 11, 1, 9), (15, 7, 13, 5))
+SIDE_TONES = ((30, 31, 38), (52, 54, 66), (78, 80, 95), (112, 114, 128))
+
+
+def side_shade(face, x, y, W, H, tx, ty, d):
+    """The side of the torso. The black hood and the black under the back plates fade into the fur
+    through five tones, mixed by an ordered dither, along a gently wavering edge, so there is no
+    straight line and no hard step between the regions."""
+    wob = 0.9 * math.sin(y * 0.85 + 0.6) + 0.6 * math.sin(y * 2.3 + 1.7)         # keeps the edge organic
+    reach = 6.5 * max(0.0, 1.0 - (y - 3) / 15.0) ** 1.15 + wob                      # how far the dark reaches in
+    dark = max(0.0, min(1.0, 1.0 - d / max(reach, 0.5))) ** 1.15 if reach > 0 else 0.0
+    hood = max(0.0, 1.0 - (y - 3) / 6.5) * (0.5 + 0.5 * max(0.0, 1.0 - d / 9.0))   # the hood bleeds down
+    amount = max(dark, hood)
+    f = 4.0 * (1.0 - amount)
+    idx = int(f + BAYER[ty % 4][tx % 4] / 16.0)
+    return fur(face, x, y, W, H, tx, ty) if idx >= 4 else SIDE_TONES[max(0, idx)]
+
+
 def body(face, x, y, W, H, tx, ty):
     """The torso carries the face: black hood and cowl, outlined amber eyes, a black stripe that
     lines up with the one below the frown, and a long frown."""
@@ -165,12 +184,7 @@ def body(face, x, y, W, H, tx, ty):
         d = x if face == "right" else W - 1 - x     # pixels in from the back edge of this side
         if d < 2 and y in (5, 12):
             return BLACK                            # the lines between the back bands wrap round the corner
-        # A dark crescent along the back edge, thickest under the hood and fading away down the side,
-        # so the black under the back plates carries on smoothly onto the side of the body.
-        w = 4 if y <= 5 else 3 if y <= 8 else 2 if y <= 11 else 1 if y <= 14 else 0
-        if d < w:
-            return ((46, 48, 58), (70, 72, 86), (104, 106, 120), (128, 130, 142))[(d * 3) // max(1, w - 1)]
-        return fur(face, x, y, W, H, tx, ty)
+        return side_shade(face, x, y, W, H, tx, ty, d)
     if y < 2:
         return BLACK
     if face == "back" and (y in (5, 12) or W // 2 - 1 <= x <= W // 2):
