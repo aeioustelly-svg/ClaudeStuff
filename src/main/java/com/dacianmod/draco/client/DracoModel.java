@@ -73,19 +73,20 @@ public class DracoModel<T extends DracoEntity> extends EntityModel<T> {
                 CubeListBuilder.create().texOffs(86, 0).addBox(-1.0F, -1.0F, 0.0F, 2, 2, 5),
                 PartPose.offset(0.0F, 0.0F, 6.0F));
 
-        // Cloth streamer, like the windsock tail of the Dacian standard.
+        // Cloth streamer, like the windsock tail of the Dacian standard. Kept slim so it reads as a
+        // ribbon on the tail tip instead of a flag.
         PartDefinition cloth1 = seg4.addOrReplaceChild("cloth1",
-                CubeListBuilder.create().texOffs(100, 0).addBox(-0.5F, -3.5F, 0.0F, 1, 7, 6),
+                CubeListBuilder.create().texOffs(100, 0).addBox(-0.5F, -2.0F, 0.0F, 1, 4, 5),
                 PartPose.offset(0.0F, 0.0F, 5.0F));
         PartDefinition cloth2 = cloth1.addOrReplaceChild("cloth2",
-                CubeListBuilder.create().texOffs(114, 0).addBox(-0.5F, -3.0F, 0.0F, 1, 6, 6),
-                PartPose.offset(0.0F, 0.0F, 6.0F));
+                CubeListBuilder.create().texOffs(112, 0).addBox(-0.5F, -2.0F, 0.0F, 1, 4, 5),
+                PartPose.offset(0.0F, 0.0F, 5.0F));
         PartDefinition cloth3 = cloth2.addOrReplaceChild("cloth3",
-                CubeListBuilder.create().texOffs(0, 13).addBox(-0.5F, -2.5F, 0.0F, 1, 5, 6),
-                PartPose.offset(0.0F, 0.0F, 6.0F));
+                CubeListBuilder.create().texOffs(0, 13).addBox(-0.5F, -1.5F, 0.0F, 1, 3, 4),
+                PartPose.offset(0.0F, 0.0F, 5.0F));
         cloth3.addOrReplaceChild("cloth4",
-                CubeListBuilder.create().texOffs(14, 13).addBox(-0.5F, -2.0F, 0.0F, 1, 4, 5),
-                PartPose.offset(0.0F, 0.0F, 6.0F));
+                CubeListBuilder.create().texOffs(14, 13).addBox(-0.5F, -1.0F, 0.0F, 1, 2, 4),
+                PartPose.offset(0.0F, 0.0F, 4.0F));
 
         // ---- neck and head ----
         PartDefinition neck1 = body.addOrReplaceChild("neck1",
