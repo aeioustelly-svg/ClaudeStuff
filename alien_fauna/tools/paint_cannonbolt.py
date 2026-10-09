@@ -169,24 +169,21 @@ def body(face, x, y, W, H, tx, ty):
     return fur(face, x, y, W, H, tx, ty)
 
 
-def round_plate(face, x, y, W, H, tx, ty):
-    """A plate on a limb: each big face has a closed one-pixel black outline, corners included,
-    so nothing is left transparent for the limb to show through. The thin edge faces are black along
-    their whole length, so the outline runs unbroken round the plate from every angle and no
-    notch is left at the corners. The face against the limb is left empty: it is hidden by the limb
-    except through the trimmed corners, where its black border showed up as stray black blocks."""
+def plate_mid(face, x, y, W, H, tx, ty):
+    """The middle column of a round limb plate. Its outer face is yellow with black along the top
+    and bottom (the outline); everything else is black, including the faces the missing corners
+    expose, so there is nothing hollow to see into. The face against the limb is left empty."""
     if face == "left":
         return None
-    if min(W, H) < 4:
-        return BLACK                                # edges run the full length: no notch at the ends
-    if x in (0, W - 1) or y in (0, H - 1):
-        return BLACK                                # corners included: nothing transparent
+    if face != "right" or y in (0, H - 1):
+        return BLACK
     lit = (x - W / 2.0) + (y - H / 2.0)
-    if lit < -W * 0.2:
-        return YELLOW[2]
-    if lit > W * 0.25:
-        return YELLOW[0]
-    return YELLOW[1]
+    return YELLOW[2] if lit < -W * 0.2 else (YELLOW[0] if lit > W * 0.25 else YELLOW[1])
+
+
+def plate_side(face, x, y, W, H, tx, ty):
+    """A short side column of a round limb plate: all black, as part of the outline."""
+    return None if face == "left" else BLACK
 
 
 def dome(face, x, y, W, H, tx, ty):
@@ -250,9 +247,11 @@ BOXES = {
     "back_band_3": (72, 15, 14, 5, 2, back_band(2)),
     "dome": (68, 72, 8, 6, 7, dome),
     "arm": (0, 102, 6, 20, 6, arm),
-    "arm_plate": (48, 102, 1, 6, 6, round_plate),
+    "arm_plate_mid": (48, 102, 1, 6, 4, plate_mid),
+    "arm_plate_side": (58, 102, 1, 4, 1, plate_side),
     "leg": (24, 102, 6, 8, 6, leg),
-    "knee_plate": (68, 90, 1, 5, 4, round_plate),
+    "knee_plate_mid": (68, 90, 1, 5, 2, plate_mid),
+    "knee_plate_side": (74, 90, 1, 3, 1, plate_side),
     "foot_claws": (28, 120, 6, 0, 2, claws_forward),
     "ball_x_bar": (0, 34, 20, 16, 14, ball_bar(0)),
     "ball_y_bar": (68, 34, 14, 20, 16, ball_bar(1)),
