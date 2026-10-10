@@ -31,16 +31,21 @@ PUPIL = (58, 12, 70)
 
 BAYER = ((0, 8, 2, 10), (12, 4, 14, 6), (3, 11, 1, 9), (15, 7, 13, 5))
 
-# Fracture lines in body units: x as a fraction of the torso half width, y as a fraction of the
-# body span (0 = top of torso, 1 = tail tip). Shapes follow the reference art.
-BODY_CRACKS = [
-    [(-1.2, 0.06), (-0.2, 0.20), (0.5, 0.16), (1.2, 0.30)],
-    [(-0.6, 0.34), (0.1, 0.50), (0.0, 0.62), (0.7, 0.74)],
-    [(1.2, 0.46), (0.5, 0.52), (0.1, 0.50)],
-]
-
-# Face crack as offsets from the centre of the eye, so the eye sits on the line.
-HEAD_CRACK = [(-5.0, -4.0), (-2.5, -1.8), (0.0, 0.0), (2.5, 1.4), (5.0, 2.6)]
+# Fracture network for model A in model-space pixels (y points down). Branches share their end
+# points exactly, so the lines are one connected crack from the top of the head, through the eye,
+# down the neck and across the body. Other candidates are painted without cracks.
+NETWORKS = {
+    "a": [
+        [(-3, -13.5), (0, -11.2), (2, -9.5), (2.5, -7), (1, -5.5), (0.5, -5), (-0.5, -2)],
+        [(-0.5, -2), (-2, -0.5), (-4.5, 0.5)],
+        [(-0.5, -2), (1.5, 1), (4.5, 2)],
+        [(1.5, 1), (1, 5), (2, 8), (1, 11), (0, 13)],
+        [(0, 13), (-2, 15), (-3.5, 17)],
+        [(0, 13), (2, 16), (3.5, 19)],
+        [(2, 8), (4.5, 9)],
+        [(1, 5), (-1.5, 6.5), (-4.5, 7)],
+    ],
+}
 
 
 def smoothstep(e0, e1, x):
@@ -104,24 +109,18 @@ def paint_point(meta, pos, normal, s_px, w_px):
                 return EYE[2]
             return EYE[1] if row < h - 1 else EYE[0]
 
-    # ---- the crack that runs down the face; the eye above sits on top of it ----
-    if in_head and face == "front":
-        ecx, ecy = (ex0 + ex1) / 2, (ey0 + ey1) / 2
-        line = [(ecx + dx, ecy + dy) for dx, dy in HEAD_CRACK]
-        if dist_to_polyline(x, y, line) < 0.5:
-            return CRACK
+    network = NETWORKS.get(meta.get("id"), [])
 
     # ---- hands: pale claws darkening to the tip ----
     if abs(x) >= meta["clawX"] and y >= meta["clawY"] - 0.01:
         t = y - meta["clawY"]
         return GREY[1] if t >= 5 else GREY[2] if t >= 3 else GREY[4]
 
-    # ---- fracture lines on the body, painted by 3D position so they cross box edges ----
+    # ---- fracture network, painted by 3D position so it crosses box edges (the eye is drawn over it) ----
     span = bottom - top
-    if face not in ("top", "bottom") and not in_head:
-        for line in BODY_CRACKS:
-            pts = [(px * half, top + py * span) for px, py in line]
-            if dist_to_polyline(x, y, pts) < 0.5 and y < top + 0.84 * span:
+    if face not in ("top", "bottom") and y < top + 0.84 * span:
+        for line in network:
+            if dist_to_polyline(x, y, line) < 0.55:
                 return CRACK
 
     # ---- skin: a lit level per face, mottled by flowing mist, darker towards the tail ----
@@ -138,11 +137,8 @@ def paint_point(meta, pos, normal, s_px, w_px):
             level += 0.5                                               # rim light, left edge
     # contact shadow: one shade darker in a narrow band beside each crack, which gives them depth
     if face not in ("top", "bottom") and not in_head:
-        for line in BODY_CRACKS:
-            pts = [(px * half, top + py * span) for px, py in line]
-            if dist_to_polyline(x, y, pts) < 1.7 and y < top + 0.84 * span:
-                level -= 0.9
-                break
+        if any(dist_to_polyline(x, y, line) < 1.7 for line in network):
+            level -= 0.9
     dither = 0.5 + 0.18 * ((BAYER[int(math.floor(x)) & 3][int(math.floor(y + z)) & 3] + 0.5) / 16.0 - 0.5)
     return GREY[max(0, min(len(GREY) - 1, int(math.floor(level + dither))))]
 

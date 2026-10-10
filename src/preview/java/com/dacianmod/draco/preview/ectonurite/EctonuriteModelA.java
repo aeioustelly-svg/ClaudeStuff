@@ -59,9 +59,11 @@ public class EctonuriteModelA extends EctonuriteBase {
 
     private static void arm(PartDefinition torso, String name, TexPacker tex, float x, float splay) {
         PartDefinition arm = box(torso, name, tex, -1, 0, -1, 2, 15, 2, PartPose.offset(x, 1, 0));
+        // Claws start one pixel inside the arm end and stay within its width, so they come out of
+        // the hand instead of hanging from it. The splay opens them up towards the tips.
         for (int i = 0; i < 3; i++) {
-            box(arm, "c" + i, tex, 0, 0, 0, 1, 7, 0,
-                    PartPose.offsetAndRotation(-1.5F + i, 15, i - 1, 0.25F, 0, (i - 1) * 0.4F + splay * 0.5F));
+            box(arm, "c" + i, tex, 0, 0, 0, 1, 6, 0,
+                    PartPose.offsetAndRotation(-1 + 0.5F * i, 14, i - 1, 0.25F, 0, (i - 1) * 0.4F + splay * 0.5F));
         }
     }
 
