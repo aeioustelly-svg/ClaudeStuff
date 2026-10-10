@@ -61,7 +61,7 @@ public class EctonuriteModelA extends EctonuriteBase {
         PartDefinition arm = box(torso, name, tex, -1, 0, -1, 2, 15, 2, PartPose.offset(x, 1, 0));
         for (int i = 0; i < 3; i++) {
             box(arm, "c" + i, tex, 0, 0, 0, 1, 7, 0,
-                    PartPose.offsetAndRotation(-1 + i, 15, i - 1, 0.25F, 0, (i - 1) * 0.4F + splay * 0.5F));
+                    PartPose.offsetAndRotation(-1.5F + i, 15, i - 1, 0.25F, 0, (i - 1) * 0.4F + splay * 0.5F));
         }
     }
 

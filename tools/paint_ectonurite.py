@@ -39,6 +39,9 @@ BODY_CRACKS = [
     [(1.2, 0.46), (0.5, 0.52), (0.1, 0.50)],
 ]
 
+# Face crack as offsets from the centre of the eye, so the eye sits on the line.
+HEAD_CRACK = [(-5.0, -4.0), (-2.5, -1.8), (0.0, 0.0), (2.5, 1.4), (5.0, 2.6)]
+
 
 def smoothstep(e0, e1, x):
     t = min(1.0, max(0.0, (x - e0) / (e1 - e0)))
@@ -100,10 +103,12 @@ def paint_point(meta, pos, normal, s_px, w_px):
             if col == 0 and row == 0:
                 return EYE[2]
             return EYE[1] if row < h - 1 else EYE[0]
-        # black line under the eye, stepping down and away along the face as in the reference
-        if ey1 <= y < ey1 + 1 and ex0 - 2 <= x < ex1:
-            return CRACK
-        if ey1 + 1 <= y < ey1 + 2 and ex0 - 3 <= x < ex0 - 2:
+
+    # ---- the crack that runs down the face; the eye above sits on top of it ----
+    if in_head and face == "front":
+        ecx, ecy = (ex0 + ex1) / 2, (ey0 + ey1) / 2
+        line = [(ecx + dx, ecy + dy) for dx, dy in HEAD_CRACK]
+        if dist_to_polyline(x, y, line) < 0.5:
             return CRACK
 
     # ---- hands: pale claws darkening to the tip ----
@@ -124,12 +129,20 @@ def paint_point(meta, pos, normal, s_px, w_px):
     yn = (y - top) / span
     level += 0.4 * (1.0 - min(1.0, max(0.0, yn)))                      # chest and head catch more light
     level -= 1.5 * smoothstep(0.5, 1.0, yn)                            # the tail sinks into shadow
-    level += (mist(x, y, z) - 0.5) * 2.4                               # wisps
+    level += (mist(x, y, z) - 0.5) * 3.0                               # wisps
+    level -= 0.8 * max(-1.0, min(1.0, x / half))                       # lit from the left, shaded to the right
     if face in ("front", "back") and w_px >= 3:
         if s_px >= w_px - 1:
             level -= 1.2                                               # cel-shaded strip, right edge
         elif s_px == 0:
             level += 0.5                                               # rim light, left edge
+    # contact shadow: one shade darker in a narrow band beside each crack, which gives them depth
+    if face not in ("top", "bottom") and not in_head:
+        for line in BODY_CRACKS:
+            pts = [(px * half, top + py * span) for px, py in line]
+            if dist_to_polyline(x, y, pts) < 1.7 and y < top + 0.84 * span:
+                level -= 0.9
+                break
     dither = 0.5 + 0.18 * ((BAYER[int(math.floor(x)) & 3][int(math.floor(y + z)) & 3] + 0.5) / 16.0 - 0.5)
     return GREY[max(0, min(len(GREY) - 1, int(math.floor(level + dither))))]
 
