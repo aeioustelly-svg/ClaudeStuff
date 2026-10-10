@@ -47,7 +47,7 @@ public class EctonuriteDump {
         // hand planes start and how far out from the centre line they are.
         Variant[] variants = {
                 new Variant("a", 64, 64, EctonuriteModelA.createBodyLayer(), r -> new EctonuriteModelA(r),
-                        "\"eye\":[1,3,-9,-6,-3],\"neckY\":-5,\"crack\":[-5,24,4],\"clawY\":11,\"clawX\":3.5"),
+                        "\"eye\":[1,3,-11,-8,-3],\"neckY\":-5,\"crack\":[-5,24,4],\"clawY\":11,\"clawX\":3.5"),
                 new Variant("b", 64, 64, EctonuriteModelB.createBodyLayer(), r -> new EctonuriteModelB(r),
                         "\"eye\":[1,4,4,6,-4],\"neckY\":9,\"crack\":[9,25,3],\"clawY\":16,\"clawX\":3.5"),
                 new Variant("c", 128, 64, EctonuriteModelC.createBodyLayer(), r -> new EctonuriteModelC(r),

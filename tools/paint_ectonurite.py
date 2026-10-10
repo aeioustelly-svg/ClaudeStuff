@@ -23,8 +23,8 @@ from PIL import Image
 IN_DIR = "build/preview"
 OUT_DIR = "build/preview"
 
-# Three shades each: dark (cooler), base, light (warmer). Muted, as vanilla palettes are.
-GREY = ((108, 110, 122), (162, 160, 160), (190, 185, 180))
+# Five skin shades from a cool shadow to a warm highlight, muted as vanilla palettes are.
+GREY = ((92, 94, 108), (122, 123, 134), (150, 148, 152), (174, 170, 169), (198, 192, 186))
 CRACK = (22, 18, 24)
 EYE = ((150, 44, 150), (204, 78, 196), (238, 156, 228))
 PUPIL = (58, 12, 70)
@@ -38,13 +38,36 @@ BODY_CRACKS = [
     [(-0.6, 0.34), (0.1, 0.50), (0.0, 0.62), (0.7, 0.74)],
     [(1.2, 0.46), (0.5, 0.52), (0.1, 0.50)],
 ]
-# Head crack in pixels relative to the neck line (x, y): from the crown down to the brow.
-HEAD_CRACK = [(-1.0, -9.0), (-1.2, -6.5), (-2.0, -4.5), (-3.5, -4.0)]
 
 
 def smoothstep(e0, e1, x):
     t = min(1.0, max(0.0, (x - e0) / (e1 - e0)))
     return t * t * (3 - 2 * t)
+
+
+def _hash(ix, iy, iz):
+    h = (ix * 374761393 + iy * 668265263 + iz * 2147483647) & 0xFFFFFFFF
+    h = ((h ^ (h >> 13)) * 1274126177) & 0xFFFFFFFF
+    return ((h ^ (h >> 16)) & 0xFFFF) / 65535.0
+
+
+def value_noise(x, y, z):
+    """Smooth lattice noise in 0..1, so neighbouring texels stay related (no salt and pepper)."""
+    ix, iy, iz = math.floor(x), math.floor(y), math.floor(z)
+    fx, fy, fz = (v - math.floor(v) for v in (x, y, z))
+    fx, fy, fz = (f * f * (3 - 2 * f) for f in (fx, fy, fz))
+    out = 0.0
+    for dx in (0, 1):
+        for dy in (0, 1):
+            for dz in (0, 1):
+                w = (fx if dx else 1 - fx) * (fy if dy else 1 - fy) * (fz if dz else 1 - fz)
+                out += w * _hash(ix + dx, iy + dy, iz + dz)
+    return out
+
+
+def mist(x, y, z):
+    """Ectoplasm mottling: two octaves, stretched along the body so it reads as flowing wisps."""
+    return 0.7 * value_noise(x / 3.2, y / 12.0, z / 3.2) + 0.3 * value_noise(x / 1.8 + 17, y / 5.0 + 5, z / 1.8)
 
 
 def dist_to_polyline(px, py, pts):
@@ -67,7 +90,7 @@ def paint_point(meta, pos, normal, s_px, w_px):
         "left" if nx < 0 else "right"
     in_head = y < neck
 
-    # ---- the eye: magenta with a dark slit and a highlight, under a dark brow ----
+    # ---- the eye: magenta with a dark slit and a highlight ----
     if face == "front" and abs(z - ez) < 0.05:
         if ex0 <= x < ex1 and ey0 <= y < ey1:
             col, row = int(math.floor(x - ex0)), int(math.floor(y - ey0))
@@ -77,36 +100,38 @@ def paint_point(meta, pos, normal, s_px, w_px):
             if col == 0 and row == 0:
                 return EYE[2]
             return EYE[1] if row < h - 1 else EYE[0]
-        if ex0 <= x < ex1 and ey0 - 1 <= y < ey0:
-            return GREY[0]
+        # black line under the eye, stepping down and away along the face as in the reference
+        if ey1 <= y < ey1 + 1 and ex0 - 2 <= x < ex1:
+            return CRACK
+        if ey1 + 1 <= y < ey1 + 2 and ex0 - 3 <= x < ex0 - 2:
+            return CRACK
 
     # ---- hands: pale claws darkening to the tip ----
     if abs(x) >= meta["clawX"] and y >= meta["clawY"] - 0.01:
         t = y - meta["clawY"]
-        return GREY[0] if t >= 5 else GREY[1] if t >= 3 else GREY[2]
+        return GREY[1] if t >= 5 else GREY[2] if t >= 3 else GREY[4]
 
-    # ---- fracture lines, painted by 3D position so they cross box edges ----
-    if face not in ("top", "bottom"):
-        if in_head:
-            if dist_to_polyline(x, y - neck, HEAD_CRACK) < 0.5:
+    # ---- fracture lines on the body, painted by 3D position so they cross box edges ----
+    span = bottom - top
+    if face not in ("top", "bottom") and not in_head:
+        for line in BODY_CRACKS:
+            pts = [(px * half, top + py * span) for px, py in line]
+            if dist_to_polyline(x, y, pts) < 0.5 and y < top + 0.84 * span:
                 return CRACK
-        else:
-            span = bottom - top
-            for line in BODY_CRACKS:
-                pts = [(px * half, top + py * span) for px, py in line]
-                if dist_to_polyline(x, y, pts) < 0.5 and y < top + 0.84 * span:
-                    return CRACK
 
-    # ---- skin: light from the top front left, one dark strip along the shadow edge ----
-    tone = 2 if face == "top" else 0 if face == "bottom" else 1
-    if face in ("front", "back") and w_px >= 3 and s_px >= w_px - 1:
-        tone = 0                                           # cel-shaded strip on the right edge
-
-    # the tail deepens into shadow over a narrow ordered-dither band, then stays dark
-    fade = smoothstep(0.62, 0.82, (y - top) / (bottom - top)) if not in_head else 0.0
-    if fade > (BAYER[int(math.floor(x)) & 3][int(math.floor(y)) & 3] + 0.5) / 16.0 and face != "top":
-        tone = 0
-    return GREY[tone]
+    # ---- skin: a lit level per face, mottled by flowing mist, darker towards the tail ----
+    level = {"top": 3.3, "front": 2.5, "left": 2.4, "back": 1.9, "right": 1.6, "bottom": 1.0}[face]
+    yn = (y - top) / span
+    level += 0.4 * (1.0 - min(1.0, max(0.0, yn)))                      # chest and head catch more light
+    level -= 1.5 * smoothstep(0.5, 1.0, yn)                            # the tail sinks into shadow
+    level += (mist(x, y, z) - 0.5) * 2.4                               # wisps
+    if face in ("front", "back") and w_px >= 3:
+        if s_px >= w_px - 1:
+            level -= 1.2                                               # cel-shaded strip, right edge
+        elif s_px == 0:
+            level += 0.5                                               # rim light, left edge
+    dither = 0.5 + 0.18 * ((BAYER[int(math.floor(x)) & 3][int(math.floor(y + z)) & 3] + 0.5) / 16.0 - 0.5)
+    return GREY[max(0, min(len(GREY) - 1, int(math.floor(level + dither))))]
 
 
 def paint(path_in, path_out):

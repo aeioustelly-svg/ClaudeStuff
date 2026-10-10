@@ -46,10 +46,9 @@ public class EctonuriteModelA extends EctonuriteBase {
         PartDefinition tail2 = box(tail1, "tail2", tex, -1, 0, -1, 2, 4, 2, PartPose.offset(0, 4, 0));
         box(tail2, "tip", tex, -1, 0, 0, 2, 5, 0, PartPose.offset(0, 4, 0));          // flat ribbon
 
-        // Hood: a skull with a tilted upper hood whose rear end rises, so the head slopes up and
-        // away from the face like the reference instead of ending in a flat cap.
-        PartDefinition head = box(torso, "head", tex, -3, -6, -3, 6, 6, 5, PartPose.ZERO);
-        box(head, "hood", tex, -3, -3, 0, 6, 3, 6, PartPose.offsetAndRotation(0, -5, -3, 0.3F, 0, 0));
+        // Head: one tall hooded box, so there is no seam to read as a split. The slope of the
+        // reference hood is left to the texture shading.
+        box(torso, "head", tex, -3, -9, -3, 6, 9, 5, PartPose.ZERO);
 
         // Arms: one box from the shoulder, three flat claw planes at the hand.
         arm(torso, "arm_r", tex, 5, -0.15F);
