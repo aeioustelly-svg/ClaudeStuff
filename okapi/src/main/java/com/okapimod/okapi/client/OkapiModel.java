@@ -129,6 +129,14 @@ public class OkapiModel<T extends OkapiEntity> extends EntityModel<T> {
         legFrontLeft.xRot += -1.5F * sit;
         legRearRight.xRot += -1.5F * sit;
         legRearLeft.xRot += -1.5F * sit;
+        // The folded hind legs fan out a little and sit just outside the flanks, and the forelegs sit
+        // half a pixel inside, so no leg face lies exactly in the plane of the body's side (z-fighting).
+        legRearRight.x -= 1.0F * sit;
+        legRearLeft.x += 1.0F * sit;
+        legRearRight.yRot += 0.15F * sit;
+        legRearLeft.yRot -= 0.15F * sit;
+        legFrontRight.x += 0.5F * sit;
+        legFrontLeft.x -= 0.5F * sit;
 
         // The head follows the look direction, split between neck and head.
         float yaw = netHeadYaw * Mth.DEG_TO_RAD;
