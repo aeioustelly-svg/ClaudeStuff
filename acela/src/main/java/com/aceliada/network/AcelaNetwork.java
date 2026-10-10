@@ -27,6 +27,9 @@ public final class AcelaNetwork {
         CHANNEL.messageBuilder(ChooseOptionPacket.class, id++, NetworkDirection.PLAY_TO_SERVER)
                 .encoder(ChooseOptionPacket::encode).decoder(ChooseOptionPacket::new)
                 .consumerMainThread(ChooseOptionPacket::handle).add();
+        CHANNEL.messageBuilder(RedSkyPacket.class, id++, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(RedSkyPacket::encode).decoder(RedSkyPacket::new)
+                .consumerMainThread(RedSkyPacket::handle).add();
     }
 
     /** Sends to a connected player. Players without a connection (GameTest mocks) are skipped. */

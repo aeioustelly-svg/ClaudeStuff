@@ -4,6 +4,7 @@ import com.aceliada.entity.goal.AcelaSpecialAttackGoal;
 import com.aceliada.network.AcelaNetwork;
 import com.aceliada.network.CloseDialoguePacket;
 import com.aceliada.network.OpenDialoguePacket;
+import com.aceliada.network.RedSkyPacket;
 import com.aceliada.registry.ModItems;
 import com.aceliada.registry.ModSounds;
 import com.aceliada.summon.AcelaSummoning;
@@ -455,9 +456,12 @@ public class AcelaEntity extends Monster {
         super.die(source);
     }
 
-    /** Stops the music and sends the participants home a little later. */
+    /** Stops the music, clears the red sky and sends the participants home a little later. */
     private void finishFight() {
         List<ServerPlayer> listeners = audience();
+        for (ServerPlayer player : onlineParticipants()) {
+            AcelaNetwork.sendTo(player, new RedSkyPacket(false));
+        }
         if (arenaCentre != null) {
             ClientboundStopSoundPacket stop = new ClientboundStopSoundPacket(ModSounds.BOSS_MUSIC.getId(), SoundSource.RECORDS);
             listeners.forEach(p -> {
@@ -504,6 +508,10 @@ public class AcelaEntity extends Monster {
     public void startSeenByPlayer(ServerPlayer player) {
         super.startSeenByPlayer(player);
         this.bossEvent.addPlayer(player);
+        // Participants who relogged mid-fight get their red sky back.
+        if (isParticipant(player)) {
+            AcelaNetwork.sendTo(player, new RedSkyPacket(true));
+        }
     }
 
     @Override

@@ -36,7 +36,8 @@ Do not use `runServer` or `runClient` in the sandbox (EULA, no display).
 2. While the in-game clock reads 3:55 (day time 21917 to 21933), every jukebox playing the disc within 2 chunks of a
    player summons Acela, once per jukebox per night. In practice: start the disc at night and wait. The song is 2.9
    in-game hours long, so starting it after about 1:05 works. `/time set 21900` while it plays triggers it in a second.
-3. "3:55 3:55 3:55!!!" flashes red three times in chat and as a title, with bell strikes.
+3. "3:55 3:55 3:55!!!" flashes red three times in chat and as a title, with bell strikes, and the sky turns red
+   (`client/RedSky`: a red wash drawn right after the sky plus red fog) until Acela dies.
 4. 2.5 seconds later every player within 24 blocks of the jukebox goes to Dealul Bohii on the Nether roof (above the
    jukebox's Nether coordinates), blinded. Acela stands 3 blocks in front of the first player, glowing red, invulnerable.
 5. An Undertale-style text box asks "Mă, da știi ce mă fute?" with four answers. Any answer starts the fight. No answer
@@ -71,4 +72,6 @@ Do not use `runServer` or `runClient` in the sandbox (EULA, no display).
 
 - Never loaded in a real client: the dialogue screen, the renderers, the particles, the music and the Romanian
   diacritics in the font are untested. GameTests cover the server side only.
+- The red sky is drawn at `RenderLevelStageEvent.Stage.AFTER_SKY`. Whether that stage fires in the Nether (no sky)
+  is unverified. The red fog applies there either way. Shader mods may draw over it.
 - Untested: the summoning with real players (the scan, flash, teleport and return), multiplayer, peaceful difficulty.

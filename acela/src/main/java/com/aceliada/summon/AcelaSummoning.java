@@ -1,6 +1,8 @@
 package com.aceliada.summon;
 
 import com.aceliada.entity.AcelaEntity;
+import com.aceliada.network.AcelaNetwork;
+import com.aceliada.network.RedSkyPacket;
 import com.aceliada.registry.ModEntities;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -31,8 +33,8 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * The summoning sequence: "3:55 3:55 3:55!!!" flashes in chat, then everyone near the jukebox is
- * taken to Dealul Bohii on the Nether roof, blinded, and left facing Acela until the dialogue opens.
+ * The summoning sequence: "3:55 3:55 3:55!!!" flashes in chat and the sky turns red, then everyone near
+ * the jukebox is taken to Dealul Bohii on the Nether roof, blinded, and left facing Acela until the dialogue opens.
  */
 public final class AcelaSummoning {
     public static final String RETURN_TAG = "aceliada_return";
@@ -75,6 +77,7 @@ public final class AcelaSummoning {
             List<ServerPlayer> players = online(server, ids);
             ServerLevel nether = server.getLevel(Level.NETHER);
             if (players.isEmpty() || nether == null) {
+                players.forEach(p -> AcelaNetwork.sendTo(p, new RedSkyPacket(false)));
                 return;
             }
             summonAt(nether, arenaCentre(nether, source, jukebox), players);
@@ -96,6 +99,9 @@ public final class AcelaSummoning {
         Component text = FLASH_TEXT.copy().withStyle(index % 2 == 0 ? ChatFormatting.RED : ChatFormatting.DARK_RED,
                 ChatFormatting.BOLD);
         player.sendSystemMessage(text);
+        if (index == 0) {
+            AcelaNetwork.sendTo(player, new RedSkyPacket(true));
+        }
         send(player, new ClientboundSetTitlesAnimationPacket(0, 6, 2));
         send(player, new ClientboundSetTitleTextPacket(text));
         player.playNotifySound(SoundEvents.BELL_BLOCK, SoundSource.MASTER, 1.0F, 0.5F);
