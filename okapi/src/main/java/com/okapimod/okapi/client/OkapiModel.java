@@ -68,12 +68,12 @@ public class OkapiModel<T extends OkapiEntity> extends EntityModel<T> {
         // ---- tail ----
         body.addOrReplaceChild("tail",
                 CubeListBuilder.create().texOffs(62, 20).addBox(-1.0F, 0.0F, 0.0F, 2, 9, 2),
-                // starts one pixel inside the rump, like a wolf tail
-                PartPose.offsetAndRotation(0.0F, 1.0F, 9.0F, 0.35F, 0.0F, 0.0F));
+                // starts two pixels inside the rump, so it comes out of the body like a wolf tail
+                PartPose.offsetAndRotation(0.0F, 1.0F, 8.0F, 0.35F, 0.0F, 0.0F));
 
         // ---- neck and head ----
         PartDefinition neck = body.addOrReplaceChild("neck",
-                CubeListBuilder.create().texOffs(62, 0).addBox(-2.0F, -14.0F, -2.0F, 4, 14, 4),
+                CubeListBuilder.create().texOffs(66, 40).addBox(-2.5F, -14.0F, -2.5F, 5, 14, 5),
                 // rooted inside the shoulders, so the neck comes out of the body
                 PartPose.offsetAndRotation(0.0F, 4.0F, -6.0F, 0.5F, 0.0F, 0.0F));
 

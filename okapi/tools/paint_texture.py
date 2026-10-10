@@ -26,7 +26,7 @@ OUT = sys.argv[2] if len(sys.argv) > 2 else "src/main/resources/assets/okapi/tex
 # The ears are flat planes (zero thickness), so both of their sides share one texture.
 PARTS = {
     "body": (0, 0, 10, 10, 20),
-    "neck": (62, 0, 4, 14, 4),
+    "neck": (66, 40, 5, 14, 5),
     "skull": (80, 0, 6, 6, 6),
     "muzzle": (80, 12, 4, 4, 6),
     "ossicone_a": (104, 0, 2, 3, 2),

@@ -30,7 +30,7 @@ Do not use `runServer` or `runClient` in the sandbox (EULA, no display).
 - Model: integer cube dimensions, one box per leg, front of the animal is -Z, ground is y = 24. `applyPose` is a pure function for the preview tool.
 - The ears are zero-thickness planes (like the wings of a vanilla bee). The renderer does not cull, so both sides of a plane are drawn at the same depth and must carry the same pixels: the painter uses unlit colours for them. The tongue is an ordinary 2x1x12 box: a flat tongue was tried and the user preferred the box.
 - Every limb is rooted inside its parent so it comes out of it instead of hanging off it: the legs start 3 px inside the body (17 px tall, pivot y = 7, feet still on y = 24), the neck starts inside the shoulders (pivot y = 4, z = -6) and the head sits back on the neck (pivot z = +3), so the neck comes out from under it. The sit pose lowers the body by 13 px to match.
-- The tail starts one pixel inside the rump (pivot z = 9, rump ends at z = 10), like a wolf tail.
+- The tail starts two pixels inside the rump (pivot z = 8, rump ends at z = 10) so it comes out of the body. The neck is 5x14x5 (a half-pixel x/z offset, whole-pixel dimensions) at texOffs (66, 40).
 - Texture, as checked against the vanilla cow, horse and llama: a few close, muted shades in irregular clusters, elongated along the hair (along the body on the flanks, up and down on legs and neck), low contrast. Three versions failed and must not come back: a regular fur-stroke pattern (looks like plush with spots), dithered flank patches (checkerboard) and flat colour (lifeless). Stripes must wobble, vary in thickness, start in different places and break up. Ear rims are brown, not cream.
 
 ## Not verified
