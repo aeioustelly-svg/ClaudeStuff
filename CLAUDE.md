@@ -2,6 +2,8 @@
 
 A wolf-headed flying serpent inspired by the Dacian Draco battle standard. Read this before changing anything.
 
+The repository also holds a second, independent mod in `okapi/` (its own Gradle project, notes in `okapi/CLAUDE.md`). Everything below describes the Draco unless stated otherwise.
+
 ## Stack
 
 - Minecraft 1.20.1, Forge 47.4.26, official (Mojang) mappings, Gradle 8.8 wrapper.
