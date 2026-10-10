@@ -28,9 +28,9 @@ Do not use `runServer` or `runClient` in the sandbox (EULA, no display).
 - `registerGoals()` runs in the `Mob` constructor, before subclass fields exist. Goal constructors must only store the entity.
 - Goals here use `requiresUpdateEveryTick()` and tolerate a `tick()` after they ended.
 - Model: integer cube dimensions, one box per leg, front of the animal is -Z, ground is y = 24. `applyPose` is a pure function for the preview tool.
-- The ears are zero-thickness planes and the tongue is two crossed zero-thickness planes (like the wings of a vanilla bee). The renderer does not cull, so both sides of a plane are drawn at the same depth and must carry the same pixels: the painter uses unlit colours for them.
+- The ears are zero-thickness planes (like the wings of a vanilla bee). The renderer does not cull, so both sides of a plane are drawn at the same depth and must carry the same pixels: the painter uses unlit colours for them. The tongue is an ordinary 2x1x12 box: a flat tongue was tried and the user preferred the box.
 - The tail starts one pixel inside the rump (pivot z = 9, rump ends at z = 10), like a wolf tail.
-- Texture: flat areas of a few shades, hard-edged stripes, each part painted for what it is. A repeated fur-stroke pattern and dithered blobs were tried and looked like a plush toy with spots. Dither is only acceptable for a one or two row blend between two regions.
+- Texture, as checked against the vanilla cow, horse and llama: a few close, muted shades in irregular clusters, elongated along the hair (along the body on the flanks, up and down on legs and neck), low contrast. Three versions failed and must not come back: a regular fur-stroke pattern (looks like plush with spots), dithered flank patches (checkerboard) and flat colour (lifeless). Stripes must wobble, vary in thickness, start in different places and break up. Ear rims are brown, not cream.
 
 ## Not verified
 

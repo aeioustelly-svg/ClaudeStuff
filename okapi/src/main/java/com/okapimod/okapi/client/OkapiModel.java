@@ -92,11 +92,9 @@ public class OkapiModel<T extends OkapiEntity> extends EntityModel<T> {
                 CubeListBuilder.create().texOffs(112, 6).addBox(-2.0F, -5.0F, 0.0F, 4, 5, 0),
                 PartPose.offsetAndRotation(-3.0F, -3.0F, -1.0F, 0.0F, 0.0F, -0.75F));
 
-        // The tongue is two crossed flat planes that start at the tip of the muzzle and is scaled out along the head.
+        // The tongue starts at the tip of the muzzle and is scaled out along the head.
         head.addOrReplaceChild("tongue",
-                CubeListBuilder.create()
-                        .texOffs(80, 24).addBox(-1.0F, 0.0F, -12.0F, 2, 0, 12)     // horizontal plane
-                        .texOffs(80, 38).addBox(0.0F, -1.0F, -12.0F, 0, 2, 12),    // vertical plane
+                CubeListBuilder.create().texOffs(80, 24).addBox(-1.0F, 0.0F, -12.0F, 2, 1, 12),
                 PartPose.offset(0.0F, 2.0F, -12.0F));
 
         return LayerDefinition.create(mesh, 128, 64);

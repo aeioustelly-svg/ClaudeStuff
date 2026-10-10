@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """Paints the okapi entity texture from the baked model geometry.
 
-Every texel gets its colour from its position on the un-rotated ("flat") model, so the stripes run
-on across the body and the rear legs and the coat fades into the pale face along the neck. Vanilla
-style: flat areas of a few muted shades (cooler shadows, warmer highlights), lighter tops, and each
-body part painted for what it is. No repeated fur pattern and no speckle: dither is used only to
-soften the edge between two regions.
+Every texel gets its colour from its position on the un-rotated ("flat") model, so noise and stripes
+run on across the edges of separate boxes and the coat fades into the pale face along the neck.
+Vanilla style, checked against the cow, horse and llama textures: a few close, muted shades laid out
+as irregular clusters that are elongated along the hair (along the body on the flanks, up and down on
+the legs and neck). Contrast is low. A uniform repeated pattern and flat colour were both tried and
+both look wrong. The stripes wobble, vary in thickness, start in different places and break up.
 Placeholder art: repaint over the result in Blockbench if wanted.
 
     ./gradlew dumpModel
@@ -22,8 +23,7 @@ MODEL = sys.argv[1] if len(sys.argv) > 1 else "build/preview/model.json"
 OUT = sys.argv[2] if len(sys.argv) > 2 else "src/main/resources/assets/okapi/textures/entity/okapi.png"
 
 # name: (u0, v0, w, h, d), the same numbers as the addBox calls in OkapiModel.
-# The ears and the tongue are flat planes (zero thickness), so both of their sides share one texture.
-# The tongue is two crossed planes, so it stays visible from the side and from above.
+# The ears are flat planes (zero thickness), so both of their sides share one texture.
 PARTS = {
     "body": (0, 0, 10, 10, 20),
     "neck": (62, 0, 4, 14, 4),
@@ -33,8 +33,7 @@ PARTS = {
     "ossicone_b": (104, 5, 2, 3, 2),
     "ear_a": (112, 0, 4, 5, 0),
     "ear_b": (112, 6, 4, 5, 0),
-    "tongue_h": (80, 24, 2, 0, 12),
-    "tongue_v": (80, 38, 0, 2, 12),
+    "tongue": (80, 24, 2, 1, 12),
     "leg_fr": (0, 32, 4, 14, 4),
     "leg_fl": (16, 32, 4, 14, 4),
     "leg_rr": (32, 32, 4, 14, 4),
@@ -42,22 +41,23 @@ PARTS = {
     "tail": (62, 20, 2, 9, 2),
 }
 
-# Three shades each: dark (cooler shadow), base, light (warmer highlight). Kept muted.
-COAT = ((54, 39, 38), (78, 57, 51), (100, 75, 63))
-BELLY = ((72, 54, 48), (92, 69, 58), (112, 86, 72))
-CREAM = ((150, 140, 120), (200, 190, 166), (226, 218, 194))
-FACE = ((104, 94, 84), (132, 120, 106), (154, 141, 124))
-MUZZLE = ((40, 32, 34), (58, 46, 46), (78, 62, 58))
-HOOF = ((30, 26, 28), (44, 38, 38), (60, 52, 50))
-TUFT = ((30, 24, 26), (44, 34, 34), (62, 48, 46))
-OSSICONE = ((70, 52, 46), (96, 72, 62), (120, 92, 78))
-EAR_INNER = ((126, 86, 84), (156, 110, 104), (180, 134, 124))
+# Three close shades each: dark (cooler shadow), base, light (warmer highlight). Vanilla animal
+# textures read as fur through exactly this: low-contrast, irregular clusters of two or three
+# neighbouring shades, elongated along the direction the hair lies. Kept muted.
+COAT = ((66, 48, 45), (80, 59, 53), (93, 70, 61))
+UNDER = ((50, 38, 37), (62, 47, 44), (74, 56, 51))
+CREAM = ((170, 160, 138), (204, 194, 170), (226, 218, 194))
+FACE = ((118, 107, 95), (131, 119, 105), (145, 132, 116))
+MUZZLE = ((38, 31, 33), (54, 44, 45), (72, 58, 55))
+HOOF = ((30, 26, 28), (42, 37, 37), (58, 51, 49))
+TUFT = ((30, 24, 26), (42, 33, 33), (58, 46, 44))
+OSSICONE = ((76, 57, 50), (96, 73, 63), (118, 92, 79))
+EAR_INNER = ((132, 90, 88), (156, 110, 104), (178, 132, 122))
 TONGUE = ((56, 60, 96), (74, 80, 122), (96, 102, 146))
 EYE = (22, 18, 20)
 NOSTRIL = (24, 20, 22)
 
-BAYER = ((0, 8, 2, 10), (12, 4, 14, 6), (3, 11, 1, 9), (15, 7, 13, 5))
-FACE_LIGHT = {"top": 1.10, "front": 1.0, "side": 1.0, "rear": 0.94, "bottom": 0.84}
+FACE_LIGHT = {"top": 1.08, "front": 1.0, "side": 1.0, "rear": 0.95, "bottom": 0.86}
 
 
 def cell(v):
@@ -65,14 +65,37 @@ def cell(v):
     return int(math.floor(v + 1e-3))
 
 
-def smoothstep(e0, e1, x):
-    t = min(1.0, max(0.0, (x - e0) / (e1 - e0)))
-    return t * t * (3 - 2 * t)
+def h3(x, y, z, seed=0):
+    """Deterministic hash noise in 0..1 for an integer lattice point."""
+    n = (x * 374761393 + y * 668265263 + z * 2147483647 + seed * 1442695041) & 0xFFFFFFFF
+    n = ((n ^ (n >> 13)) * 1274126177) & 0xFFFFFFFF
+    n ^= n >> 16
+    return (n & 0xFFFF) / 65535.0
 
 
-def dithered(weight, a, b):
-    """True where a blend with the given weight (0..1) should show the second material."""
-    return weight > (BAYER[a & 3][b & 3] + 0.5) / 16.0
+def snoise(t, seed=0):
+    """Smooth 1D noise in -1..1."""
+    i = math.floor(t)
+    f = t - i
+    f = f * f * (3 - 2 * f)
+    a, b = h3(i, 0, 0, seed), h3(i + 1, 0, 0, seed)
+    return (a + (b - a) * f) * 2.0 - 1.0
+
+
+def cluster_noise(pos, size, seed):
+    """Clumpy noise: a coarse lattice (cell `size` = (sx, sy, sz)) plus a fine one. The coarse cells are
+    elongated along the hair, so the result reads as short strands and tufts, not as speckle."""
+    x, y, z = (cell(c) for c in pos)
+    sx, sy, sz = size
+    coarse = h3(x // sx, y // sy, z // sz, seed)
+    fine = h3(x, y, z, seed + 7)
+    return 0.62 * coarse + 0.38 * fine
+
+
+def pick(palette, n, face, lo=0.22, hi=0.78):
+    which = 0 if n < lo else 2 if n > hi else 1
+    k = FACE_LIGHT[face]
+    return tuple(min(255, int(v * k)) for v in palette[which])
 
 
 def shade(palette, which, face):
@@ -81,7 +104,7 @@ def shade(palette, which, face):
 
 
 def flat(palette, which):
-    """No face lighting: for the flat planes, whose two coincident sides must look the same."""
+    """No face lighting: for the flat plane, whose two coincident sides must look the same."""
     return palette[which]
 
 
@@ -98,123 +121,134 @@ def face_of(normal):
     return "side"
 
 
-def plane_cells(face, pos):
-    """Two cell indices that run along the face, used only to place the dither at transitions."""
-    x, y, z = (cell(c) for c in pos)
-    if face in ("top", "bottom"):
-        return z, x
-    if face in ("front", "rear"):
-        return x, y
-    return z, y
+def hindquarter_stripe(face, pos, seed):
+    """Irregular cream stripe field over the haunch: the rows wobble along the body, some are one row
+    thick and some two, each one starts at a different place and they break up now and then."""
+    x, y, z = pos
+    lateral = z if face == "side" else x
+    f = y + 0.8 * snoise(z * 0.22, seed) + 0.3 * snoise(z * 0.7 + 4.0, seed + 3)
+    band = int(math.floor(f - 3.0))
+    if band < 0 or band > 5 or band % 4 not in (0, 1):
+        return False
+    group = band // 4
+    if band % 4 == 1 and h3(group, 1, 0, seed + 5) > 0.62:
+        return False                                    # this stripe is only one row thick
+    if face == "side" and z < -3.0 + 4.0 * h3(band, 2, 0, seed + 9):
+        return False                                    # ragged front end
+    return h3(int(math.floor(lateral / 2.0)), band, 1, seed + 11) < 0.95
 
 
-def paint_body(face, pos):
+def paint_body(face, pos, seed):
     x, y, z = pos
     iy = cell(y)
-    # Hindquarter stripes with hard edges: two cream rows (light above, base below) then two dark rows.
-    # The pattern steps down one row towards the rump, so the stripes curve over the haunch.
-    row = iy - (1 if z >= 5.0 else 0)
-    if face in ("side", "rear") and z >= 1.0 and 3 <= row <= 8 and (row - 3) % 4 in (0, 1):
-        return shade(CREAM, 2 if (row - 3) % 4 == 0 else 1, face)
+    if face in ("side", "rear") and hindquarter_stripe(face, pos, seed):
+        return pick(CREAM, cluster_noise(pos, (2, 2, 3), seed + 20), face, 0.20, 0.85)
+    size = (2, 1, 3) if face == "top" else (2, 2, 3)
+    n = cluster_noise(pos, size, seed + 30)
     if face == "bottom" or iy >= 9:
-        return shade(COAT, 0, face)
-    return shade(COAT, 1, face)
+        return pick(UNDER, n, face)
+    # a little lighter along the back, darker towards the belly
+    n += 0.10 if iy <= 1 else -0.08 if iy >= 7 else 0.0
+    return pick(COAT, n, face)
 
 
-def paint_leg(name, face, pos):
+def paint_leg(name, face, pos, seed):
     x, y, z = pos
-    a, b = plane_cells(face, pos)
     gy = int(math.floor(24.0 - y - 1e-3))   # rows above the ground, 0 = hoof
+    around = cell(x) + cell(z)
+    n = cluster_noise(pos, (2, 3, 2), seed + 40)
     if gy <= 0:
-        return shade(HOOF, 1, face)
+        return pick(HOOF, n, face)
     if name in ("leg_rr", "leg_rl"):
-        # striped from the hock to the hoof, plain above
-        if gy <= 11 and gy % 3 != 0:
-            return shade(CREAM, 2 if gy % 3 == 1 else 1, face)
-        return shade(COAT, 0 if gy <= 11 else 1, face)
-    # front legs: a pale sock with one dark band, plain above
-    if gy <= 6 and gy != 3:
-        return shade(CREAM, 2 if gy == 6 else 1, face)
-    if gy == 3:
-        return shade(COAT, 0, face)
-    return shade(COAT, 1, face)
+        # irregular stripes from the hock to the hoof
+        f = gy + 0.45 * snoise(around * 0.5, seed + 50)
+        band = int(math.floor(f))
+        if 1 <= band <= 11 and band % 3 != 0 and h3(around, band, 2, seed + 51) < 0.95:
+            return pick(CREAM, cluster_noise(pos, (2, 2, 2), seed + 52), face, 0.25, 0.80)
+        return pick(COAT, n - 0.10, face)
+    # front legs: a pale sock with a ragged top edge and a dark band, plain above
+    top = 5 + (1 if h3(cell(x), cell(z), 3, seed + 60) < 0.5 else 0) + (1 if h3(cell(z), cell(x), 4, seed + 61) < 0.3 else 0)
+    if gy <= top and gy != 3:
+        return pick(CREAM, cluster_noise(pos, (2, 2, 2), seed + 62), face, 0.25, 0.80)
+    return pick(COAT, n - (0.12 if gy == 3 else 0.0), face)
 
 
-def paint_tail(face, ty):
-    if ty >= 6:
-        return shade(TUFT, 1, face)
-    return shade(COAT, 1, face)
+def paint_tail(face, pos, local, seed):
+    n = cluster_noise(pos, (2, 3, 2), seed + 70)
+    if local[1] >= 6:
+        return pick(TUFT, n, face)
+    return pick(COAT, n, face)
 
 
-def paint_neck(face, local, pos):
+def paint_neck(face, local, pos, seed):
     lx, ly, lz = local
-    a, b = plane_cells(face, pos)
-    # the pale head colour runs a little way down the neck, with a dithered edge
-    if ly <= 1 or (ly == 2 and dithered(0.5, a, b)):
-        return shade(FACE, 1, face)
+    n = cluster_noise(pos, (2, 3, 2), seed + 80)
+    # the pale head colour runs a little way down the neck with a ragged edge
+    if ly <= 1 or (ly <= 3 and n > 0.55 + 0.12 * ly):
+        return pick(FACE, cluster_noise(pos, (2, 2, 2), seed + 81), face)
     if face == "front":
-        return shade(BELLY, 2, face)
-    if face == "top":
-        return shade(COAT, 2, face)
-    return shade(COAT, 1, face)
+        return pick(COAT, n + 0.12, face)
+    return pick(COAT, n, face)
 
 
-def paint_skull(face, local, pos):
+def paint_skull(face, local, pos, seed):
     lx, ly, lz = local          # lz: 0 at the front of the skull, 5 at the back; ly 0 at the top
+    n = cluster_noise(pos, (2, 2, 2), seed + 90)
     if face == "side":
         if lz == 1 and ly in (2, 3):
             return EYE
         if 0 <= lz <= 2 and 1 <= ly <= 4:
-            return shade(COAT, 0 if lz == 1 else 1, face)        # dark patch around the eye
-        if ly == 5:
-            return shade(CREAM, 0, face)                         # pale jaw line
-        return shade(FACE, 1, face)
+            return pick(COAT, n - 0.15, face)                    # dark patch around the eye
+        return pick(FACE, n, face, 0.25, 0.78)
     if face == "top":
-        return shade(COAT, 1, face) if lz >= 2 else shade(FACE, 1, face)
+        return pick(COAT, n, face) if lz >= 2 else pick(FACE, n, face)
     if face == "bottom":
-        return shade(BELLY, 2, face)
+        return pick(UNDER, n + 0.2, face)
     if face == "rear":
-        return shade(COAT, 1, face)
-    return shade(FACE, 1, face)
+        return pick(COAT, n, face)
+    return pick(FACE, n, face, 0.25, 0.78)
 
 
-def paint_muzzle(face, local, pos):
+def paint_muzzle(face, local, pos, seed):
     lx, ly, lz = local          # lz: 0 at the nose, 5 where it meets the skull
+    n = cluster_noise(pos, (2, 2, 2), seed + 100)
     if face == "front":
         if ly == 1 and lx in (0, 3):
             return NOSTRIL
-        return shade(MUZZLE, 1, face)
+        return pick(MUZZLE, n, face)
     if face == "bottom":
-        return shade(CREAM, 0, face) if lz >= 2 else shade(MUZZLE, 1, face)
+        return pick(FACE, n, face) if lz >= 2 else pick(MUZZLE, n, face)
     if face == "top":
-        return shade(MUZZLE, 1, face) if lz <= 1 else shade(FACE, 2, face)
-    # sides: dark nose pad, a thin mouth line, pale cheek above
+        return pick(MUZZLE, n, face) if lz <= 1 else pick(FACE, n + 0.1, face)
+    # sides: dark nose pad, a thin mouth line, paler cheek above
     if lz <= 1:
-        return shade(MUZZLE, 1, face)
+        return pick(MUZZLE, n, face)
     if ly == 3:
-        return shade(MUZZLE, 0, face)
-    return shade(FACE, 1, face)
+        return pick(MUZZLE, n - 0.1, face)
+    return pick(FACE, n, face, 0.25, 0.78)
 
 
-def paint_ossicone(face, local):
+def paint_ossicone(face, local, pos, seed):
     lx, ly, lz = local
+    n = cluster_noise(pos, (1, 2, 1), seed + 110)
     if ly == 0 or face == "top":
-        return shade(TUFT, 1, face)             # dark tip
-    return shade(OSSICONE, 1, face)
+        return pick(TUFT, n, face)              # dark tip
+    return pick(OSSICONE, n, face)
 
 
-def paint_ear(local):
+def paint_ear(local, pos, seed):
     lx, ly, lz = local          # lx 0..3 across, ly 0 at the tip; both sides of the plane look alike
+    n = cluster_noise(pos, (2, 2, 2), seed + 120)
+    which = 0 if n < 0.30 else 2 if n > 0.70 else 1
     if ly == 0:
-        return flat(COAT, 0)                    # dark tip
+        return COAT[0]                          # dark tip
     if 1 <= lx <= 2 and ly <= 4:
-        return flat(EAR_INNER, 2 if lx == 1 else 1)
-    return flat(CREAM, 1)                       # pale hair along the rim
+        return EAR_INNER[2 if lx == 1 else 1]
+    return COAT[which]                          # brown hair along the rim
 
 
-def paint_tongue(local):
-    lx, ly, lz = local          # lz: 0 at the tip
-    return flat(TONGUE, 2 if lz <= 1 else 1)
+def paint_tongue(face):
+    return shade(TONGUE, 2 if face == "top" else 0 if face == "bottom" else 1, face)
 
 
 def part_of(u, v):
@@ -269,24 +303,25 @@ def main():
                 pos = p00 + s * (p10 - p00) + t * (p01 - p00)
                 # part-local cells: lx across (0 = lowest x), ly down from the top, lz back from the front
                 local = (cell(pos[0] - lo[0]), cell(pos[1] - lo[1]), cell(pos[2] - lo[2]))
+                seed = 1
                 if name == "body":
-                    c = paint_body(face, pos)
+                    c = paint_body(face, pos, seed)
                 elif name.startswith("leg_"):
-                    c = paint_leg(name, face, pos)
+                    c = paint_leg(name, face, pos, seed)
                 elif name == "tail":
-                    c = paint_tail(face, local[1])
+                    c = paint_tail(face, pos, local, seed)
                 elif name == "neck":
-                    c = paint_neck(face, local, pos)
+                    c = paint_neck(face, local, pos, seed)
                 elif name == "skull":
-                    c = paint_skull(face, local, pos)
+                    c = paint_skull(face, local, pos, seed)
                 elif name == "muzzle":
-                    c = paint_muzzle(face, local, pos)
+                    c = paint_muzzle(face, local, pos, seed)
                 elif name.startswith("ossicone"):
-                    c = paint_ossicone(face, local)
+                    c = paint_ossicone(face, local, pos, seed)
                 elif name.startswith("ear"):
-                    c = paint_ear(local)
+                    c = paint_ear(local, pos, seed)
                 else:
-                    c = paint_tongue(local)
+                    c = paint_tongue(face)
                 img[tv, tu] = (*[int(max(0, min(255, v))) for v in c], 255)
 
     Image.fromarray(img, "RGBA").save(OUT)
