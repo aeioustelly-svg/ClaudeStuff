@@ -74,7 +74,8 @@ public class OkapiModel<T extends OkapiEntity> extends EntityModel<T> {
         // ---- neck and head ----
         PartDefinition neck = body.addOrReplaceChild("neck",
                 CubeListBuilder.create().texOffs(62, 0).addBox(-2.0F, -14.0F, -2.0F, 4, 14, 4),
-                PartPose.offsetAndRotation(0.0F, 2.0F, -9.0F, 0.5F, 0.0F, 0.0F));
+                // rooted inside the shoulders, so the neck comes out of the body
+                PartPose.offsetAndRotation(0.0F, 4.0F, -6.0F, 0.5F, 0.0F, 0.0F));
 
         PartDefinition head = neck.addOrReplaceChild("head",
                 CubeListBuilder.create()
@@ -82,7 +83,8 @@ public class OkapiModel<T extends OkapiEntity> extends EntityModel<T> {
                         .texOffs(80, 12).addBox(-2.0F, -1.0F, -12.0F, 4, 4, 6)     // muzzle
                         .texOffs(104, 0).addBox(-3.0F, -6.0F, -4.0F, 2, 3, 2)      // ossicone
                         .texOffs(104, 5).addBox(1.0F, -6.0F, -4.0F, 2, 3, 2),      // ossicone
-                PartPose.offsetAndRotation(0.0F, -13.0F, 0.0F, -0.3F, 0.0F, 0.0F));
+                // set back on the neck, so the neck comes out from under the head
+                PartPose.offsetAndRotation(0.0F, -12.0F, 3.0F, -0.3F, 0.0F, 0.0F));
 
         // Big ears held out to the sides: flat zero-thickness planes, like the wings of a vanilla bee.
         head.addOrReplaceChild("ear_left",
