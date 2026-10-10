@@ -1,0 +1,12 @@
+{
+  "music_disc.la_crucea_din_mormant": {
+    "sounds": [
+      { "name": "aceliada:la_crucea_din_mormant", "stream": true }
+    ]
+  },
+  "acela.boss_music": {
+    "sounds": [
+      { "name": "aceliada:la_crucea_din_mormant", "stream": true }
+    ]
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "entity.aceliada.acela": "Acela",
+  "entity.aceliada.bone_spike": "Bone",
+  "item.aceliada.music_disc_la_crucea_din_mormant": "Music Disc",
+  "item.aceliada.music_disc_la_crucea_din_mormant.desc": "La crucea din mormânt",
+  "item.aceliada.drogul_zombie": "Drogul Zombie",
+  "item.aceliada.drogul_zombie.desc": "Undead take you for one of their own",
+  "item.aceliada.acela_spawn_egg": "Acela Spawn Egg",
+  "effect.aceliada.drogul_zombie": "Drogul Zombie",
+  "advancements.aceliada.aceliada.title": "Defeated the Aceliada",
+  "advancements.aceliada.aceliada.description": "Defeat Acela on Dealul Bohii"
+}

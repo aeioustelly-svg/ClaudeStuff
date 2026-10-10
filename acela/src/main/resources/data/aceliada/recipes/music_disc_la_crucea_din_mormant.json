@@ -1,0 +1,10 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    { "tag": "minecraft:music_discs" },
+    { "item": "minecraft:bone" },
+    { "item": "minecraft:red_dye" }
+  ],
+  "result": { "item": "aceliada:music_disc_la_crucea_din_mormant" }
+}

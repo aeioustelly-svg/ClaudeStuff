@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/template_music_disc",
+  "textures": {
+    "layer0": "aceliada:item/music_disc_la_crucea_din_mormant"
+  }
+}

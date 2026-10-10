@@ -1,0 +1,27 @@
+{
+  "parent": "minecraft:nether/root",
+  "display": {
+    "icon": { "item": "aceliada:drogul_zombie" },
+    "title": { "translate": "advancements.aceliada.aceliada.title" },
+    "description": { "translate": "advancements.aceliada.aceliada.description" },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "killed_acela": {
+      "trigger": "minecraft:player_killed_entity",
+      "conditions": {
+        "entity": [
+          {
+            "condition": "minecraft:entity_properties",
+            "entity": "this",
+            "predicate": { "type": "aceliada:acela" }
+          }
+        ]
+      }
+    }
+  },
+  "rewards": { "experience": 200 }
+}

@@ -1,0 +1,12 @@
+{
+  "entity.aceliada.acela": "Acela",
+  "entity.aceliada.bone_spike": "Os",
+  "item.aceliada.music_disc_la_crucea_din_mormant": "Disc de muzică",
+  "item.aceliada.music_disc_la_crucea_din_mormant.desc": "La crucea din mormânt",
+  "item.aceliada.drogul_zombie": "Drogul Zombie",
+  "item.aceliada.drogul_zombie.desc": "Strigoii te iau drept unul de-al lor",
+  "item.aceliada.acela_spawn_egg": "Ou de generare Acela",
+  "effect.aceliada.drogul_zombie": "Drogul Zombie",
+  "advancements.aceliada.aceliada.title": "Defeated the Aceliada",
+  "advancements.aceliada.aceliada.description": "Învinge-l pe Acela pe Dealul Bohii"
+}

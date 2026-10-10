@@ -1,5 +1,8 @@
 # Dacian Draco: Forge 1.20.1 mod
 
+This repo holds two separate mods. The root project is the Draco, described below. `acela/` is Aceliada, a boss mod with
+its own Gradle project and its own `acela/CLAUDE.md`.
+
 A wolf-headed flying serpent inspired by the Dacian Draco battle standard. Read this before changing anything.
 
 ## Stack
