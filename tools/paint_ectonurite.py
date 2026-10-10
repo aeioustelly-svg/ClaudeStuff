@@ -117,6 +117,16 @@ def paint_point(meta, pos, normal, s_px, w_px):
         t = y - meta["clawY"]
         return GREY[1] if t >= 5 else GREY[2] if t >= 3 else GREY[4]
 
+    # ---- lines around the arms: two bands that wrap right round, the lower one stepping down on
+    # the sides and back, like the creases in the reference ----
+    if meta.get("id") == "a" and abs(x) >= 3.99 and -4 <= y < meta["clawY"] and face not in ("top", "bottom"):
+        outer = abs(x) > 4.5 or face in ("front", "back")
+        if outer or abs(x) < 4.5:
+            if 3 <= y < 4:
+                return CRACK
+            if (8 <= y < 9 and face == "front") or (9 <= y < 10 and face != "front"):
+                return CRACK
+
     # ---- fracture network, painted by 3D position so it crosses box edges (the eye is drawn over it) ----
     span = bottom - top
     if face not in ("top", "bottom") and y < top + 0.84 * span:
