@@ -3,8 +3,9 @@
 
 Every texel gets its colour from its position on the un-rotated ("flat") model, so the stripes run
 on across the body and the rear legs and the coat fades into the pale face along the neck. Vanilla
-style: three muted shades per material (cooler shadows, warmer highlights), lighter tops, and
-patterns that follow the material (short fur strokes, ordered dither for blends) instead of noise.
+style: flat areas of a few muted shades (cooler shadows, warmer highlights), lighter tops, and each
+body part painted for what it is. No repeated fur pattern and no speckle: dither is used only to
+soften the edge between two regions.
 Placeholder art: repaint over the result in Blockbench if wanted.
 
     ./gradlew dumpModel
@@ -21,6 +22,8 @@ MODEL = sys.argv[1] if len(sys.argv) > 1 else "build/preview/model.json"
 OUT = sys.argv[2] if len(sys.argv) > 2 else "src/main/resources/assets/okapi/textures/entity/okapi.png"
 
 # name: (u0, v0, w, h, d), the same numbers as the addBox calls in OkapiModel.
+# The ears and the tongue are flat planes (zero thickness), so both of their sides share one texture.
+# The tongue is two crossed planes, so it stays visible from the side and from above.
 PARTS = {
     "body": (0, 0, 10, 10, 20),
     "neck": (62, 0, 4, 14, 4),
@@ -28,9 +31,10 @@ PARTS = {
     "muzzle": (80, 12, 4, 4, 6),
     "ossicone_a": (104, 0, 2, 3, 2),
     "ossicone_b": (104, 5, 2, 3, 2),
-    "ear_a": (112, 0, 4, 5, 1),
-    "ear_b": (112, 6, 4, 5, 1),
-    "tongue": (80, 24, 2, 1, 12),
+    "ear_a": (112, 0, 4, 5, 0),
+    "ear_b": (112, 6, 4, 5, 0),
+    "tongue_h": (80, 24, 2, 0, 12),
+    "tongue_v": (80, 38, 0, 2, 12),
     "leg_fr": (0, 32, 4, 14, 4),
     "leg_fl": (16, 32, 4, 14, 4),
     "leg_rr": (32, 32, 4, 14, 4),
@@ -39,10 +43,10 @@ PARTS = {
 }
 
 # Three shades each: dark (cooler shadow), base, light (warmer highlight). Kept muted.
-COAT = ((52, 38, 38), (76, 55, 50), (98, 73, 62))
-BELLY = ((86, 66, 58), (110, 86, 72), (132, 106, 88))
-CREAM = ((148, 138, 118), (200, 190, 166), (226, 218, 194))
-FACE = ((96, 86, 78), (126, 114, 100), (150, 136, 118))
+COAT = ((54, 39, 38), (78, 57, 51), (100, 75, 63))
+BELLY = ((72, 54, 48), (92, 69, 58), (112, 86, 72))
+CREAM = ((150, 140, 120), (200, 190, 166), (226, 218, 194))
+FACE = ((104, 94, 84), (132, 120, 106), (154, 141, 124))
 MUZZLE = ((40, 32, 34), (58, 46, 46), (78, 62, 58))
 HOOF = ((30, 26, 28), (44, 38, 38), (60, 52, 50))
 TUFT = ((30, 24, 26), (44, 34, 34), (62, 48, 46))
@@ -76,10 +80,9 @@ def shade(palette, which, face):
     return tuple(min(255, int(v * k)) for v in palette[which])
 
 
-def fur(palette, face, a, b):
-    """Short strands: one light and one dark texel in every seven along a diagonal."""
-    s = (a + 3 * b) % 7
-    return shade(palette, 0 if s == 0 else 2 if s == 3 else 1, face)
+def flat(palette, which):
+    """No face lighting: for the flat planes, whose two coincident sides must look the same."""
+    return palette[which]
 
 
 def face_of(normal):
@@ -96,7 +99,7 @@ def face_of(normal):
 
 
 def plane_cells(face, pos):
-    """Two cell indices that run along the face, for stroke and dither patterns."""
+    """Two cell indices that run along the face, used only to place the dither at transitions."""
     x, y, z = (cell(c) for c in pos)
     if face in ("top", "bottom"):
         return z, x
@@ -107,18 +110,15 @@ def plane_cells(face, pos):
 
 def paint_body(face, pos):
     x, y, z = pos
-    a, b = plane_cells(face, pos)
     iy = cell(y)
-    # stripes on the hindquarters: two cream rows, two dark rows, fading out towards the shoulders
-    if face in ("side", "rear") and 3 <= iy <= 8 and (iy - 3) % 4 in (0, 1):
-        weight = 1.0 if face == "rear" else smoothstep(-1.0, 7.0, z)
-        if dithered(weight, a, b):
-            return fur(CREAM, face, a, b)
+    # Hindquarter stripes with hard edges: two cream rows (light above, base below) then two dark rows.
+    # The pattern steps down one row towards the rump, so the stripes curve over the haunch.
+    row = iy - (1 if z >= 5.0 else 0)
+    if face in ("side", "rear") and z >= 1.0 and 3 <= row <= 8 and (row - 3) % 4 in (0, 1):
+        return shade(CREAM, 2 if (row - 3) % 4 == 0 else 1, face)
     if face == "bottom" or iy >= 9:
-        return fur(BELLY, face, a, b)
-    if face == "top" and abs(x) < 1.0:
-        return fur(COAT, face, a, b) if (a + b) % 2 else shade(COAT, 0, face)   # dorsal line
-    return fur(COAT, face, a, b)
+        return shade(COAT, 0, face)
+    return shade(COAT, 1, face)
 
 
 def paint_leg(name, face, pos):
@@ -126,89 +126,95 @@ def paint_leg(name, face, pos):
     a, b = plane_cells(face, pos)
     gy = int(math.floor(24.0 - y - 1e-3))   # rows above the ground, 0 = hoof
     if gy <= 0:
-        return shade(HOOF, 1 if (a + b) % 2 else 0, face)
+        return shade(HOOF, 1, face)
     if name in ("leg_rr", "leg_rl"):
+        # striped from the hock to the hoof, plain above
         if gy <= 11 and gy % 3 != 0:
-            return fur(CREAM, face, a, b)
-        return fur(COAT, face, a, b) if gy > 11 else shade(COAT, 0 if gy % 3 == 0 else 1, face)
-    # front legs: pale socks with a single dark band, dark above
+            return shade(CREAM, 2 if gy % 3 == 1 else 1, face)
+        return shade(COAT, 0 if gy <= 11 else 1, face)
+    # front legs: a pale sock with one dark band, plain above
     if gy <= 6 and gy != 3:
-        return fur(CREAM, face, a, b)
-    return fur(COAT, face, a, b)
+        return shade(CREAM, 2 if gy == 6 else 1, face)
+    if gy == 3:
+        return shade(COAT, 0, face)
+    return shade(COAT, 1, face)
 
 
-def paint_tail(face, ty, a, b):
+def paint_tail(face, ty):
     if ty >= 6:
-        return fur(TUFT, face, a, b)
-    return fur(COAT, face, a, b)
+        return shade(TUFT, 1, face)
+    return shade(COAT, 1, face)
 
 
-def paint_neck(face, local):
+def paint_neck(face, local, pos):
     lx, ly, lz = local
-    a, b = plane_cells(face, (lx, ly, lz))
-    # coat on the lower neck, fading into the pale head colour towards the top
-    if dithered(1.0 - ly / 9.0, a, b):
-        return fur(FACE, face, a, b)
-    if face == "front" or (face == "side" and lz <= 1 and ly > 6):
-        return fur(BELLY, face, a, b)
-    return fur(COAT, face, a, b)
+    a, b = plane_cells(face, pos)
+    # the pale head colour runs a little way down the neck, with a dithered edge
+    if ly <= 1 or (ly == 2 and dithered(0.5, a, b)):
+        return shade(FACE, 1, face)
+    if face == "front":
+        return shade(BELLY, 2, face)
+    if face == "top":
+        return shade(COAT, 2, face)
+    return shade(COAT, 1, face)
 
 
-def paint_skull(face, local):
+def paint_skull(face, local, pos):
     lx, ly, lz = local          # lz: 0 at the front of the skull, 5 at the back; ly 0 at the top
-    a, b = plane_cells(face, (lx, ly, lz))
     if face == "side":
         if lz == 1 and ly in (2, 3):
             return EYE
         if 0 <= lz <= 2 and 1 <= ly <= 4:
             return shade(COAT, 0 if lz == 1 else 1, face)        # dark patch around the eye
+        if ly == 5:
+            return shade(CREAM, 0, face)                         # pale jaw line
+        return shade(FACE, 1, face)
     if face == "top":
-        return fur(COAT, face, a, b) if lz >= 2 or dithered(0.5, a, b) else fur(FACE, face, a, b)
+        return shade(COAT, 1, face) if lz >= 2 else shade(FACE, 1, face)
     if face == "bottom":
-        return fur(BELLY, face, a, b)
+        return shade(BELLY, 2, face)
     if face == "rear":
-        return fur(COAT, face, a, b)
-    return fur(FACE, face, a, b)
+        return shade(COAT, 1, face)
+    return shade(FACE, 1, face)
 
 
-def paint_muzzle(face, local):
+def paint_muzzle(face, local, pos):
     lx, ly, lz = local          # lz: 0 at the nose, 5 where it meets the skull
-    a, b = plane_cells(face, (lx, ly, lz))
     if face == "front":
         if ly == 1 and lx in (0, 3):
             return NOSTRIL
-        return shade(MUZZLE, 1 if (a + b) % 2 else 0, face)
+        return shade(MUZZLE, 1, face)
     if face == "bottom":
-        return fur(CREAM, face, a, b) if lz >= 2 else shade(MUZZLE, 1, face)
+        return shade(CREAM, 0, face) if lz >= 2 else shade(MUZZLE, 1, face)
+    if face == "top":
+        return shade(MUZZLE, 1, face) if lz <= 1 else shade(FACE, 2, face)
+    # sides: dark nose pad, a thin mouth line, pale cheek above
     if lz <= 1:
-        return shade(MUZZLE, 1 if (a + b) % 2 else 0, face)
-    if lz == 2 and dithered(0.5, a, b):
-        return shade(MUZZLE, 2, face)
-    return fur(FACE, face, a, b)
+        return shade(MUZZLE, 1, face)
+    if ly == 3:
+        return shade(MUZZLE, 0, face)
+    return shade(FACE, 1, face)
 
 
 def paint_ossicone(face, local):
     lx, ly, lz = local
     if ly == 0 or face == "top":
         return shade(TUFT, 1, face)             # dark tip
-    return shade(OSSICONE, 2 if (lx + ly) % 2 else 1, face)
+    return shade(OSSICONE, 1, face)
 
 
-def paint_ear(face, local):
-    lx, ly, lz = local          # lx 0..3 across, ly 0 at the tip
-    if face == "front":
-        if 1 <= lx <= 2 and 1 <= ly <= 4:
-            return shade(EAR_INNER, 2 if lx == 1 else 1, face)
-        return shade(CREAM, 1, face)           # pale hair along the rim
-    if face == "rear":
-        if ly == 0:
-            return shade(COAT, 0, face)
-        return fur(COAT, face, lx, ly)
-    return shade(COAT, 0, face)
+def paint_ear(local):
+    lx, ly, lz = local          # lx 0..3 across, ly 0 at the tip; both sides of the plane look alike
+    if ly == 0:
+        return flat(COAT, 0)                    # dark tip
+    if 1 <= lx <= 2 and ly <= 4:
+        return flat(EAR_INNER, 2 if lx == 1 else 1)
+    return flat(CREAM, 1)                       # pale hair along the rim
 
 
-def paint_tongue(face):
-    return shade(TONGUE, 2 if face == "top" else 0 if face == "bottom" else 1, face)
+def paint_tongue(local):
+    lx, ly, lz = local          # lz: 0 at the tip
+    return flat(TONGUE, 2 if lz <= 1 else 1)
 
 
 def part_of(u, v):
@@ -228,6 +234,8 @@ def main():
     bounds = {}
     for quad in data["poses"]["flat"]:
         verts = [quad[i * 8:(i + 1) * 8] for i in range(4)]
+        if len({round(v[3]) for v in verts}) == 1 or len({round(v[4]) for v in verts}) == 1:
+            continue                    # the empty sides of a flat plane
         cu = sum(v[3] for v in verts) / 4.0
         cv = sum(v[4] for v in verts) / 4.0
         name = part_of(cu, cv)
@@ -266,19 +274,19 @@ def main():
                 elif name.startswith("leg_"):
                     c = paint_leg(name, face, pos)
                 elif name == "tail":
-                    c = paint_tail(face, local[1], *plane_cells(face, pos))
+                    c = paint_tail(face, local[1])
                 elif name == "neck":
-                    c = paint_neck(face, local)
+                    c = paint_neck(face, local, pos)
                 elif name == "skull":
-                    c = paint_skull(face, local)
+                    c = paint_skull(face, local, pos)
                 elif name == "muzzle":
-                    c = paint_muzzle(face, local)
+                    c = paint_muzzle(face, local, pos)
                 elif name.startswith("ossicone"):
                     c = paint_ossicone(face, local)
                 elif name.startswith("ear"):
-                    c = paint_ear(face, local)
+                    c = paint_ear(local)
                 else:
-                    c = paint_tongue(face)
+                    c = paint_tongue(local)
                 img[tv, tu] = (*[int(max(0, min(255, v))) for v in c], 255)
 
     Image.fromarray(img, "RGBA").save(OUT)

@@ -68,7 +68,8 @@ public class OkapiModel<T extends OkapiEntity> extends EntityModel<T> {
         // ---- tail ----
         body.addOrReplaceChild("tail",
                 CubeListBuilder.create().texOffs(62, 20).addBox(-1.0F, 0.0F, 0.0F, 2, 9, 2),
-                PartPose.offsetAndRotation(0.0F, 1.0F, 10.0F, 0.35F, 0.0F, 0.0F));
+                // starts one pixel inside the rump, like a wolf tail
+                PartPose.offsetAndRotation(0.0F, 1.0F, 9.0F, 0.35F, 0.0F, 0.0F));
 
         // ---- neck and head ----
         PartDefinition neck = body.addOrReplaceChild("neck",
@@ -83,17 +84,19 @@ public class OkapiModel<T extends OkapiEntity> extends EntityModel<T> {
                         .texOffs(104, 5).addBox(1.0F, -6.0F, -4.0F, 2, 3, 2),      // ossicone
                 PartPose.offsetAndRotation(0.0F, -13.0F, 0.0F, -0.3F, 0.0F, 0.0F));
 
-        // Big flat ears held out to the sides.
+        // Big ears held out to the sides: flat zero-thickness planes, like the wings of a vanilla bee.
         head.addOrReplaceChild("ear_left",
-                CubeListBuilder.create().texOffs(112, 0).addBox(-2.0F, -5.0F, 0.0F, 4, 5, 1),
+                CubeListBuilder.create().texOffs(112, 0).addBox(-2.0F, -5.0F, 0.0F, 4, 5, 0),
                 PartPose.offsetAndRotation(3.0F, -3.0F, -1.0F, 0.0F, 0.0F, 0.75F));
         head.addOrReplaceChild("ear_right",
-                CubeListBuilder.create().texOffs(112, 6).addBox(-2.0F, -5.0F, 0.0F, 4, 5, 1),
+                CubeListBuilder.create().texOffs(112, 6).addBox(-2.0F, -5.0F, 0.0F, 4, 5, 0),
                 PartPose.offsetAndRotation(-3.0F, -3.0F, -1.0F, 0.0F, 0.0F, -0.75F));
 
-        // The tongue starts at the tip of the muzzle and is scaled out along the head.
+        // The tongue is two crossed flat planes that start at the tip of the muzzle and is scaled out along the head.
         head.addOrReplaceChild("tongue",
-                CubeListBuilder.create().texOffs(80, 24).addBox(-1.0F, 0.0F, -12.0F, 2, 1, 12),
+                CubeListBuilder.create()
+                        .texOffs(80, 24).addBox(-1.0F, 0.0F, -12.0F, 2, 0, 12)     // horizontal plane
+                        .texOffs(80, 38).addBox(0.0F, -1.0F, -12.0F, 0, 2, 12),    // vertical plane
                 PartPose.offset(0.0F, 2.0F, -12.0F));
 
         return LayerDefinition.create(mesh, 128, 64);
