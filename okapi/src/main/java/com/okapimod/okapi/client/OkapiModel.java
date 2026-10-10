@@ -51,19 +51,19 @@ public class OkapiModel<T extends OkapiEntity> extends EntityModel<T> {
                 CubeListBuilder.create().texOffs(0, 0).addBox(-5.0F, 0.0F, -10.0F, 10, 10, 20),
                 PartPose.ZERO);
 
-        // ---- legs: one box each, swinging from the hip or shoulder ----
+        // ---- legs: one box each, swinging from the hip or shoulder, which sit three pixels inside the body ----
         body.addOrReplaceChild("leg_front_right",
-                CubeListBuilder.create().texOffs(0, 32).addBox(-2.0F, 0.0F, -2.0F, 4, 14, 4),
-                PartPose.offset(-3.0F, 10.0F, -7.0F));
+                CubeListBuilder.create().texOffs(0, 32).addBox(-2.0F, 0.0F, -2.0F, 4, 17, 4),
+                PartPose.offset(-3.0F, 7.0F, -7.0F));
         body.addOrReplaceChild("leg_front_left",
-                CubeListBuilder.create().texOffs(16, 32).addBox(-2.0F, 0.0F, -2.0F, 4, 14, 4),
-                PartPose.offset(3.0F, 10.0F, -7.0F));
+                CubeListBuilder.create().texOffs(16, 32).addBox(-2.0F, 0.0F, -2.0F, 4, 17, 4),
+                PartPose.offset(3.0F, 7.0F, -7.0F));
         body.addOrReplaceChild("leg_rear_right",
-                CubeListBuilder.create().texOffs(32, 32).addBox(-2.0F, 0.0F, -2.0F, 4, 14, 4),
-                PartPose.offset(-3.0F, 10.0F, 7.0F));
+                CubeListBuilder.create().texOffs(32, 32).addBox(-2.0F, 0.0F, -2.0F, 4, 17, 4),
+                PartPose.offset(-3.0F, 7.0F, 7.0F));
         body.addOrReplaceChild("leg_rear_left",
-                CubeListBuilder.create().texOffs(48, 32).addBox(-2.0F, 0.0F, -2.0F, 4, 14, 4),
-                PartPose.offset(3.0F, 10.0F, 7.0F));
+                CubeListBuilder.create().texOffs(48, 32).addBox(-2.0F, 0.0F, -2.0F, 4, 17, 4),
+                PartPose.offset(3.0F, 7.0F, 7.0F));
 
         // ---- tail ----
         body.addOrReplaceChild("tail",
@@ -124,7 +124,7 @@ public class OkapiModel<T extends OkapiEntity> extends EntityModel<T> {
         legRearLeft.xRot = counter * (1.0F - sit);
 
         // Lying down: the body sinks onto folded legs.
-        body.y += 10.0F * sit;
+        body.y += 13.0F * sit;
         legFrontRight.xRot += -1.5F * sit;
         legFrontLeft.xRot += -1.5F * sit;
         legRearRight.xRot += -1.5F * sit;
