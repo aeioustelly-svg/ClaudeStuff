@@ -33,17 +33,18 @@ BAYER = ((0, 8, 2, 10), (12, 4, 14, 6), (3, 11, 1, 9), (15, 7, 13, 5))
 
 # Fracture network for model A in model-space pixels (y points down). Branches share their end
 # points exactly, so the lines are one connected crack from the top of the head, through the eye,
-# down the neck and across the body. Other candidates are painted without cracks.
+# down the neck and across the body. Branches stop short of the torso edge (x = 4), because the
+# arms start there and would pick up stray dots. Other candidates are painted without cracks.
 NETWORKS = {
     "a": [
         [(-3, -13.5), (0, -11.2), (2, -9.5), (2.5, -7), (1, -5.5), (0.5, -5), (-0.5, -2)],
-        [(-0.5, -2), (-2, -0.5), (-4.5, 0.5)],
-        [(-0.5, -2), (1.5, 1), (4.5, 2)],
+        [(-0.5, -2), (-2, -0.5), (-3.2, 0.2)],
+        [(-0.5, -2), (1.5, 1), (3.2, 1.9)],
         [(1.5, 1), (1, 5), (2, 8), (1, 11), (0, 13)],
         [(0, 13), (-2, 15), (-3.5, 17)],
         [(0, 13), (2, 16), (3.5, 19)],
-        [(2, 8), (4.5, 9)],
-        [(1, 5), (-1.5, 6.5), (-4.5, 7)],
+        [(2, 8), (3.2, 8.6)],
+        [(1, 5), (-1.5, 6.5), (-3.2, 6.8)],
     ],
 }
 
