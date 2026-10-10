@@ -2,7 +2,7 @@
 """Paints Acela's skin (vanilla 64x64 player layout, wide arms) and the glowing eyes layer.
 
 Acela is a man made of darkness: purple-black skin with a featureless face and two red eyes,
-long black hair parted in the middle, a black-brown leather jacket with a silver zip, black jeans,
+long black hair parted in the middle, a black leather jacket with dark gunmetal zips, black jeans,
 boots, and a briar pipe (in the unused skin area at u 56-64, v 16-25).
 
 Three or four muted shades per material, lighter tops, cooler shadows, warmer highlights, and
@@ -19,10 +19,10 @@ OUT = "src/main/resources/assets/aceliada/textures/entity"
 # Palettes, dark to light.
 DARK = [(10, 8, 14), (16, 13, 22), (24, 20, 32), (34, 29, 44)]          # the darkness he is made of
 HAIR = [(12, 12, 16), (22, 22, 30), (36, 37, 50), (54, 56, 74)]         # black with a cold sheen
-LEATHER = [(26, 20, 18), (40, 31, 27), (58, 45, 37), (82, 66, 52)]     # black-brown, warm highlights
+LEATHER = [(15, 14, 15), (24, 23, 25), (36, 35, 38), (52, 51, 56)]     # black leather, a faint grey sheen
 DENIM = [(20, 21, 27), (30, 31, 40), (42, 44, 56)]
 BOOT = [(14, 12, 12), (26, 22, 20), (40, 34, 30)]
-METAL = [(110, 112, 118), (168, 170, 176), (214, 216, 222)]
+METAL = [(40, 40, 44), (52, 52, 57), (66, 66, 72)]                     # dark gunmetal, so the zips stay quiet
 BRIAR = [(54, 30, 18), (84, 48, 28), (112, 68, 40)]
 EYE = [(150, 14, 14), (230, 34, 28), (255, 96, 70)]
 EMBER = [(200, 70, 20), (255, 150, 50)]

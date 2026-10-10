@@ -24,12 +24,11 @@ repository root. Run every command from this `acela/` directory.
 
 Do not use `runServer` or `runClient` in the sandbox (EULA, no display).
 
-## The song is not in git
+## The song
 
-The repo is public and the song is a recording it has no licence to publish, so
-`assets/aceliada/sounds/la_crucea_din_mormant.ogg` is in `.gitignore`. Without it the mod builds and runs, but the disc
-and the boss music are silent. Ask the user for the mp3 and run `tools/import_song.sh`. Its length (2:23.7, 2875 ticks)
-is hard-coded in `ModItems.DISC_LENGTH_TICKS`.
+`assets/aceliada/sounds/la_crucea_din_mormant.ogg` is the user's mp3 converted to mono Ogg Vorbis by
+`tools/import_song.sh` (the user says it is not copyrighted). Its length (2:23.7, 2875 ticks) is hard-coded in
+`ModItems.DISC_LENGTH_TICKS`. Update that if the song is replaced.
 
 ## How it plays
 
@@ -42,8 +41,9 @@ is hard-coded in `ModItems.DISC_LENGTH_TICKS`.
    jukebox's Nether coordinates), blinded. Acela stands 3 blocks in front of the first player, glowing red, invulnerable.
 5. An Undertale-style text box asks "Mă, da știi ce mă fute?" with four answers. Any answer starts the fight. No answer
    in 60 seconds starts it anyway.
-6. The fight: boss bar, the song streams over the arena, taunts in chat every 8 to 17 seconds, dodges (45 percent at full
-   health, 15 percent near death), bone wave, bone cage, gravity slam, smoke blast.
+6. The fight: boss bar, the song streams over the arena, taunts in chat every 8 to 17 seconds, a line over every
+   player he kills (`KILL_LINE`), another on 30 percent of his landed hits (`HIT_LINE`, at most every 20 seconds),
+   dodges (45 percent at full health, 15 percent near death), bone wave, bone cage, gravity slam, smoke blast.
 7. On death: "Mă da tu n-ai empatie...", 1 to 3 Drogul Zombie, the "Defeated the Aceliada" advancement (Nether tab),
    and 10 seconds later the players still in the arena go back to where they were summoned from.
 

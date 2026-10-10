@@ -75,8 +75,15 @@ public class AcelaEntity extends Monster {
             "Da duti mă în pulă wă",
             "Lapurfagiu.",
             "Mă mut în Mongolia...",
-            "*fucks aîr*");
+            "*fucks aîr*",
+            "poate numai Dorel Vodafone și Patronu' de m-ar putea învinge...");
+    /** Said over a player he has just killed. */
+    public static final String KILL_LINE = "N-ai să te mi scoli... ca pula lui khab";
+    /** Said now and then when one of his hits lands on a player. */
+    public static final String HIT_LINE = "Ce să-ți povestesc nepoate, viața satanelor";
     public static final String LAST_WORDS = "Mă da tu n-ai empatie...";
+    private static final float HIT_LINE_CHANCE = 0.3F;
+    private static final int HIT_LINE_COOLDOWN = 20 * 20;
 
     /** If nobody answers in this time, the fight starts anyway. */
     public static final int INTRO_TIMEOUT = 20 * 60;
@@ -95,6 +102,7 @@ public class AcelaEntity extends Monster {
     private int musicTicks;
     private int specialCooldown = 60;
     private boolean quietRemoval;
+    private int hitLineCooldown;
     private AcelaSpecialAttackGoal specialAttackGoal;
 
     public AcelaEntity(EntityType<? extends AcelaEntity> type, Level level) {
@@ -293,6 +301,9 @@ public class AcelaEntity extends Monster {
         if (specialCooldown > 0) {
             specialCooldown--;
         }
+        if (hitLineCooldown > 0) {
+            hitLineCooldown--;
+        }
         if (--talkCooldown <= 0) {
             int index = random.nextInt(TAUNTS.size() - 1);
             if (index >= lastTaunt && lastTaunt >= 0) {
@@ -379,6 +390,28 @@ public class AcelaEntity extends Monster {
             return false;
         }
         return super.hurt(source, amount);
+    }
+
+    @Override
+    public boolean doHurtTarget(Entity target) {
+        boolean hit = super.doHurtTarget(target);
+        if (hit && target instanceof Player && target.isAlive() && hitLineCooldown <= 0
+                && random.nextFloat() < HIT_LINE_CHANCE) {
+            say(HIT_LINE);
+            hitLineCooldown = HIT_LINE_COOLDOWN;
+            talkCooldown = Math.max(talkCooldown, 100);
+        }
+        return hit;
+    }
+
+    /** Called when something he gets the kill credit for dies, bones and smoke included. */
+    @Override
+    public boolean killedEntity(ServerLevel level, LivingEntity victim) {
+        if (victim instanceof Player) {
+            say(KILL_LINE);
+            talkCooldown = Math.max(talkCooldown, 100);
+        }
+        return super.killedEntity(level, victim);
     }
 
     private boolean dodge(Entity attacker) {

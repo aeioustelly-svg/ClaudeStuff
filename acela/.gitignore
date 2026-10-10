@@ -28,6 +28,3 @@ forge*changelog.txt
 logs
 __pycache__
 
-# The disc's song is a recording the repo has no licence to publish (the repo is public).
-# Recreate it with tools/import_song.sh from the mp3.
-src/main/resources/assets/aceliada/sounds/la_crucea_din_mormant.ogg
