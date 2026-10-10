@@ -225,3 +225,13 @@ tasks.register('dumpModel', JavaExec) {
     args = [layout.buildDirectory.file('preview/model.json').get().asFile.absolutePath]
     javaLauncher = javaToolchains.launcherFor(java.toolchain)
 }
+
+tasks.register('dumpEctonurite', JavaExec) {
+    group = 'tools'
+    description = 'Writes build/preview/ectonurite_{a,b,c}.json with the baked candidate Ectonurite models.'
+    dependsOn 'previewClasses'
+    classpath = sourceSets.preview.runtimeClasspath
+    mainClass = 'com.dacianmod.draco.preview.ectonurite.EctonuriteDump'
+    args = [layout.buildDirectory.dir('preview').get().asFile.absolutePath]
+    javaLauncher = javaToolchains.launcherFor(java.toolchain)
+}

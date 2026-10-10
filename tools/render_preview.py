@@ -53,7 +53,7 @@ def render(quads, tex, yaw, pitch, scale, size, focus=None, ss=3):
     color = np.zeros((Hs, Ws, 3), np.float32)
     color[:] = BG
     depth = np.full((Hs, Ws), np.inf, np.float32)
-    tsize = tex.shape[0]
+    th, tw = tex.shape[:2]
 
     for pos, uv, normal in quads:
         rel = pos - target
@@ -84,8 +84,8 @@ def render(quads, tex, yaw, pitch, scale, size, focus=None, ss=3):
             d = l0 * dz[i0] + l1 * dz[i1] + l2 * dz[i2]
             u = l0 * uv[i0, 0] + l1 * uv[i1, 0] + l2 * uv[i2, 0]
             v = l0 * uv[i0, 1] + l1 * uv[i1, 1] + l2 * uv[i2, 1]
-            tu = np.clip(np.floor(u).astype(int), 0, tsize - 1)
-            tv = np.clip(np.floor(v).astype(int), 0, tsize - 1)
+            tu = np.clip(np.floor(u).astype(int), 0, tw - 1)
+            tv = np.clip(np.floor(v).astype(int), 0, th - 1)
             texel = tex[tv, tu]
             sub_depth = depth[miny:maxy + 1, minx:maxx + 1]
             write = inside & (d < sub_depth) & (texel[..., 3] > 128)

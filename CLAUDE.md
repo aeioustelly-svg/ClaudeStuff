@@ -18,6 +18,8 @@ A wolf-headed flying serpent inspired by the Dacian Draco battle standard. Read 
 | `./gradlew dumpModel` | Bakes the real `DracoModel` and writes `build/preview/model.json` |
 | `python3 -I tools/paint_texture.py` | Repaints `draco.png` from the dumped geometry |
 | `python3 -I tools/render_preview.py` | Software-renders `build/preview/body.png`, `head.png`, `texture.png` |
+| `./gradlew dumpEctonurite` | Bakes the three candidate Ectonurite models (`src/preview/java/.../ectonurite`) to `build/preview/ectonurite_{a,b,c}.json` |
+| `python3 -I tools/paint_ectonurite.py` then `python3 -I tools/render_ectonurite.py` | Paints their textures and renders `build/preview/ectonurite_*_sheet.png` and `ectonurite_compare.png` |
 | `python3 -I tools/make_item_textures.py` | Rebuilds the item and armour textures from vanilla textures (reads the vanilla client jar) |
 
 Do not use `runServer` or `runClient` in the sandbox. A server needs the Minecraft EULA accepted, which is the user's decision, and there is no display.

@@ -22,11 +22,14 @@ public class ModelDump {
     private static final int TEX_SIZE = 128;
 
     /** Collects four vertices per quad, exactly as ModelPart emits them. */
-    private static class Collector implements VertexConsumer {
-        final List<float[]> quads = new ArrayList<>();
+    public static class Collector implements VertexConsumer {
+        public final List<float[]> quads = new ArrayList<>();
+        private final int texW, texH;
         private final float[] current = new float[32];
         private int count;
         private float x, y, z, u, v, nx, ny, nz;
+
+        public Collector(int texW, int texH) { this.texW = texW; this.texH = texH; }
 
         @Override public VertexConsumer vertex(double x, double y, double z) { this.x = (float) x; this.y = (float) y; this.z = (float) z; return this; }
         @Override public VertexConsumer color(int r, int g, int b, int a) { return this; }
@@ -39,7 +42,7 @@ public class ModelDump {
 
         @Override
         public void endVertex() {
-            float[] vertex = {x * 16.0F, y * 16.0F, z * 16.0F, u * TEX_SIZE, v * TEX_SIZE, nx, ny, nz};
+            float[] vertex = {x * 16.0F, y * 16.0F, z * 16.0F, u * texW, v * texH, nx, ny, nz};
             System.arraycopy(vertex, 0, current, count * 8, 8);
             if (++count == 4) {
                 quads.add(current.clone());
@@ -49,7 +52,7 @@ public class ModelDump {
     }
 
     private static String dump(DracoModel<DracoEntity> model, ModelPart root) {
-        Collector collector = new Collector();
+        Collector collector = new Collector(TEX_SIZE, TEX_SIZE);
         root.render(new PoseStack(), collector, 0, 0, 1.0F, 1.0F, 1.0F, 1.0F);
         StringBuilder sb = new StringBuilder("[");
         for (int q = 0; q < collector.quads.size(); q++) {
