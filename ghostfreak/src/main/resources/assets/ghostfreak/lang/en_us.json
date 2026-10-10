@@ -1,0 +1,9 @@
+{
+  "entity.ghostfreak.ghostfreak": "Ghostfreak",
+  "item.ghostfreak.ghostfreak_spawn_egg": "Ghostfreak Spawn Egg",
+  "item.ghostfreak.ectoplasm_bottle": "Bottle of Ectoplasm",
+  "block.ghostfreak.spectral_lantern": "Spectral Lantern",
+  "message.ghostfreak.mode.0": "%s is following you",
+  "message.ghostfreak.mode.1": "%s is waiting here",
+  "message.ghostfreak.mode.2": "%s is wandering"
+}

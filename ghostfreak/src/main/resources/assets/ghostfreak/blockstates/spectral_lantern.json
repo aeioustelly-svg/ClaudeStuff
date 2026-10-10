@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "hanging=false": {
+      "model": "ghostfreak:block/spectral_lantern"
+    },
+    "hanging=true": {
+      "model": "ghostfreak:block/spectral_lantern_hanging"
+    }
+  }
+}

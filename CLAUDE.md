@@ -1,5 +1,9 @@
 # Dacian Draco: Forge 1.20.1 mod
 
+> A second mod, the **Ghostfreak**, lives in `ghostfreak/` with its own Gradle build and its own `CLAUDE.md`.
+> The commands below are for the Draco mod and run from the repository root. The Ectonurite model candidates
+> (`src/preview/java/.../ectonurite`, `tools/*ectonurite*.py`) were the design study for it.
+
 A wolf-headed flying serpent inspired by the Dacian Draco battle standard. Read this before changing anything.
 
 ## Stack
