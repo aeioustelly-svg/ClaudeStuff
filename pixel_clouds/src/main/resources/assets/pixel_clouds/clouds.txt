@@ -1,0 +1,2 @@
+# one sprite file name per line, from assets/pixel_clouds/textures/cloud/
+rappenem_a.png

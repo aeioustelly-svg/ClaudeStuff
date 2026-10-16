@@ -1,13 +1,9 @@
 package com.pixelclouds.client;
 
-import com.pixelclouds.gen.CloudAtlas;
-import com.pixelclouds.gen.CloudKind;
-
 /**
- * Decides where the clouds are. The sky is split into a grid of cells and each cell hashes to at most one
- * cloud, so the layout is endless, costs nothing to store, and is identical every time. Coverage also varies
- * smoothly across the sky, so there are clear patches and crowded ones. Two decks exist: a fair-weather one and
- * a lower, denser overcast one that fills in as rain builds.
+ * Decides where the clouds are. Several layers drift at different speeds and altitudes, each an endless hashed
+ * grid with at most one cloud per cell. Because the layers move through each other, clouds overlap, merge into
+ * larger masses and slide apart again. A lower, denser overcast layer fills in as rain builds.
  */
 final class CloudField {
     static final class Cloud {
@@ -15,22 +11,28 @@ final class CloudField {
         float x;
         float y;
         float z;
-        int variant;
-        /** World size of one art pixel in blocks. */
-        float pixel;
-        /** Body size in blocks. */
+        int sprite;
+        /** Quad size in blocks. */
+        float width;
+        float height;
+        /** Visible body width in blocks, for fading near the camera. */
         float bodyW;
-        float bodyH;
         /** 0..1 fade-in as the weather makes this cloud appear. */
         float presence;
-        /** Brightness bias, 0.5 neutral. */
-        float bias;
     }
 
     /** Blocks per art pixel before the size setting is applied. */
-    static final float BLOCKS_PER_PIXEL = 1.3f;
+    static final float BLOCKS_PER_PIXEL = 0.9f;
 
-    private static final int MAX = 3000;
+    /** cell size, speed multiplier, altitude offset, salt, share of the coverage setting. */
+    private static final double[][] LAYERS = {
+            {118, 1.00, 0, 0x51F15E1DL, 1.0},
+            {97, 1.35, 14, 0x2C1B3A77L, 0.8},
+            {131, 0.70, -10, 0x6D0E5B13L, 0.8},
+    };
+    private static final double[] OVERCAST = {90, 1.25, -45, 0x7A11F00DL, 1.0};
+
+    private static final int MAX = 2500;
     final Cloud[] clouds = new Cloud[MAX];
     int count;
     /** 0..1: how deep inside a cloud the camera is. */
@@ -42,36 +44,35 @@ final class CloudField {
         }
     }
 
-    // Fair-weather mix, as cumulative thresholds over rType.
-    private static final CloudKind[] DECK0_KINDS = {
-            CloudKind.CUMULUS, CloudKind.TOWER, CloudKind.PUFF, CloudKind.BANK,
-            CloudKind.CLUSTER, CloudKind.WISP, CloudKind.ANVIL, CloudKind.STRATUS};
-    private static final float[] DECK0_CUT = {0.20f, 0.29f, 0.49f, 0.60f, 0.70f, 0.81f, 0.86f, 1.0f};
-
-    void update(CloudAtlas atlas, double camX, double camY, double camZ, double seconds, float rain, float thunder,
+    void update(SpriteAtlas atlas, double camX, double camY, double camZ, double seconds, float rain,
                 float coverage, float size, float windSpeed, float height, float range) {
         count = 0;
         inside = 0f;
-        double windX = Math.cos(0.45) * windSpeed * seconds;
-        double windZ = Math.sin(0.45) * windSpeed * seconds;
-
-        scan(atlas, 0, 110f, camX, camY, camZ, windX, windZ, range, rain, coverage, size, height);
-        // Overcast deck, lower and a little faster. Empty in fine weather.
+        double dirX = Math.cos(0.45) * windSpeed * seconds;
+        double dirZ = Math.sin(0.45) * windSpeed * seconds;
+        for (double[] l : LAYERS) {
+            scan(atlas, l, false, camX, camY, camZ, dirX, dirZ, range, rain, coverage, size, height);
+        }
         if (rain > 0.01f) {
-            scan(atlas, 1, 85f, camX, camY, camZ, windX * 1.25, windZ * 1.25, range, rain, coverage, size, height - 45f);
+            scan(atlas, OVERCAST, true, camX, camY, camZ, dirX, dirZ, range, rain, coverage, size, height);
         }
     }
 
-    private void scan(CloudAtlas atlas, int deck, float cell, double camX, double camY, double camZ,
-                      double windX, double windZ, float range, float rain, float coverage, float size,
-                      float baseHeight) {
+    private void scan(SpriteAtlas atlas, double[] layer, boolean overcast, double camX, double camY, double camZ,
+                      double dirX, double dirZ, float range, float rain, float coverage, float size, float height) {
+        float cell = (float) layer[0];
+        double windX = dirX * layer[1];
+        double windZ = dirZ * layer[1];
+        float baseHeight = height + (float) layer[2];
+        long salt = (long) layer[3];
         double lx = camX - windX;
         double lz = camZ - windZ;
-        int x0 = (int) Math.floor((lx - range) / cell);
-        int x1 = (int) Math.floor((lx + range) / cell);
-        int z0 = (int) Math.floor((lz - range) / cell);
-        int z1 = (int) Math.floor((lz + range) / cell);
-        long salt = deck == 0 ? 0x51F15E1DL : 0x7A11F00DL;
+        // Clouds are wide, so look a little beyond the range for those whose body reaches into view.
+        float reach = range + 150f;
+        int x0 = (int) Math.floor((lx - reach) / cell);
+        int x1 = (int) Math.floor((lx + reach) / cell);
+        int z0 = (int) Math.floor((lz - reach) / cell);
+        int z1 = (int) Math.floor((lz + reach) / cell);
 
         for (int cz = z0; cz <= z1; cz++) {
             for (int cx = x0; cx <= x1; cx++) {
@@ -80,100 +81,52 @@ final class CloudField {
                 }
                 long h = hash(cx, cz, salt);
                 float rOcc = rnd(h, 1);
-                float rType = rnd(h, 2);
                 float rJx = rnd(h, 3);
                 float rJz = rnd(h, 4);
                 float rY = rnd(h, 5);
                 float rSize = rnd(h, 6);
                 float rVar = rnd(h, 7);
-                float rBias = rnd(h, 8);
+                float rAspect = rnd(h, 8);
+                float rFlip = rnd(h, 9);
 
-                // Slowly varying coverage: clear patches and crowded ones.
                 float patch = (smoothNoise(cx * 0.21f, cz * 0.21f, (int) salt) - 0.5f) * 0.9f;
-                float cover = Math.max(0f, coverage + patch);
-
-                CloudKind kind;
-                float chance;
-                float bias = 0.5f + (rBias - 0.5f) * 0.06f;
-                float altitude;
-                if (deck == 0) {
-                    kind = pick(rType);
-                    switch (kind) {
-                        case CUMULUS -> {
-                            chance = cover * (1f - 0.5f * rain);
-                            altitude = baseHeight + rY * 35f;
-                        }
-                        case TOWER -> {
-                            chance = cover * 0.7f * (1f - 0.3f * rain);
-                            altitude = baseHeight + rY * 30f;
-                        }
-                        case PUFF -> {
-                            chance = cover * 1.1f * (1f - 0.8f * rain);
-                            altitude = baseHeight + rY * 40f;
-                        }
-                        case BANK -> {
-                            chance = cover * 0.9f;
-                            altitude = baseHeight - 10f + rY * 20f;
-                        }
-                        case CLUSTER -> {
-                            chance = cover * 0.9f * (1f - rain);
-                            altitude = baseHeight + 10f + rY * 40f;
-                        }
-                        case WISP -> {
-                            chance = cover * 0.9f * (1f - rain);
-                            altitude = baseHeight + 70f + rY * 40f;
-                            bias += 0.05f;
-                        }
-                        case ANVIL -> {
-                            chance = cover * 0.5f + rain * 0.5f;
-                            altitude = baseHeight + rY * 20f;
-                            bias -= 0.06f;
-                        }
-                        default -> {
-                            chance = cover * 0.8f + 0.5f * rain;
-                            altitude = baseHeight - 10f + rY * 20f;
-                        }
-                    }
-                    altitude -= 20f * rain;
-                } else {
-                    kind = rType < 0.55f ? CloudKind.STRATUS : rType < 0.8f ? CloudKind.BANK : CloudKind.ANVIL;
-                    chance = rain * 1.15f;
-                    altitude = baseHeight + rY * 20f;
-                    bias -= kind == CloudKind.ANVIL ? 0.08f : 0.04f;
-                }
+                float cover = Math.max(0f, coverage * (float) layer[4] + patch);
+                float chance = overcast ? rain * 1.15f : cover * (1f - 0.55f * rain);
 
                 // Clouds fade in over a small range of the weather value rather than popping.
                 float presence = clamp01((chance - rOcc) / 0.08f);
                 if (presence <= 0f) {
                     continue;
                 }
-                int variant = CloudAtlas.first(kind) + Math.min(CloudAtlas.count(kind) - 1, (int) (rVar * CloudAtlas.count(kind)));
-                float pixel = BLOCKS_PER_PIXEL * size * (0.9f + 0.22f * rSize);
+                int sprite = Math.min(atlas.count - 1, (int) (rVar * atlas.count));
+                float pixel = BLOCKS_PER_PIXEL * size * (0.45f + 0.75f * rSize) * (overcast ? 1.5f : 1f);
+                float aspect = overcast ? 0.55f + 0.15f * rAspect : 0.8f + 0.5f * rAspect;
+                float w = atlas.spriteWidth(sprite) * pixel * (overcast ? 1.2f : 1f);
+                float hgt = atlas.spriteHeight(sprite) * pixel * aspect;
                 double wx = (cx + 0.5 + (rJx - 0.5) * 0.7) * cell + windX;
                 double wz = (cz + 0.5 + (rJz - 0.5) * 0.7) * cell + windZ;
                 double dx = wx - camX;
                 double dz = wz - camZ;
-                if (dx * dx + dz * dz > (double) range * range) {
+                double lim = range + w * 0.5;
+                if (dx * dx + dz * dz > lim * lim) {
                     continue;
                 }
 
                 Cloud c = clouds[count++];
-                c.variant = variant;
-                c.pixel = pixel;
-                c.bodyW = atlas.bodyWidth(variant) * pixel;
-                c.bodyH = atlas.bodyHeight(variant) * pixel;
+                c.sprite = sprite;
+                c.width = w;
+                c.height = hgt;
+                c.bodyW = atlas.bodyWidth(sprite) * (w / atlas.spriteWidth(sprite));
                 c.x = (float) wx;
                 c.z = (float) wz;
-                c.y = altitude + c.bodyH * 0.5f;
+                c.y = baseHeight + rY * (overcast ? 20f : 40f) - 20f * rain * (overcast ? 0f : 1f) + hgt * 0.5f;
                 c.presence = presence;
-                c.bias = bias;
 
-                // How far the camera is inside this cloud's body.
                 double rx = camX - c.x;
                 double ry = camY - c.y;
                 double rz = camZ - c.z;
                 double rh = c.bodyW * 0.36;
-                double rv = c.bodyH * 0.42;
+                double rv = hgt * 0.38;
                 double d = Math.sqrt((rx * rx + rz * rz) / (rh * rh) + (ry * ry) / (rv * rv));
                 float in = (float) (1.0 - d) * presence;
                 if (in > inside) {
@@ -181,15 +134,6 @@ final class CloudField {
                 }
             }
         }
-    }
-
-    private static CloudKind pick(float r) {
-        for (int i = 0; i < DECK0_CUT.length; i++) {
-            if (r < DECK0_CUT[i]) {
-                return DECK0_KINDS[i];
-            }
-        }
-        return DECK0_KINDS[DECK0_KINDS.length - 1];
     }
 
     private static float smoothNoise(float x, float y, int seed) {

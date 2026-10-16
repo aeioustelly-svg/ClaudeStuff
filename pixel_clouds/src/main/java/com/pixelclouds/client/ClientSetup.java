@@ -10,7 +10,6 @@ import net.minecraftforge.client.event.RegisterDimensionSpecialEffectsEvent;
 import net.minecraftforge.client.event.RegisterShadersEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import org.slf4j.Logger;
 
 @Mod.EventBusSubscriber(modid = PixelClouds.MODID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
@@ -18,11 +17,6 @@ public final class ClientSetup {
     private static final Logger LOGGER = LogUtils.getLogger();
 
     private ClientSetup() {}
-
-    @SubscribeEvent
-    public static void onClientSetup(FMLClientSetupEvent event) {
-        CloudRenderer.startGeneration();
-    }
 
     @SubscribeEvent
     public static void onRegisterShaders(RegisterShadersEvent event) {

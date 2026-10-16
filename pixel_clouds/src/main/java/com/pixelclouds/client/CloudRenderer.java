@@ -12,11 +12,7 @@ import com.mojang.blaze3d.vertex.VertexFormat;
 import com.mojang.logging.LogUtils;
 import com.pixelclouds.PixelClouds;
 import com.pixelclouds.PixelCloudsConfig;
-import com.pixelclouds.gen.CloudAtlas;
-import com.pixelclouds.gen.CloudSprites;
 import com.pixelclouds.sky.CloudPalette;
-import java.util.concurrent.CompletableFuture;
-import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.ShaderInstance;
@@ -33,8 +29,7 @@ public final class CloudRenderer {
 
     private static final CloudField FIELD = new CloudField();
     private static final Billboard BILLBOARD = new Billboard();
-    private static CompletableFuture<CloudAtlas> pending;
-    private static CloudAtlas atlas;
+    private static SpriteAtlas atlas;
     private static DynamicTexture texture;
     private static boolean failed;
 
@@ -43,13 +38,6 @@ public final class CloudRenderer {
     private static final float[] insideColour = new float[3];
 
     private CloudRenderer() {}
-
-    /** Starts building the sprite atlas off the render thread. */
-    public static void startGeneration() {
-        if (pending == null) {
-            pending = CompletableFuture.supplyAsync(CloudAtlas::build, Util.backgroundExecutor());
-        }
-    }
 
     static float insideFactor() {
         return insideFactor;
@@ -68,17 +56,17 @@ public final class CloudRenderer {
             }
             return true;
         }
-        if (failed || pending == null || !pending.isDone()) {
+        if (failed) {
             return false;
         }
         try {
-            atlas = pending.get();
+            atlas = SpriteAtlas.load(Minecraft.getInstance().getResourceManager());
             uploadAtlas(textures);
-            LOGGER.info("Pixel Clouds: cloud atlas ready ({}x{})", atlas.width, atlas.height);
+            LOGGER.info("Pixel Clouds: {} cloud sprite(s) loaded", atlas.count);
             return true;
         } catch (Exception e) {
             atlas = null;
-            fail("could not build the cloud atlas", e);
+            fail("could not load the cloud sprites", e);
             return false;
         }
     }
@@ -142,7 +130,7 @@ public final class CloudRenderer {
 
         float range = PixelCloudsConfig.RANGE.get();
         double seconds = (level.getGameTime() + partialTick) / 20.0;
-        FIELD.update(atlas, camX, camY, camZ, seconds, rain, thunder,
+        FIELD.update(atlas, camX, camY, camZ, seconds, rain,
                 PixelCloudsConfig.COVERAGE.get().floatValue(), PixelCloudsConfig.SIZE.get().floatValue(),
                 PixelCloudsConfig.WIND_SPEED.get().floatValue(), PixelCloudsConfig.HEIGHT.get(), range);
 
@@ -159,38 +147,12 @@ public final class CloudRenderer {
             float rz = (float) (c.z - camZ);
             float dist = Mth.sqrt(rx * rx + ry * ry + rz * rz);
             float fade = c.presence * Billboard.distanceFade(dist, c.bodyW, range);
-            if (fade <= 0.01f) {
+            if (fade <= 0.01f || !BILLBOARD.set(rx, ry, rz, lightX, lightY)) {
                 continue;
             }
-            float haze = Billboard.haze(dist, range);
-
-            if (!BILLBOARD.set(rx, ry, rz, lightX, lightY)) {
-                continue;
-            }
-            Billboard bb = BILLBOARD;
-            float rX = bb.rX;
-            float rZ = bb.rZ;
-            float uX = bb.uX;
-            float uY = bb.uY;
-            float uZ = bb.uZ;
-            float lr = bb.lr;
-            float lu = bb.lu;
-            float lc = bb.lc;
-            int lo = bb.bin;
-            float mix = bb.mix;
-
-            float halfW = atlas.canvasWidth(c.variant) * c.pixel * 0.5f;
-            float halfH = atlas.canvasHeight(c.variant) * c.pixel * 0.5f;
-            float g = Mth.clamp(c.bias, 0f, 1f);
-
-            if (1f - mix > 0.01f) {
-                quad(builder, atlas, c.variant, lo, rx, ry, rz, rX, rZ, uX, uY, uZ, halfW, halfH,
-                        haze, g, fade * (1f - mix), lr, lu, lc);
-            }
-            if (mix > 0.01f) {
-                quad(builder, atlas, c.variant, lo + 1, rx, ry, rz, rX, rZ, uX, uY, uZ, halfW, halfH,
-                        haze, g, fade * mix, lr, lu, lc);
-            }
+            // Sprites are lit from the top left, so mirror them when the light comes from the right.
+            boolean mirror = BILLBOARD.lr > 0f;
+            quad(builder, atlas, c, rx, ry, rz, BILLBOARD, mirror, Billboard.haze(dist, range), fade);
         }
 
         BufferBuilder.RenderedBuffer rendered = builder.endOrDiscardIfEmpty();
@@ -198,11 +160,14 @@ public final class CloudRenderer {
             return true;
         }
 
-        for (int i = 0; i < CloudPalette.SHADES; i++) {
-            setUniform(shader, "Shade" + i, palette.shade[i]);
+        setUniform(shader, "Band1", palette.shade[1]);
+        float[] lav = new float[3];
+        for (int k = 0; k < 3; k++) {
+            lav[k] = palette.shade[2][k] + (palette.violet[k] - palette.shade[2][k]) * 0.45f;
         }
-        setUniform(shader, "RimColor", palette.rim);
-        setUniform(shader, "Violet", palette.violet);
+        setUniform(shader, "Band2", lav);
+        setUniform(shader, "Band3", palette.shade[3]);
+        setUniform(shader, "Band4", palette.shade[4]);
         // Distant clouds blend into the horizon, which in vanilla is the world fog colour.
         float[] fog = RenderSystem.getShaderFogColor();
         shader.safeGetUniform("HazeColor").set(fog[0], fog[1], fog[2]);
@@ -233,34 +198,35 @@ public final class CloudRenderer {
     }
 
 
-    private static void quad(VertexConsumer out, CloudAtlas atlas, int variant, int bin,
-                             float cx, float cy, float cz, float rX, float rZ, float uX, float uY, float uZ,
-                             float halfW, float halfH, float haze, float bias, float fade,
-                             float lr, float lu, float lc) {
-        float u0 = atlas.u0(variant, bin);
-        float v0 = atlas.v0(variant, bin);
-        float u1 = u0 + atlas.du(variant);
-        float v1 = v0 + atlas.dv(variant);
+    private static void quad(VertexConsumer out, SpriteAtlas atlas, CloudField.Cloud c,
+                             float cx, float cy, float cz, Billboard bb, boolean mirror, float haze, float fade) {
+        float u0 = atlas.u0(c.sprite);
+        float u1 = atlas.u1(c.sprite);
+        if (mirror) {
+            float t = u0;
+            u0 = u1;
+            u1 = t;
+        }
+        float v0 = atlas.v0(c.sprite);
+        float v1 = atlas.v1(c.sprite);
         int r = Math.round(Mth.clamp(haze, 0f, 1f) * 255f);
-        int g = Math.round(Mth.clamp(bias, 0f, 1f) * 255f);
         int a = Math.round(Mth.clamp(fade, 0f, 1f) * 255f);
-        // Neighbouring angles dissolve with complementary dither patterns, flagged here.
-        int parity = (bin & 1) == 1 ? 255 : 0;
 
-        float rx = rX * halfW;
-        float rz = rZ * halfW;
-        float ux = uX * halfH;
-        float uy = uY * halfH;
-        float uz = uZ * halfH;
+        float hw = c.width * 0.5f;
+        float hh = c.height * 0.5f;
+        float rx = bb.rX * hw;
+        float rz = bb.rZ * hw;
+        float ux = bb.uX * hh;
+        float uy = bb.uY * hh;
+        float uz = bb.uZ * hh;
 
-        vertex(out, cx - rx + ux, cy + uy, cz - rz + uz, u0, v0, r, g, parity, a, lr, lu, lc);
-        vertex(out, cx + rx + ux, cy + uy, cz + rz + uz, u1, v0, r, g, parity, a, lr, lu, lc);
-        vertex(out, cx + rx - ux, cy - uy, cz + rz - uz, u1, v1, r, g, parity, a, lr, lu, lc);
-        vertex(out, cx - rx - ux, cy - uy, cz - rz - uz, u0, v1, r, g, parity, a, lr, lu, lc);
+        vertex(out, cx - rx + ux, cy + uy, cz - rz + uz, u0, v0, r, a);
+        vertex(out, cx + rx + ux, cy + uy, cz + rz + uz, u1, v0, r, a);
+        vertex(out, cx + rx - ux, cy - uy, cz + rz - uz, u1, v1, r, a);
+        vertex(out, cx - rx - ux, cy - uy, cz - rz - uz, u0, v1, r, a);
     }
 
-    private static void vertex(VertexConsumer out, float x, float y, float z, float u, float v,
-                               int r, int g, int parity, int a, float lr, float lu, float lc) {
-        out.vertex(x, y, z).uv(u, v).color(r, g, parity, a).normal(lr, lu, lc).endVertex();
+    private static void vertex(VertexConsumer out, float x, float y, float z, float u, float v, int r, int a) {
+        out.vertex(x, y, z).uv(u, v).color(r, 0, 0, a).normal(0f, 1f, 0f).endVertex();
     }
 }

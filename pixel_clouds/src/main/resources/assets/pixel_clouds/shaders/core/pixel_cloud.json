@@ -13,13 +13,10 @@
     "uniforms": [
         { "name": "ModelViewMat", "type": "matrix4x4", "count": 16, "values": [ 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0 ] },
         { "name": "ProjMat", "type": "matrix4x4", "count": 16, "values": [ 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0 ] },
-        { "name": "Shade0", "type": "float", "count": 3, "values": [ 0.5, 0.5, 0.6 ] },
-        { "name": "Shade1", "type": "float", "count": 3, "values": [ 0.6, 0.6, 0.7 ] },
-        { "name": "Shade2", "type": "float", "count": 3, "values": [ 0.75, 0.78, 0.85 ] },
-        { "name": "Shade3", "type": "float", "count": 3, "values": [ 0.88, 0.9, 0.96 ] },
-        { "name": "Shade4", "type": "float", "count": 3, "values": [ 1.0, 1.0, 1.0 ] },
-        { "name": "RimColor", "type": "float", "count": 3, "values": [ 1.0, 1.0, 1.0 ] },
-        { "name": "Violet", "type": "float", "count": 3, "values": [ 0.5, 0.45, 0.8 ] },
+        { "name": "Band1", "type": "float", "count": 3, "values": [ 0.58, 0.65, 0.85 ] },
+        { "name": "Band2", "type": "float", "count": 3, "values": [ 0.70, 0.72, 0.95 ] },
+        { "name": "Band3", "type": "float", "count": 3, "values": [ 0.84, 0.89, 0.98 ] },
+        { "name": "Band4", "type": "float", "count": 3, "values": [ 1.0, 1.0, 1.0 ] },
         { "name": "HazeColor", "type": "float", "count": 3, "values": [ 0.6, 0.7, 0.9 ] }
     ]
 }

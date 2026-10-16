@@ -1,17 +1,8 @@
 package com.pixelclouds.client;
 
-import com.pixelclouds.gen.CloudSprites;
-
-/**
- * Orientation of one cloud's sprite quad for a given camera, and which baked sprites to use.
- * Pure maths so the preview tool can run exactly what the game runs.
- */
+/** Orientation of one cloud's sprite quad for a given camera. */
 final class Billboard {
     float dist;
-    /** Unit vector from the cloud to the camera. */
-    float cx;
-    float cy;
-    float cz;
     /** Screen-right (horizontal) and screen-up axes of the quad. */
     float rX;
     float rZ;
@@ -21,10 +12,6 @@ final class Billboard {
     /** Light direction in the sprite's frame: right, up, towards the viewer. */
     float lr;
     float lu;
-    float lc;
-    /** Lower of the two blended elevation bins and the blend towards the upper one (0..1). */
-    int bin;
-    float mix;
 
     /**
      * @param rx,ry,rz  cloud position relative to the camera
@@ -36,9 +23,9 @@ final class Billboard {
         if (dist < 1e-3f) {
             return false;
         }
-        cx = -rx / dist;
-        cy = -ry / dist;
-        cz = -rz / dist;
+        float cx = -rx / dist;
+        float cy = -ry / dist;
+        float cz = -rz / dist;
         float horizontal = (float) Math.sqrt(cx * cx + cz * cz);
         if (horizontal < 1e-3f) {
             rX = 1f;
@@ -53,25 +40,6 @@ final class Billboard {
 
         lr = lightX * rX;
         lu = lightX * uX + lightY * uY;
-        lc = lightX * cx + lightY * cy;
-
-        float elevation = (float) Math.toDegrees(Math.asin(Math.max(-1f, Math.min(1f, -cy))));
-        float[] e = CloudSprites.ELEVATIONS;
-        if (elevation <= e[0]) {
-            bin = 0;
-            mix = 0f;
-        } else if (elevation >= e[e.length - 1]) {
-            bin = e.length - 2;
-            mix = 1f;
-        } else {
-            bin = 0;
-            while (elevation >= e[bin + 1]) {
-                bin++;
-            }
-            // Swap between neighbouring angles over a narrow band so the dissolve between two
-            // sprites covers little of the sky.
-            mix = smooth(0.40f, 0.60f, (elevation - e[bin]) / (e[bin + 1] - e[bin]));
-        }
         return true;
     }
 
