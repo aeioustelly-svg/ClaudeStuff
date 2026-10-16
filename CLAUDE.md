@@ -2,6 +2,8 @@
 
 A wolf-headed flying serpent inspired by the Dacian Draco battle standard. Read this before changing anything.
 
+The repo also holds a second, separate mod in `pixel_clouds/` (its own Gradle build and its own `CLAUDE.md`).
+
 ## Stack
 
 - Minecraft 1.20.1, Forge 47.4.26, official (Mojang) mappings, Gradle 8.8 wrapper.
