@@ -112,3 +112,16 @@ mod marked "personal reference only"). They are not copied into this repo becaus
 ## Ideas not done
 
 Custom howl sound, a proper Dacian cap model, a collar or naming for tamed Draco, mounting.
+
+
+## Second mod in this repo: `pixel_clouds/`
+
+A separate Gradle project (own wrapper and `gradle.properties`, run `./gradlew build` from inside `pixel_clouds/`),
+client-only, same Forge 1.20.1 stack. It replaces vanilla clouds with lit pixel-art sprites in the world. Read
+`pixel_clouds/README.md` before changing it. Key points:
+
+- The Draco guidelines above (pacifism, vanilla-style mobs and so on) do not apply to it, since it adds no gameplay.
+- Never run the client in the sandbox. Judge changes with the software-camera previews in `src/preview/java`, which
+  share the placement, billboard and lighting code with the game, and keep `pixel_cloud.fsh` and the CPU copy in
+  `Preview.java` and `SkyPreview.java` in step.
+- The mod has never been loaded in a real client.

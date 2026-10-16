@@ -1,0 +1,23 @@
+{
+    "vertex": "pixel_clouds:pixel_cloud",
+    "fragment": "pixel_clouds:pixel_cloud",
+    "attributes": [
+        "Position",
+        "UV0",
+        "Color",
+        "Normal"
+    ],
+    "samplers": [
+        { "name": "Sampler0" }
+    ],
+    "uniforms": [
+        { "name": "ModelViewMat", "type": "matrix4x4", "count": 16, "values": [ 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0 ] },
+        { "name": "ProjMat", "type": "matrix4x4", "count": 16, "values": [ 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0 ] },
+        { "name": "Shade0", "type": "float", "count": 3, "values": [ 0.5, 0.5, 0.6 ] },
+        { "name": "Shade1", "type": "float", "count": 3, "values": [ 0.7, 0.7, 0.8 ] },
+        { "name": "Shade2", "type": "float", "count": 3, "values": [ 0.85, 0.88, 0.95 ] },
+        { "name": "Shade3", "type": "float", "count": 3, "values": [ 1.0, 1.0, 1.0 ] },
+        { "name": "RimColor", "type": "float", "count": 3, "values": [ 1.0, 1.0, 1.0 ] },
+        { "name": "HazeColor", "type": "float", "count": 3, "values": [ 0.6, 0.7, 0.9 ] }
+    ]
+}
