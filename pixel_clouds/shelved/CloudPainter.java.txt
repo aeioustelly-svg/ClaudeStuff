@@ -1,0 +1,765 @@
+package com.pixelclouds.gen;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+
+/**
+ * Paints flat, cel-shaded pixel-art clouds in 2D, following the "how to draw a pixel art cloud" steps:
+ * a lumpy silhouette built from lobes, white clumps on the lit side whose shadow sides leave light crescents,
+ * one flat mid-tone body, a darker underside, violet accents in the shadows, and a soft halo with loose bubbles.
+ * There are no gradients and no 3D: every pixel is one of four flat tones.
+ *
+ * <p>Texel layout (0xAABBGGRR):
+ * <ul>
+ *   <li>A: 0 empty, {@link #HALO} for the halo, otherwise {@link #BODY} + 10 * tone + (violet ? 5 : 0)</li>
+ *   <li>R, G: outward edge direction (x, y up) for edge pixels, used for rim light when backlit</li>
+ *   <li>B: edge proximity, 255 on the outline, 150 one pixel in, 0 deeper</li>
+ * </ul>
+ * The sprite is painted lit from the upper left. The renderer mirrors it when the sun is on the right.
+ * No Minecraft dependencies.
+ */
+public final class CloudPainter {
+    public static final int DEEP = 0;
+    public static final int MID = 1;
+    public static final int LIGHT = 2;
+    public static final int WHITE = 3;
+
+    public static final int HALO = 8;
+    public static final int BODY = 32;
+
+    /** Direction towards the light in the sprite, y up. */
+    private static final float LX = -0.62f;
+    private static final float LY = 0.78f;
+    private static final int MARGIN = 8;
+    private static final float NEVER = 1e9f;
+
+    private enum Group { BASE, MAIN, CHILD, BUBBLE }
+
+    private static final class Lobe {
+        final float cx;
+        final float cy;
+        final float rx;
+        final float ry;
+        final Group group;
+        final int seed;
+        boolean wisp;
+        float k1 = NEVER;
+        float k2 = NEVER;
+
+        Lobe(float cx, float cy, float rx, float ry, Group group, int seed) {
+            this.cx = cx;
+            this.cy = cy;
+            this.rx = rx;
+            this.ry = ry;
+            this.group = group;
+            this.seed = seed;
+        }
+
+        float rmin() {
+            return Math.min(rx, ry);
+        }
+
+        /** Irregular ellipse test: the radius wobbles with smooth noise, so lobes are never perfect circles. */
+        boolean contains(float x, float y) {
+            float dx = (x - cx) / rx;
+            float dy = (y - cy) / ry;
+            float d2 = dx * dx + dy * dy;
+            if (d2 > 2.2f) {
+                return false;
+            }
+            float wob = 1f + 0.2f * (Noise.value(seed, x * 0.17f, y * 0.17f, 0f) - 0.5f) * 2f * Math.min(1f, rmin() / 7f);
+            return d2 < wob * wob;
+        }
+    }
+
+    public static final class Sprite {
+        public final int w;
+        public final int h;
+        public final int bodyW;
+        public final int bodyH;
+        public final int[] texels;
+
+        Sprite(int w, int h, int bodyW, int bodyH, int[] texels) {
+            this.w = w;
+            this.h = h;
+            this.bodyW = bodyW;
+            this.bodyH = bodyH;
+            this.texels = texels;
+        }
+    }
+
+    private CloudPainter() {}
+
+    public static Sprite paint(CloudKind kind, long seed) {
+        Builder b = new Builder(new Random(seed * 0x9E3779B97F4A7C15L + kind.ordinal() * 7919L), (int) (seed * 13 + kind.ordinal()));
+        switch (kind) {
+            case CUMULUS -> b.cumulus();
+            case TOWER -> b.tower();
+            case PUFF -> b.puff();
+            case BANK -> b.bank();
+            case CLUSTER -> b.cluster();
+            case WISP -> b.wisp();
+            case ANVIL -> b.anvil();
+            case STRATUS -> b.stratus();
+        }
+        return b.render(kind);
+    }
+
+    private static final class Builder {
+        final Random rng;
+        final int noiseSeed;
+        final List<Lobe> lobes = new ArrayList<>();
+        int lobeCounter;
+        float halo = 1f;
+
+        Builder(Random rng, int noiseSeed) {
+            this.rng = rng;
+            this.noiseSeed = noiseSeed;
+        }
+
+        float range(float lo, float hi) {
+            return lo + rng.nextFloat() * (hi - lo);
+        }
+
+        Lobe lobe(float cx, float cy, float rx, float ry, Group g) {
+            Lobe l = new Lobe(cx, cy, rx, ry, g, noiseSeed + 101 * (++lobeCounter));
+            lobes.add(l);
+            return l;
+        }
+
+        /** Smaller lobes around the upper arc of a parent, leaning towards the light. */
+        void children(Lobe p, int n, float lo, float hi, int depth, float grandProb) {
+            for (int i = 0; i < n; i++) {
+                // angle in degrees, 0 = right, 90 = up; weighted to the upper left
+                float ang = (float) Math.toRadians(range(-25f, 205f) + (rng.nextFloat() < 0.5f ? range(0f, 40f) : 0f));
+                float r = Math.min(p.rx, p.ry) * range(lo, hi);
+                float d = (float) (0.8f * (Math.abs(Math.cos(ang)) * p.rx + Math.abs(Math.sin(ang)) * p.ry) / 1f);
+                float cx = p.cx + (float) Math.cos(ang) * Math.min(p.rx, d) * 0.92f;
+                float cy = p.cy + (float) Math.sin(ang) * Math.min(p.ry, d) * 0.92f;
+                if (cy - r < -1f) {
+                    cy = r - 1f;
+                }
+                Lobe c = lobe(cx, cy, r * range(0.95f, 1.3f), r * range(0.85f, 1.1f), Group.CHILD);
+                if (depth > 0 && rng.nextFloat() < grandProb && r > 4f) {
+                    children(c, 1 + rng.nextInt(3), 0.4f, 0.6f, depth - 1, grandProb * 0.5f);
+                }
+            }
+        }
+
+        /** Small loose pieces near the top and sides, some trailing off downwind. */
+        void bubbles(int n, float spread) {
+            Bounds b = bounds();
+            for (int i = 0; i < n; i++) {
+                float x = range(b.minX, b.maxX);
+                float y = b.maxY + range(b.h * 0.02f, spread);
+                if (rng.nextFloat() < 0.35f) {
+                    // beside the top edge on the right
+                    x = b.maxX + range(0f, spread);
+                    y = range(b.minY + b.h * 0.45f, b.maxY);
+                }
+                float r = range(1.2f, 3.2f);
+                lobe(x, y, r * range(1f, 1.5f), r, Group.BUBBLE);
+            }
+        }
+
+        /** A chain of shrinking flat pieces drifting away. */
+        void trail(float x, float y, int n, float r0) {
+            float r = r0;
+            for (int i = 0; i < n; i++) {
+                lobe(x, y, r * range(1.2f, 1.8f), r * range(0.6f, 0.9f), Group.BUBBLE);
+                x += r * range(2.2f, 3.2f);
+                y += range(-1.5f, 2.5f);
+                r *= range(0.65f, 0.85f);
+                if (r < 1.2f) {
+                    break;
+                }
+            }
+        }
+
+        Bounds bounds() {
+            Bounds b = new Bounds();
+            for (Lobe l : lobes) {
+                b.minX = Math.min(b.minX, l.cx - l.rx);
+                b.maxX = Math.max(b.maxX, l.cx + l.rx);
+                b.minY = Math.min(b.minY, l.cy - l.ry);
+                b.maxY = Math.max(b.maxY, l.cy + l.ry);
+            }
+            b.w = b.maxX - b.minX;
+            b.h = b.maxY - b.minY;
+            return b;
+        }
+
+        // ---- recipes ----
+
+        void cumulus() {
+            float w = range(56f, 100f);
+            baseMass(w, 3 + rng.nextInt(3), 0.14f, 0.22f);
+            List<Lobe> mains = new ArrayList<>();
+            int n = 2 + rng.nextInt(3);
+            for (int i = 0; i < n; i++) {
+                float t = (i + 0.5f + range(-0.3f, 0.3f)) / n;
+                float r = w * range(0.15f, 0.25f) * (1.15f - 0.4f * Math.abs(t * 2 - 1));
+                mains.add(lobe(lerp(-0.32f * w, 0.32f * w, t), r * range(1.15f, 1.75f), r * range(0.95f, 1.2f), r, Group.MAIN));
+            }
+            for (Lobe m : mains) {
+                children(m, 4 + rng.nextInt(3), 0.42f, 0.7f, 1, 0.55f);
+            }
+            if (rng.nextFloat() < 0.3f) {
+                Lobe last = mains.get(mains.size() - 1);
+                trail(last.cx + last.rx * 1.2f, last.cy + last.ry * 0.3f, 2 + rng.nextInt(2), last.rmin() * 0.3f);
+            }
+            bubbles(1 + rng.nextInt(3), w * 0.12f);
+        }
+
+        void tower() {
+            float w = range(34f, 56f);
+            float h = w * range(1.1f, 1.6f);
+            baseMass(w, 3, 0.18f, 0.26f);
+            float lean = range(-0.2f, 0.35f);
+            List<Lobe> mains = new ArrayList<>();
+            int m = 3 + rng.nextInt(2);
+            for (int i = 0; i < m; i++) {
+                float t = (i + 0.4f) / m;
+                float r = w * (0.3f - 0.1f * t) * range(0.9f, 1.15f);
+                mains.add(lobe(lean * t * w + range(-0.05f, 0.05f) * w, lerp(r * 1.1f, h - r, t), r * range(0.95f, 1.15f), r, Group.MAIN));
+            }
+            for (int i = 0; i < 2 + rng.nextInt(2); i++) {
+                float r = w * range(0.15f, 0.22f);
+                mains.add(lobe((i % 2 == 0 ? 1 : -1) * w * range(0.22f, 0.36f), range(0.2f, 0.5f) * h, r * 1.1f, r, Group.MAIN));
+            }
+            for (Lobe l : mains) {
+                children(l, 4 + rng.nextInt(4), 0.34f, 0.58f, 1, 0.55f);
+            }
+            bubbles(2 + rng.nextInt(4), w * 0.15f);
+        }
+
+        void puff() {
+            float w = range(22f, 38f);
+            baseMass(w, 2, 0.2f, 0.28f);
+            List<Lobe> mains = new ArrayList<>();
+            int n = 1 + rng.nextInt(2);
+            for (int i = 0; i < n; i++) {
+                float r = w * range(0.2f, 0.28f);
+                mains.add(lobe((i - (n - 1) / 2f) * w * 0.3f, r * range(1f, 1.4f), r * 1.1f, r, Group.MAIN));
+            }
+            for (Lobe l : mains) {
+                children(l, 3 + rng.nextInt(3), 0.38f, 0.62f, 1, 0.4f);
+            }
+            bubbles(1 + rng.nextInt(3), w * 0.12f);
+            halo = 0.8f;
+        }
+
+        void bank() {
+            float w = range(100f, 170f);
+            baseMass(w, 6 + rng.nextInt(3), 0.07f, 0.12f);
+            List<Lobe> mains = new ArrayList<>();
+            int n = 4 + rng.nextInt(3);
+            for (int i = 0; i < n; i++) {
+                float t = (i + 0.5f + range(-0.3f, 0.3f)) / n;
+                float r = w * range(0.045f, 0.085f);
+                mains.add(lobe(lerp(-0.42f * w, 0.42f * w, t), r * range(1f, 1.4f), r * 1.15f, r, Group.MAIN));
+            }
+            for (Lobe l : mains) {
+                children(l, 3 + rng.nextInt(3), 0.36f, 0.6f, 1, 0.5f);
+            }
+            if (rng.nextFloat() < 0.4f) {
+                Lobe last = mains.get(mains.size() - 1);
+                trail(last.cx + last.rx * 1.2f, last.cy, 2 + rng.nextInt(2), last.rmin() * 0.4f);
+            }
+            bubbles(3 + rng.nextInt(4), w * 0.06f);
+        }
+
+        void cluster() {
+            float w = range(100f, 160f);
+            int n = 5 + rng.nextInt(4);
+            for (int i = 0; i < n; i++) {
+                float t = (i + 0.5f + range(-0.35f, 0.35f)) / n;
+                float x = lerp(-0.45f * w, 0.45f * w, t);
+                float rb = range(7f, 14f);
+                float y0 = range(0f, 8f);
+                lobe(x, y0 + rb * 0.45f, rb * 1.3f, rb * 0.55f, Group.BASE);
+                Lobe m = lobe(x + range(-2f, 2f), y0 + rb * range(0.9f, 1.3f), rb * 0.8f, rb * 0.75f, Group.MAIN);
+                children(m, 2 + rng.nextInt(2), 0.4f, 0.62f, 0, 0f);
+            }
+            bubbles(3 + rng.nextInt(3), w * 0.05f);
+            halo = 0.8f;
+        }
+
+        void wisp() {
+            halo = 0.35f;
+            float w = range(90f, 150f);
+            int streaks = 2 + rng.nextInt(2);
+            for (int s = 0; s < streaks; s++) {
+                int n = 6 + rng.nextInt(5);
+                float bend = range(-0.06f, 0.06f) * w;
+                float yOff = s * range(7f, 11f);
+                float xShift = range(-0.1f, 0.1f) * w;
+                float extent = (0.44f - s * 0.07f) * w;
+                for (int i = 0; i < n; i++) {
+                    float t = (i + 0.5f) / n * 2f - 1f;
+                    float taper = 1f - 0.8f * t * t;
+                    float rx = range(7f, 13f) * (0.5f + 0.5f * taper);
+                    float ry = range(1.6f, 2.8f) * (0.6f + 0.4f * taper);
+                    Lobe l = lobe(t * extent + xShift, yOff + bend * (1f - t * t) + range(-1f, 1f), rx, ry, Group.MAIN);
+                    l.wisp = true;
+                }
+            }
+        }
+
+        void anvil() {
+            float w = range(80f, 120f);
+            float h = w * range(0.7f, 0.95f);
+            baseMass(w * 0.8f, 4, 0.14f, 0.22f);
+            List<Lobe> mains = new ArrayList<>();
+            for (int i = 0; i < 4; i++) {
+                float t = i / 3f;
+                float r = w * (0.2f - 0.04f * t) * range(0.9f, 1.1f);
+                mains.add(lobe(range(-2f, 2f) + t * w * 0.05f, lerp(r * 1.1f, h * 0.78f, t), r * 1.1f, r, Group.MAIN));
+            }
+            int top = 4 + rng.nextInt(2);
+            for (int i = 0; i < top; i++) {
+                float t = (i + 0.5f) / top * 2f - 1f;
+                float r = w * range(0.08f, 0.12f);
+                mains.add(lobe(t * w * 0.42f, h * range(0.82f, 0.9f) - Math.abs(t) * 4f, r * range(1.5f, 2.1f), r * 0.8f, Group.MAIN));
+            }
+            for (Lobe l : mains) {
+                children(l, 3 + rng.nextInt(3), 0.34f, 0.58f, 1, 0.5f);
+            }
+            if (rng.nextFloat() < 0.5f) {
+                trail(w * 0.5f, h * 0.8f, 2 + rng.nextInt(2), w * 0.04f);
+            }
+            bubbles(3 + rng.nextInt(4), w * 0.1f);
+        }
+
+        void stratus() {
+            float w = range(150f, 230f);
+            int n = 8 + rng.nextInt(5);
+            for (int i = 0; i < n; i++) {
+                float t = (i + 0.5f + range(-0.3f, 0.3f)) / n;
+                float r = range(5f, 10f);
+                lobe(lerp(-0.45f * w, 0.45f * w, t), r * range(0.6f, 0.95f), r * range(1.8f, 2.6f), r * range(0.55f, 0.8f), Group.BASE);
+            }
+            List<Lobe> mains = new ArrayList<>();
+            for (int i = 0; i < 5 + rng.nextInt(3); i++) {
+                float r = range(5f, 9f);
+                mains.add(lobe(range(-0.4f, 0.4f) * w, r * range(1.1f, 1.7f), r * range(1.3f, 1.9f), r, Group.MAIN));
+            }
+            for (Lobe l : mains) {
+                children(l, 2 + rng.nextInt(2), 0.36f, 0.55f, 0, 0f);
+            }
+            bubbles(5 + rng.nextInt(4), w * 0.04f);
+            halo = 0.8f;
+        }
+
+        /** The wide, low, flat-bottomed mass that every cumulus-like cloud sits on. */
+        void baseMass(float w, int n, float rLo, float rHi) {
+            for (int i = 0; i < n; i++) {
+                float t = (i + 0.5f + range(-0.25f, 0.25f)) / n;
+                float x = lerp(-0.4f * w, 0.4f * w, t);
+                float r = w * range(rLo, rHi) * (1.1f - 0.35f * Math.abs(t * 2 - 1));
+                lobe(x, r * range(0.7f, 0.9f), r * range(1.0f, 1.3f), r * range(0.8f, 1.05f), Group.BASE);
+            }
+        }
+
+        // ---- painting ----
+
+        Sprite render(CloudKind kind) {
+            Bounds b = bounds();
+            int pad = MARGIN + 2;
+            int w = (int) Math.ceil(b.w) + 2 * pad;
+            int h = (int) Math.ceil(b.h) + 2 * pad;
+            float offX = -b.minX + pad;
+            float offY = -b.minY + pad;
+            float cX = (b.minX + b.maxX) / 2;
+            float cY = (b.minY + b.maxY) / 2;
+            float hx = Math.max(1f, b.w / 2);
+            float hy = Math.max(1f, b.h / 2);
+
+            int[] owner = new int[w * h];
+            java.util.Arrays.fill(owner, -1);
+            boolean[] body = new boolean[w * h];
+            boolean[] bubble = new boolean[w * h];
+            for (int py = 0; py < h; py++) {
+                for (int px = 0; px < w; px++) {
+                    float x = px + 0.5f - offX;
+                    float y = (h - py - 0.5f) - offY;
+                    float floor = (Noise.value(noiseSeed + 7, x * 0.09f, 0.5f, 0f) - 0.5f) * 2.2f - 0.2f;
+                    if (y < floor) {
+                        continue;
+                    }
+                    for (int i = lobes.size() - 1; i >= 0; i--) {
+                        if (lobes.get(i).contains(x, y)) {
+                            owner[py * w + px] = i;
+                            body[py * w + px] = true;
+                            bubble[py * w + px] = lobes.get(i).group == Group.BUBBLE;
+                            break;
+                        }
+                    }
+                }
+            }
+            smoothMask(body, owner, w, h);
+
+            // Flat mid-tone body. Wisps are drawn differently: a white top with a light underside.
+            int[] tone = new int[w * h];
+            int bodyArea = 0;
+            for (int py = 0; py < h; py++) {
+                for (int px = 0; px < w; px++) {
+                    int i = py * w + px;
+                    if (!body[i]) {
+                        continue;
+                    }
+                    bodyArea++;
+                    Lobe l = lobes.get(Math.max(0, owner[i]));
+                    if (l.wisp) {
+                        float x = px + 0.5f - offX;
+                        float y = (h - py - 0.5f) - offY;
+                        tone[i] = l.contains(x, y - 1.5f) ? WHITE : LIGHT;
+                    } else {
+                        tone[i] = MID;
+                    }
+                }
+            }
+
+            // White clumps on the lit side. Each is a small cluster of lobes; its white part is the lens left
+            // when the clump is shifted towards the light, and the shadow-side crescent stays light blue.
+            boolean wispy = !lobes.isEmpty() && lobes.get(0).wisp;
+            if (!wispy) {
+                List<float[]> spots = new ArrayList<>();
+                float scale = Math.max(0.6f, Math.min(1.8f, b.w / 90f));
+                int whiteTarget = (int) (bodyArea * (kind == CloudKind.STRATUS || kind == CloudKind.BANK ? 0.3f : 0.4f));
+                int whiteArea = 0;
+                int guard = 0;
+                // boundary pixels facing the light, for clumps that sit flush against the edge
+                List<int[]> edge = new ArrayList<>();
+                for (int py = 1; py < h - 1; py++) {
+                    for (int px = 1; px < w - 1; px++) {
+                        int i = py * w + px;
+                        if (!body[i]) {
+                            continue;
+                        }
+                        float ex = 0;
+                        float ey = 0;
+                        for (int dy = -2; dy <= 2; dy++) {
+                            for (int dx = -2; dx <= 2; dx++) {
+                                int qx = px + dx;
+                                int qy = py + dy;
+                                if (qx < 0 || qy < 0 || qx >= w || qy >= h || !body[qy * w + qx]) {
+                                    ex += dx;
+                                    ey -= dy;
+                                }
+                            }
+                        }
+                        float len = (float) Math.sqrt(ex * ex + ey * ey);
+                        if (len > 1f && (ex / len) * LX + (ey / len) * LY > 0.1f) {
+                            edge.add(new int[]{px, py, Math.round(ex / len * 100), Math.round(ey / len * 100)});
+                        }
+                    }
+                }
+                while (whiteArea < whiteTarget && guard++ < 70) {
+                    float r = (3f + (float) Math.pow(rng.nextFloat(), 1.7f) * 11f) * scale;
+                    float cx;
+                    float cy;
+                    if (!edge.isEmpty() && rng.nextFloat() < 0.65f) {
+                        int[] e = edge.get(rng.nextInt(edge.size()));
+                        // prefer the upper part of the cloud
+                        float yUp = 1f - (e[1] / (float) h);
+                        if (rng.nextFloat() > 0.35f + 0.65f * yUp) {
+                            continue;
+                        }
+                        cx = e[0] + 0.5f - e[2] / 100f * r * 0.55f - offX;
+                        cy = (h - e[1] - 0.5f) - e[3] / 100f * r * 0.55f - offY;
+                    } else {
+                        int px = rng.nextInt(w);
+                        int py = rng.nextInt(h);
+                        if (!body[py * w + px] || py > h * 0.7f) {
+                            continue;
+                        }
+                        cx = px + 0.5f - offX;
+                        cy = (h - py - 0.5f) - offY;
+                    }
+                    spots.add(new float[]{cx, cy, r});
+                    whiteArea += (int) (r * r * 2f);
+                }
+                spots.sort((p1, p2) -> Float.compare(p2[2], p1[2]));
+                for (float[] sp : spots) {
+                    float r = sp[2];
+                    Lobe[] parts = new Lobe[2 + rng.nextInt(2)];
+                    parts[0] = new Lobe(sp[0], sp[1], r * range(1f, 1.3f), r * range(0.8f, 1f), Group.CHILD, noiseSeed + 900 + rng.nextInt(1000));
+                    for (int k = 1; k < parts.length; k++) {
+                        float pr = r * range(0.5f, 0.8f);
+                        float ang = range(0f, 6.2832f);
+                        parts[k] = new Lobe(sp[0] + (float) Math.cos(ang) * r * 0.7f, sp[1] + (float) Math.sin(ang) * r * 0.55f,
+                                pr * 1.2f, pr, Group.CHILD, noiseSeed + 900 + rng.nextInt(1000));
+                    }
+                    float shift = Math.max(1.5f, r * range(0.28f, 0.5f));
+                    boolean lightOnly = r < 4.2f * scale && rng.nextFloat() < 0.45f;
+                    int x0 = Math.max(0, (int) (sp[0] + offX - r * 2.2f));
+                    int x1 = Math.min(w - 1, (int) (sp[0] + offX + r * 2.2f));
+                    int y0 = Math.max(0, (int) (h - (sp[1] + offY) - r * 2.2f));
+                    int y1 = Math.min(h - 1, (int) (h - (sp[1] + offY) + r * 2.2f));
+                    for (int py = y0; py <= y1; py++) {
+                        for (int px = x0; px <= x1; px++) {
+                            int i = py * w + px;
+                            if (!body[i] || tone[i] == WHITE && false) {
+                                continue;
+                            }
+                            float x = px + 0.5f - offX;
+                            float y = (h - py - 0.5f) - offY;
+                            boolean in = false;
+                            boolean lens = false;
+                            for (Lobe part : parts) {
+                                in |= part.contains(x, y);
+                                lens |= part.contains(x - shift * LX, y - shift * LY);
+                            }
+                            if (in) {
+                                tone[i] = (lens && !lightOnly) ? WHITE : LIGHT;
+                            }
+                        }
+                    }
+                }
+            }
+            for (int i = 0; i < w * h; i++) {
+                if (bubble[i] && body[i]) {
+                    tone[i] = WHITE;
+                }
+            }
+
+            // Secondary shadows: mid-tone pixels just below and right of a light or white clump.
+            for (int py = 0; py < h; py++) {
+                for (int px = 0; px < w; px++) {
+                    int i = py * w + px;
+                    if (!body[i] || tone[i] != MID) {
+                        continue;
+                    }
+                    for (int d = 1; d <= 2; d++) {
+                        int qx = px + Math.round(LX * d);
+                        int qy = py - Math.round(LY * d);
+                        if (qx >= 0 && qy >= 0 && qx < w && qy < h && body[qy * w + qx] && tone[qy * w + qx] >= LIGHT) {
+                            tone[i] = DEEP;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // Darker underside: mid pixels with nothing below them within a couple of pixels.
+            for (int py = 0; py < h; py++) {
+                for (int px = 0; px < w; px++) {
+                    int i = py * w + px;
+                    if (!body[i] || tone[i] != MID) {
+                        continue;
+                    }
+                    int band = 2 + (Noise.value(noiseSeed + 3, px * 0.2f, py * 0.2f, 0f) > 0.55f ? 1 : 0);
+                    boolean open = false;
+                    for (int d = 1; d <= band; d++) {
+                        int qy = py + d;
+                        if (qy >= h || !body[qy * w + px]) {
+                            open = true;
+                            break;
+                        }
+                    }
+                    if (open) {
+                        tone[i] = DEEP;
+                    }
+                }
+            }
+
+            // Remove salt-and-pepper so every region is a clean flat shape.
+            for (int pass = 0; pass < 2; pass++) {
+                int[] next = tone.clone();
+                for (int py = 0; py < h; py++) {
+                    for (int px = 0; px < w; px++) {
+                        int i = py * w + px;
+                        if (!body[i]) {
+                            continue;
+                        }
+                        int[] counts = new int[4];
+                        for (int dy = -1; dy <= 1; dy++) {
+                            for (int dx = -1; dx <= 1; dx++) {
+                                int qx = px + dx;
+                                int qy = py + dy;
+                                if ((dx != 0 || dy != 0) && qx >= 0 && qy >= 0 && qx < w && qy < h && body[qy * w + qx]) {
+                                    counts[tone[qy * w + qx]]++;
+                                }
+                            }
+                        }
+                        if (counts[tone[i]] <= 1) {
+                            int best = tone[i];
+                            for (int t = 0; t < 4; t++) {
+                                if (counts[t] > counts[best]) {
+                                    best = t;
+                                }
+                            }
+                            next[i] = best;
+                        }
+                    }
+                }
+                tone = next;
+            }
+
+            // Violet accents drifting through the shadow side.
+            boolean[] violet = new boolean[w * h];
+            int blobs = 1 + rng.nextInt(3);
+            for (int k = 0; k < blobs; k++) {
+                float bx = cX + range(0.0f, 0.55f) * hx;
+                float by = cY + range(-0.5f, 0.15f) * hy;
+                float br = Math.max(4f, Math.min(hx, hy * 1.6f) * range(0.18f, 0.38f));
+                for (int py = 0; py < h; py++) {
+                    for (int px = 0; px < w; px++) {
+                        int i = py * w + px;
+                        if (!body[i] || tone[i] == WHITE) {
+                            continue;
+                        }
+                        float x = px + 0.5f - offX;
+                        float y = (h - py - 0.5f) - offY;
+                        float d = (float) Math.hypot(x - bx, (y - by) * 1.4f) / br;
+                        d += (Noise.value(noiseSeed + 55, x * 0.15f, y * 0.15f, 0f) - 0.5f) * 0.7f;
+                        if (d < 1f) {
+                            violet[i] = true;
+                        }
+                    }
+                }
+            }
+
+            int[] out = new int[w * h];
+            int minX = w;
+            int maxX = -1;
+            int minY = h;
+            int maxY = -1;
+            for (int py = 0; py < h; py++) {
+                for (int px = 0; px < w; px++) {
+                    int i = py * w + px;
+                    if (!body[i]) {
+                        continue;
+                    }
+                    minX = Math.min(minX, px);
+                    maxX = Math.max(maxX, px);
+                    minY = Math.min(minY, py);
+                    maxY = Math.max(maxY, py);
+                    // edge info
+                    float ex = 0;
+                    float ey = 0;
+                    boolean outline = false;
+                    for (int dy = -1; dy <= 1; dy++) {
+                        for (int dx = -1; dx <= 1; dx++) {
+                            if (dx == 0 && dy == 0) {
+                                continue;
+                            }
+                            int qx = px + dx;
+                            int qy = py + dy;
+                            boolean outside = qx < 0 || qy < 0 || qx >= w || qy >= h || !body[qy * w + qx];
+                            if (outside) {
+                                ex += dx;
+                                ey -= dy;
+                                if (dx == 0 || dy == 0) {
+                                    outline = true;
+                                }
+                            }
+                        }
+                    }
+                    int prox = outline ? 255 : 0;
+                    if (!outline) {
+                        outer:
+                        for (int dy = -2; dy <= 2; dy++) {
+                            for (int dx = -2; dx <= 2; dx++) {
+                                int qx = px + dx;
+                                int qy = py + dy;
+                                if ((Math.abs(dx) == 2 || Math.abs(dy) == 2)
+                                        && (qx < 0 || qy < 0 || qx >= w || qy >= h || !body[qy * w + qx])) {
+                                    prox = 150;
+                                    ex += dx * 0.5f;
+                                    ey -= dy * 0.5f;
+                                    break outer;
+                                }
+                            }
+                        }
+                    }
+                    float len = (float) Math.sqrt(ex * ex + ey * ey);
+                    int r = 128;
+                    int g = 128;
+                    if (len > 1e-3f) {
+                        r = Math.round((ex / len * 0.9f * 0.5f + 0.5f) * 255f);
+                        g = Math.round((ey / len * 0.9f * 0.5f + 0.5f) * 255f);
+                    }
+                    int code = BODY + tone[i] * 10 + (violet[i] ? 5 : 0);
+                    out[i] = (code << 24) | (prox << 16) | (g << 8) | r;
+                }
+            }
+
+            // Halo: a flat, lighter region hugging the silhouette, thicker in places.
+            for (int py = 0; py < h; py++) {
+                for (int px = 0; px < w; px++) {
+                    int i = py * w + px;
+                    if (body[i]) {
+                        continue;
+                    }
+                    float reach = (1.1f + 2.2f * Noise.value(noiseSeed + 91, px * 0.2f, py * 0.2f, 0f)) * halo;
+                    int rr = (int) Math.ceil(reach);
+                    boolean near = false;
+                    for (int dy = -rr; dy <= rr && !near; dy++) {
+                        for (int dx = -rr; dx <= rr; dx++) {
+                            int qx = px + dx;
+                            int qy = py + dy;
+                            if (qx >= 0 && qy >= 0 && qx < w && qy < h && body[qy * w + qx] && dx * dx + dy * dy <= reach * reach) {
+                                near = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (near) {
+                        out[i] = HALO << 24;
+                    }
+                }
+            }
+            if (maxX < 0) {
+                throw new IllegalStateException("empty cloud sprite for " + kind);
+            }
+            return new Sprite(w, h, maxX - minX + 1, maxY - minY + 1, out);
+        }
+
+        private static void smoothMask(boolean[] body, int[] owner, int w, int h) {
+            // close (fill 1px notches) then open (drop 1px spurs), keeping owners for new pixels
+            for (int pass = 0; pass < 2; pass++) {
+                boolean[] next = body.clone();
+                for (int py = 0; py < h; py++) {
+                    for (int px = 0; px < w; px++) {
+                        int i = py * w + px;
+                        int n = 0;
+                        int own = -1;
+                        for (int dy = -1; dy <= 1; dy++) {
+                            for (int dx = -1; dx <= 1; dx++) {
+                                int qx = px + dx;
+                                int qy = py + dy;
+                                if ((dx != 0 || dy != 0) && qx >= 0 && qy >= 0 && qx < w && qy < h && body[qy * w + qx]) {
+                                    n++;
+                                    own = Math.max(own, owner[qy * w + qx]);
+                                }
+                            }
+                        }
+                        if (!body[i] && n >= 7) {
+                            next[i] = true;
+                            owner[i] = own;
+                        } else if (body[i] && n <= 1) {
+                            next[i] = false;
+                        }
+                    }
+                }
+                System.arraycopy(next, 0, body, 0, body.length);
+            }
+        }
+    }
+
+    private static final class Bounds {
+        float minX = Float.MAX_VALUE;
+        float maxX = -Float.MAX_VALUE;
+        float minY = Float.MAX_VALUE;
+        float maxY = -Float.MAX_VALUE;
+        float w;
+        float h;
+    }
+
+    private static float lerp(float a, float b, float t) {
+        return a + (b - a) * t;
+    }
+}
