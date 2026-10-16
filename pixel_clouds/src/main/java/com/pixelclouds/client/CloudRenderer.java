@@ -31,9 +31,6 @@ public final class CloudRenderer {
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final ResourceLocation ATLAS_ID = new ResourceLocation(PixelClouds.MODID, "cloud_atlas");
 
-    /** Canvas width in model units, and model units covered by a cloud's nominal width. */
-    private static final float CANVAS_PER_WIDTH = (CloudSprites.SPRITE_W / CloudSprites.PX_PER_UNIT) / 2f;
-
     private static final CloudField FIELD = new CloudField();
     private static final Billboard BILLBOARD = new Billboard();
     private static CompletableFuture<CloudAtlas> pending;
@@ -145,12 +142,12 @@ public final class CloudRenderer {
 
         float range = PixelCloudsConfig.RANGE.get();
         double seconds = (level.getGameTime() + partialTick) / 20.0;
-        FIELD.update(camX, camY, camZ, seconds, rain, thunder,
+        FIELD.update(atlas, camX, camY, camZ, seconds, rain, thunder,
                 PixelCloudsConfig.COVERAGE.get().floatValue(), PixelCloudsConfig.SIZE.get().floatValue(),
                 PixelCloudsConfig.WIND_SPEED.get().floatValue(), PixelCloudsConfig.HEIGHT.get(), range);
 
         insideFactor = PixelCloudsConfig.CLOUD_FOG.get() ? FIELD.inside : 0f;
-        System.arraycopy(palette.shade[2], 0, insideColour, 0, 3);
+        System.arraycopy(palette.shade[3], 0, insideColour, 0, 3);
 
         BufferBuilder builder = Tesselator.getInstance().getBuilder();
         builder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR_NORMAL);
@@ -161,7 +158,7 @@ public final class CloudRenderer {
             float ry = (float) (c.y - camY);
             float rz = (float) (c.z - camZ);
             float dist = Mth.sqrt(rx * rx + ry * ry + rz * rz);
-            float fade = c.presence * Billboard.distanceFade(dist, c.width, range);
+            float fade = c.presence * Billboard.distanceFade(dist, c.bodyW, range);
             if (fade <= 0.01f) {
                 continue;
             }
@@ -182,8 +179,8 @@ public final class CloudRenderer {
             int lo = bb.bin;
             float mix = bb.mix;
 
-            float halfW = c.width * 0.5f * CANVAS_PER_WIDTH;
-            float halfH = halfW * CloudSprites.SPRITE_H / CloudSprites.SPRITE_W;
+            float halfW = atlas.canvasWidth(c.variant) * c.pixel * 0.5f;
+            float halfH = atlas.canvasHeight(c.variant) * c.pixel * 0.5f;
             float g = Mth.clamp(c.bias, 0f, 1f);
 
             if (1f - mix > 0.01f) {
@@ -201,11 +198,11 @@ public final class CloudRenderer {
             return true;
         }
 
-        setUniform(shader, "Shade0", palette.shade[0]);
-        setUniform(shader, "Shade1", palette.shade[1]);
-        setUniform(shader, "Shade2", palette.shade[2]);
-        setUniform(shader, "Shade3", palette.shade[3]);
+        for (int i = 0; i < CloudPalette.SHADES; i++) {
+            setUniform(shader, "Shade" + i, palette.shade[i]);
+        }
         setUniform(shader, "RimColor", palette.rim);
+        setUniform(shader, "Violet", palette.violet);
         // Distant clouds blend into the horizon, which in vanilla is the world fog colour.
         float[] fog = RenderSystem.getShaderFogColor();
         shader.safeGetUniform("HazeColor").set(fog[0], fog[1], fog[2]);
@@ -242,8 +239,8 @@ public final class CloudRenderer {
                              float lr, float lu, float lc) {
         float u0 = atlas.u0(variant, bin);
         float v0 = atlas.v0(variant, bin);
-        float u1 = u0 + atlas.du();
-        float v1 = v0 + atlas.dv();
+        float u1 = u0 + atlas.du(variant);
+        float v1 = v0 + atlas.dv(variant);
         int r = Math.round(Mth.clamp(haze, 0f, 1f) * 255f);
         int g = Math.round(Mth.clamp(bias, 0f, 1f) * 255f);
         int a = Math.round(Mth.clamp(fade, 0f, 1f) * 255f);

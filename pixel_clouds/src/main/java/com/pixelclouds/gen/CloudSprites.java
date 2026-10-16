@@ -1,199 +1,305 @@
 package com.pixelclouds.gen;
 
-import java.util.List;
-
 /**
- * Rasterises a {@link CloudModel} into a lighting-ready pixel sprite.
+ * Renders a {@link CloudVolume} into a lighting-ready pixel sprite as seen from a given elevation.
  *
- * <p>Each opaque texel stores: R and G as the surface normal's x and y in sprite space
- * (z towards the viewer is implied), B as a crease/occlusion value and A as
- * coverage. Empty texels have A = 0. Dissolving in and out is done by the shader in screen space.
- * Colour is deliberately absent. The shader lights the sprite with the current sun and palette.
+ * <p>Texel layout (0xAABBGGRR):
+ * <ul>
+ *   <li>R, G: the surface normal's x and y in sprite space (z towards the viewer is implied). It blends the
+ *       fine surface with the large-scale form of the cloud, so light and shadow read as broad masses with
+ *       bumpy edges rather than a highlight on every lobe.</li>
+ *   <li>B: openness, 255 for an exposed surface and lower in crevices. Drives the secondary shadows.</li>
+ *   <li>A: 0 for empty, {@link #FRINGE} for a soft outer fringe pixel, otherwise
+ *       {@link #BODY_BASE} + 8 * hue + jitter, where hue and jitter are 0..7. Hue varies slowly across the cloud
+ *       and tints the shadows. Jitter is fine noise that roughens the edges between shade bands.</li>
+ * </ul>
  *
- * <p>This class has no Minecraft dependencies so it can run in the preview tool.
+ * <p>No Minecraft dependencies, so the preview tool can run it.
  */
 public final class CloudSprites {
-    public static final int SPRITE_W = 128;
-    public static final int SPRITE_H = 80;
-    /** Pixels per model unit. A model about 2.2 units wide fills most of the sprite width. */
-    public static final float PX_PER_UNIT = 56f;
-    private static final double GLOBAL_BLEND = 0.56;
-
     /** Camera elevation angles, in degrees, at which sprites are baked. Positive: cloud above the camera. */
     public static final float[] ELEVATIONS = {-72f, -50f, -30f, -14f, 0f, 14f, 30f, 50f, 72f};
     public static final int BINS = ELEVATIONS.length;
 
+    public static final int FRINGE = 40;
+    public static final int BODY_BASE = 96;
+
+    /** Weight of the large-scale normal against the fine one. */
+    private static final float COARSE_BLEND = 0.5f;
+    private static final double STEP = 0.7;
+    private static final int[] BAYER4 = {0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5};
+
     private CloudSprites() {}
 
-    /** Returns SPRITE_W * SPRITE_H texels packed as 0xAABBGGRR. */
-    public static int[] render(CloudModel model, float elevationDeg) {
-        final int w = SPRITE_W;
-        final int h = SPRITE_H;
+    /** Canvas height needed to hold the volume at every baked elevation. */
+    public static int canvasHeight(CloudVolume v, int margin) {
+        double hx = (v.maxX - v.minX + 1) / 2.0;
+        double hy = (v.maxY - v.minY + 1) / 2.0;
+        double hz = (v.maxZ - v.minZ + 1) / 2.0;
+        double best = 0;
+        for (float e : ELEVATIONS) {
+            double s = Math.sin(Math.toRadians(e));
+            double c = Math.cos(Math.toRadians(e));
+            best = Math.max(best, hy * c + hz * Math.abs(s));
+        }
+        return (int) Math.ceil(best * 2) + 2 * margin;
+    }
+
+    public static int[] render(CloudVolume v, float elevationDeg, int w, int h, int seed) {
         double e = Math.toRadians(elevationDeg);
         double sin = Math.sin(e);
         double cos = Math.cos(e);
-        // View frame: r is screen right, u screen up, c points from the cloud to the camera.
-        final double cy = -sin;
-        final double cz = cos;
-        final double uy = cos;
-        final double uz = sin;
+        double cyc = -sin;
+        double czc = cos;
+        double cx = (v.minX + v.maxX + 1) / 2.0;
+        double cy = (v.minY + v.maxY + 1) / 2.0;
+        double cz = (v.minZ + v.maxZ + 1) / 2.0;
 
-        float[] depth = new float[w * h];
-        float[] nx = new float[w * h];
-        float[] ny = new float[w * h];
-        boolean[] hit = new boolean[w * h];
-        List<CloudModel.Sphere> spheres = model.spheres;
-        double baseY = model.baseY;
-        boolean clipped = baseY > Double.NEGATIVE_INFINITY;
+        int[] kind = new int[w * h]; // 0 empty, 1 body, 2 fringe candidate
+        float[] nxs = new float[w * h];
+        float[] nys = new float[w * h];
+        float[] ao = new float[w * h];
+        int[] hue = new int[w * h];
+        int[] jit = new int[w * h];
+        float[] fringe = new float[w * h];
+        double[] n = new double[3];
+        double[] nc = new double[3];
 
         for (int py = 0; py < h; py++) {
-            double sy = (h / 2.0 - (py + 0.5)) / PX_PER_UNIT;
+            double sy = h / 2.0 - (py + 0.5);
             for (int px = 0; px < w; px++) {
-                double sx = (px + 0.5 - w / 2.0) / PX_PER_UNIT;
-                double qx = sx;
-                double qy = sy * uy;
-                double qz = sy * uz;
-                double bestT = -1e9;
-                double bnx = 0;
-                double bny = 0;
-                double bnz = 0;
-                boolean found = false;
-                for (CloudModel.Sphere s : spheres) {
-                    double ax = qx - s.x();
-                    double ay = qy - s.y();
-                    double az = qz - s.z();
-                    double b = ay * cy + az * cz;
-                    double disc = b * b - (ax * ax + ay * ay + az * az - (double) s.r() * s.r());
-                    if (disc < 0) {
-                        continue;
+                double sx = px + 0.5 - w / 2.0;
+                double qx = cx + sx;
+                double qy = cy + sy * cos;
+                double qz = cz + sy * sin;
+                if (qx < 0 || qx >= v.nx) {
+                    continue;
+                }
+                double tLo = -1e9;
+                double tHi = 1e9;
+                if (Math.abs(cyc) > 1e-9) {
+                    double t1 = (0 - qy) / cyc;
+                    double t2 = (v.ny - qy) / cyc;
+                    tLo = Math.max(tLo, Math.min(t1, t2));
+                    tHi = Math.min(tHi, Math.max(t1, t2));
+                } else if (qy < 0 || qy >= v.ny) {
+                    continue;
+                }
+                double t1 = (0 - qz) / czc;
+                double t2 = (v.nz - qz) / czc;
+                tLo = Math.max(tLo, Math.min(t1, t2));
+                tHi = Math.min(tHi, Math.max(t1, t2));
+                if (tHi <= tLo) {
+                    continue;
+                }
+
+                float maxD = 0f;
+                boolean hit = false;
+                double t = tHi;
+                for (; t >= tLo; t -= STEP) {
+                    float d = v.nearest(v.full, qx, qy + t * cyc, qz + t * czc);
+                    if (d > maxD) {
+                        maxD = d;
                     }
-                    double sq = Math.sqrt(disc);
-                    double tBack = -b - sq;
-                    double tFront = -b + sq;
-                    double tHit = tFront;
-                    boolean plane = false;
-                    if (clipped) {
-                        if (Math.abs(cy) < 1e-6) {
-                            if (qy < baseY) {
-                                continue;
-                            }
-                        } else {
-                            double tp = (baseY - qy) / cy;
-                            if (cy > 0) {
-                                if (tFront < tp) {
-                                    continue;
-                                }
-                            } else {
-                                if (tp < tFront) {
-                                    tHit = tp;
-                                    plane = true;
-                                }
-                                if (tHit < tBack) {
-                                    continue;
-                                }
-                            }
-                        }
-                    }
-                    if (tHit > bestT) {
-                        bestT = tHit;
-                        found = true;
-                        double wx;
-                        double wy;
-                        double wz;
-                        if (plane) {
-                            wx = 0;
-                            wy = -1;
-                            wz = 0;
-                        } else {
-                            wx = (ax) / s.r();
-                            wy = (ay + tHit * cy) / s.r();
-                            wz = (az + tHit * cz) / s.r();
-                        }
-                        bnx = wx;
-                        bny = wy * uy + wz * uz;
-                        bnz = wy * cy + wz * cz;
+                    if (d >= CloudVolume.ISO) {
+                        hit = true;
+                        break;
                     }
                 }
-                if (found) {
-                    int i = py * w + px;
-                    hit[i] = true;
-                    depth[i] = (float) bestT;
-                    // Blend the puff's own normal with one for the whole cloud so the lighting reads as a
-                    // single mass with broad light and shadow instead of a highlight on every puff.
-                    double gx = sx / 1.15;
-                    double gy = (sy - 0.05) / 0.75;
-                    double gl = Math.sqrt(gx * gx + gy * gy);
-                    if (gl > 0.97) {
-                        gx *= 0.97 / gl;
-                        gy *= 0.97 / gl;
+                int i = py * w + px;
+                if (!hit) {
+                    if (maxD >= 0.58f * CloudVolume.ISO) {
+                        kind[i] = 2;
+                        fringe[i] = (maxD - 0.58f * CloudVolume.ISO) / (0.42f * CloudVolume.ISO);
                     }
-                    double gz = Math.sqrt(Math.max(0, 1 - gx * gx - gy * gy));
-                    double mx = bnx * (1 - GLOBAL_BLEND) + gx * GLOBAL_BLEND;
-                    double my = bny * (1 - GLOBAL_BLEND) + gy * GLOBAL_BLEND;
-                    double mz = bnz * (1 - GLOBAL_BLEND) + gz * GLOBAL_BLEND;
-                    double len = Math.sqrt(mx * mx + my * my + mz * mz);
-                    nx[i] = (float) (mx / len);
-                    ny[i] = (float) (my / len);
+                    continue;
                 }
+
+                double tOut = Math.min(t + STEP, tHi);
+                double tIn = t;
+                for (int k = 0; k < 4; k++) {
+                    double tm = (tIn + tOut) / 2;
+                    float d = v.sample(v.full, qx, qy + tm * cyc, qz + tm * czc);
+                    if (d >= CloudVolume.ISO) {
+                        tIn = tm;
+                    } else {
+                        tOut = tm;
+                    }
+                }
+                double hx = qx;
+                double hy = qy + tIn * cyc;
+                double hz = qz + tIn * czc;
+
+                boolean okF = outward(v, v.full, hx, hy, hz, 1.6, n);
+                boolean okC = outward(v, v.coarse, hx, hy, hz, 3.0, nc);
+                if (!okF && !okC) {
+                    n[0] = 0;
+                    n[1] = 0;
+                    n[2] = 1;
+                } else if (!okF) {
+                    n[0] = nc[0];
+                    n[1] = nc[1];
+                    n[2] = nc[2];
+                } else if (okC) {
+                    double bx = nc[0] * COARSE_BLEND + n[0] * (1 - COARSE_BLEND);
+                    double by = nc[1] * COARSE_BLEND + n[1] * (1 - COARSE_BLEND);
+                    double bz = nc[2] * COARSE_BLEND + n[2] * (1 - COARSE_BLEND);
+                    double len = Math.sqrt(bx * bx + by * by + bz * bz) + 1e-9;
+                    n[0] = bx / len;
+                    n[1] = by / len;
+                    n[2] = bz / len;
+                }
+
+                double nvx = n[0];
+                double nvy = n[1] * cos + n[2] * sin;
+                double nvz = -n[1] * sin + n[2] * cos;
+                if (nvz < 0) {
+                    double len = Math.sqrt(nvx * nvx + nvy * nvy) + 1e-9;
+                    nvx /= len;
+                    nvy /= len;
+                }
+                kind[i] = 1;
+                nxs[i] = (float) nvx;
+                nys[i] = (float) nvy;
+                ao[i] = openness(v, hx, hy, hz, n);
+                hue[i] = Math.min(7, (int) (Noise.value(seed + 11, (float) hx * 0.05f, (float) hy * 0.05f, (float) hz * 0.05f) * 8f));
+                jit[i] = Math.min(7, (int) (Noise.value(seed + 23, (float) hx * 0.23f, (float) hy * 0.23f, (float) hz * 0.23f) * 8f));
             }
         }
 
-        // Cleanup: drop texels with almost no neighbours, which read as stray noise.
-        boolean[] keep = new boolean[w * h];
+        // Drop lone body pixels.
         for (int py = 0; py < h; py++) {
             for (int px = 0; px < w; px++) {
                 int i = py * w + px;
-                if (!hit[i]) {
-                    continue;
+                if (kind[i] == 1 && neighbours(kind, w, h, px, py, 1) < 2) {
+                    kind[i] = 0;
                 }
-                int n = 0;
-                for (int dy = -1; dy <= 1; dy++) {
-                    for (int dx = -1; dx <= 1; dx++) {
-                        if ((dx != 0 || dy != 0) && inside(px + dx, py + dy, w, h) && hit[(py + dy) * w + px + dx]) {
-                            n++;
-                        }
-                    }
-                }
-                keep[i] = n >= 3;
             }
         }
 
-        // Crease occlusion: texels beside a nearer neighbour darken, which gives the cauliflower seams.
         int[] out = new int[w * h];
-        final int[][] taps = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}, {1, 1}, {-1, -1}, {1, -1}, {-1, 1}};
         for (int py = 0; py < h; py++) {
             for (int px = 0; px < w; px++) {
                 int i = py * w + px;
-                if (!keep[i]) {
+                if (kind[i] == 1) {
+                    int r = Math.round((nxs[i] * 0.5f + 0.5f) * 255f);
+                    int g = Math.round((nys[i] * 0.5f + 0.5f) * 255f);
+                    int b = Math.round(Math.max(0f, Math.min(1f, ao[i])) * 255f);
+                    int a = BODY_BASE + hue[i] * 8 + jit[i];
+                    out[i] = (a << 24) | (b << 16) | (g << 8) | r;
+                }
+            }
+        }
+
+        // Soft fringe: dithered pixels just outside the body, facing away from it.
+        for (int py = 0; py < h; py++) {
+            for (int px = 0; px < w; px++) {
+                int i = py * w + px;
+                if (kind[i] != 2) {
                     continue;
                 }
-                float occ = 0f;
-                int samples = 0;
-                for (int ring = 1; ring <= 3; ring++) {
-                    for (int[] t : taps) {
-                        int qx2 = px + t[0] * ring * 2;
-                        int qy2 = py + t[1] * ring * 2;
-                        samples++;
-                        if (!inside(qx2, qy2, w, h) || !keep[qy2 * w + qx2]) {
-                            continue;
-                        }
-                        float d = depth[qy2 * w + qx2] - depth[i];
-                        if (d > 0.015f) {
-                            occ += Math.min(1f, d / 0.10f);
+                float s = fringe[i] * 0.7f + 0.08f;
+                if ((BAYER4[(py & 3) * 4 + (px & 3)] + 0.5f) / 16f >= s) {
+                    continue;
+                }
+                float ax = 0f;
+                float ay = 0f;
+                int count = 0;
+                for (int dy = -3; dy <= 3; dy++) {
+                    for (int dx = -3; dx <= 3; dx++) {
+                        int qx = px + dx;
+                        int qy = py + dy;
+                        if ((dx != 0 || dy != 0) && qx >= 0 && qy >= 0 && qx < w && qy < h && kind[qy * w + qx] == 1) {
+                            ax -= dx;
+                            ay += dy;
+                            count++;
                         }
                     }
                 }
-                float ao = 1f - Math.min(1f, occ / samples * 2.2f);
-                int r = Math.round((nx[i] * 0.5f + 0.5f) * 255f);
-                int g = Math.round((ny[i] * 0.5f + 0.5f) * 255f);
-                int b = Math.round(ao * 255f);
-                out[i] = 0xFF000000 | (b << 16) | (g << 8) | r;
+                if (count == 0) {
+                    continue;
+                }
+                float len = (float) Math.sqrt(ax * ax + ay * ay) + 1e-4f;
+                int r = Math.round((ax / len * 0.9f * 0.5f + 0.5f) * 255f);
+                int g = Math.round((ay / len * 0.9f * 0.5f + 0.5f) * 255f);
+                out[i] = (FRINGE << 24) | (255 << 16) | (g << 8) | r;
             }
         }
         return out;
     }
 
-    private static boolean inside(int x, int y, int w, int h) {
-        return x >= 0 && y >= 0 && x < w && y < h;
+    private static int neighbours(int[] kind, int w, int h, int px, int py, int radius) {
+        int c = 0;
+        for (int dy = -radius; dy <= radius; dy++) {
+            for (int dx = -radius; dx <= radius; dx++) {
+                int qx = px + dx;
+                int qy = py + dy;
+                if ((dx != 0 || dy != 0) && qx >= 0 && qy >= 0 && qx < w && qy < h && kind[qy * w + qx] == 1) {
+                    c++;
+                }
+            }
+        }
+        return c;
+    }
+
+    /** Outward surface normal from the density gradient. False when the gradient vanishes. */
+    private static boolean outward(CloudVolume v, float[] grid, double x, double y, double z, double hStep, double[] out) {
+        double gx = v.sample(grid, x - hStep, y, z) - v.sample(grid, x + hStep, y, z);
+        double gy = v.sample(grid, x, y - hStep, z) - v.sample(grid, x, y + hStep, z);
+        double gz = v.sample(grid, x, y, z - hStep) - v.sample(grid, x, y, z + hStep);
+        double len = Math.sqrt(gx * gx + gy * gy + gz * gz);
+        if (len < 1e-6) {
+            return false;
+        }
+        out[0] = gx / len;
+        out[1] = gy / len;
+        out[2] = gz / len;
+        return true;
+    }
+
+    /** 1 for an exposed surface, lower where neighbouring lobes close in around the point. */
+    private static float openness(CloudVolume v, double x, double y, double z, double[] n) {
+        double ux = Math.abs(n[1]) < 0.9 ? 0 : 1;
+        double uy = Math.abs(n[1]) < 0.9 ? 1 : 0;
+        // tangent 1 = n x up, tangent 2 = n x t1
+        double t1x = n[1] * 0 - n[2] * uy;
+        double t1y = n[2] * ux - n[0] * 0;
+        double t1z = n[0] * uy - n[1] * ux;
+        double l1 = Math.sqrt(t1x * t1x + t1y * t1y + t1z * t1z) + 1e-9;
+        t1x /= l1;
+        t1y /= l1;
+        t1z /= l1;
+        double t2x = n[1] * t1z - n[2] * t1y;
+        double t2y = n[2] * t1x - n[0] * t1z;
+        double t2z = n[0] * t1y - n[1] * t1x;
+        float occ = 0f;
+        int samples = 0;
+        final double[] radii = {2.0, 4.5, 8.0};
+        for (int k = 0; k < 6; k++) {
+            double dx;
+            double dy;
+            double dz;
+            if (k == 0) {
+                dx = n[0];
+                dy = n[1];
+                dz = n[2];
+            } else {
+                double a = (k - 1) * Math.PI * 2 / 5;
+                double ca = Math.cos(a) * 0.95;
+                double sa = Math.sin(a) * 0.95;
+                dx = n[0] + t1x * ca + t2x * sa;
+                dy = n[1] + t1y * ca + t2y * sa;
+                dz = n[2] + t1z * ca + t2z * sa;
+                double l = Math.sqrt(dx * dx + dy * dy + dz * dz) + 1e-9;
+                dx /= l;
+                dy /= l;
+                dz /= l;
+            }
+            for (double r : radii) {
+                occ += Math.min(1.2f, v.nearest(v.full, x + dx * r, y + dy * r, z + dz * r));
+                samples++;
+            }
+        }
+        return Math.max(0f, 1f - occ / samples * 1.25f);
     }
 }

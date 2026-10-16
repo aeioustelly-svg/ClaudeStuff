@@ -1,6 +1,7 @@
 package com.pixelclouds.preview;
 
 import com.pixelclouds.gen.CloudAtlas;
+import com.pixelclouds.gen.CloudKind;
 import com.pixelclouds.gen.CloudSprites;
 import com.pixelclouds.sky.CloudPalette;
 
@@ -9,72 +10,110 @@ import java.io.File;
 import javax.imageio.ImageIO;
 
 /**
- * Dev-only: writes PNG contact sheets of the generated sprites, lit with a CPU copy of the
- * fragment shader. Run with plain javac/java (see the notes in NOTES.md), no Minecraft needed.
+ * Dev-only: writes PNG contact sheets of the generated sprites, lit with {@link ShadeCpu}.
+ * Run with plain javac/java (see README.md), no Minecraft needed.
  *
- * Usage: Preview OUT_DIR
+ * Usage: Preview OUT_DIR [scale]
  */
 public final class Preview {
-    private static final float T0 = 0.28f;
-    private static final float T1 = 0.50f;
-    private static final float T2 = 0.72f;
-
     public static void main(String[] args) throws Exception {
         File out = new File(args[0]);
         out.mkdirs();
+        int scale = args.length > 1 ? Integer.parseInt(args[1]) : 2;
         long t0 = System.nanoTime();
         CloudAtlas atlas = CloudAtlas.build();
-        System.out.printf("atlas %dx%d built in %d ms%n", atlas.width, atlas.height, (System.nanoTime() - t0) / 1_000_000);
+        System.out.printf("atlas %dx%d (%d variants) built in %d ms%n", atlas.width, atlas.height,
+                CloudAtlas.variantCount(), (System.nanoTime() - t0) / 1_000_000);
 
-        // 1. Raw normal/occlusion atlas, drawn opaque on grey so the data is visible.
-        BufferedImage raw = new BufferedImage(atlas.width, atlas.height, BufferedImage.TYPE_INT_RGB);
-        for (int y = 0; y < atlas.height; y++) {
-            for (int x = 0; x < atlas.width; x++) {
-                int p = atlas.pixels[y * atlas.width + x];
-                raw.setRGB(x, y, (p >>> 24) == 0 ? 0x303038 : 0xFF000000 | ((p & 0xFF) << 16) | (((p >> 8) & 0xFF) << 8) | ((p >> 16) & 0xFF));
+        CloudPalette day = CloudPalette.compute(0.6f, false, 0f, 0f);
+        float[] dayLight = norm(-0.55f, 0.6f, 0.6f);
+        float[] dayHaze = {0.72f, 0.82f, 0.96f};
+
+        // One sheet per kind: every variant at every other elevation.
+        for (CloudKind kind : CloudKind.values()) {
+            int first = CloudAtlas.first(kind);
+            int count = CloudAtlas.count(kind);
+            int[] bins = {0, 2, 4, 6, 8};
+            int maxW = 0;
+            int maxH = 0;
+            for (int v = first; v < first + count; v++) {
+                maxW = Math.max(maxW, atlas.canvasWidth(v));
+                maxH = Math.max(maxH, atlas.canvasHeight(v));
             }
-        }
-        ImageIO.write(raw, "png", new File(out, "atlas_raw.png"));
-
-        // 2. Each variant across all elevations, lit for a mid-afternoon sun.
-        for (int v = 0; v < CloudAtlas.VARIANTS; v++) {
-            int w = CloudSprites.SPRITE_W;
-            int h = CloudSprites.SPRITE_H;
-            BufferedImage img = new BufferedImage(w * CloudSprites.BINS, h, BufferedImage.TYPE_INT_RGB);
-            fill(img, 0x7F94D8);
-            CloudPalette pal = CloudPalette.compute(0.55f, false, 0f, 0f);
-            for (int b = 0; b < CloudSprites.BINS; b++) {
-                drawSprite(img, atlas, v, b, b * w, 0, pal, new float[]{-0.45f, 0.6f, 0.66f}, 1f, 0f);
+            BufferedImage img = new BufferedImage(maxW * bins.length * scale, maxH * count * scale, BufferedImage.TYPE_INT_RGB);
+            fill(img, 0x6C94E8);
+            for (int i = 0; i < count; i++) {
+                for (int j = 0; j < bins.length; j++) {
+                    draw(img, atlas, first + i, bins[j], j * maxW * scale, i * maxH * scale, scale, day, dayLight, 0.5f, 0f, dayHaze);
+                }
             }
-            ImageIO.write(upscale(img, 2), "png", new File(out, "variant_" + v + ".png"));
+            ImageIO.write(img, "png", new File(out, "kind_" + kind.name().toLowerCase() + ".png"));
         }
 
-        // 3. One cumulus in several lighting situations at the level elevation, from the palette keys.
+        // A few clouds across the day.
         String[] names = {"noon", "evening", "sunset", "dusk", "night", "morning", "rain", "thunder"};
         float[] sunY = {0.8f, 0.2f, 0.0f, -0.1f, -0.4f, 0.0f, 0.5f, 0.5f};
         boolean[] morning = {false, false, false, false, false, true, false, false};
         float[] rain = {0, 0, 0, 0, 0, 0, 1, 1};
         float[] thunder = {0, 0, 0, 0, 0, 0, 0, 1};
-        int[] sky = {0x7F94D8, 0x9A8CC0, 0xB080A8, 0x4A4274, 0x161C34, 0xA890C8, 0x68707C, 0x3A404C};
-        int[] variants = {0, 3, 5, 10};
-        int w = CloudSprites.SPRITE_W;
-        int h = CloudSprites.SPRITE_H;
-        BufferedImage sheet = new BufferedImage(w * names.length, h * variants.length, BufferedImage.TYPE_INT_RGB);
+        int[] sky = {0x6C94E8, 0x9A8CC0, 0xB080A8, 0x4A4274, 0x161C34, 0xA890C8, 0x68707C, 0x3A404C};
+        int[] picks = {CloudAtlas.first(CloudKind.CUMULUS), CloudAtlas.first(CloudKind.TOWER) + 1, CloudAtlas.first(CloudKind.BANK)};
+        int cw = 0;
+        int ch = 0;
+        for (int v : picks) {
+            cw = Math.max(cw, atlas.canvasWidth(v));
+            ch = Math.max(ch, atlas.canvasHeight(v));
+        }
+        BufferedImage sheet = new BufferedImage(cw * names.length * scale, ch * picks.length * scale, BufferedImage.TYPE_INT_RGB);
         for (int i = 0; i < names.length; i++) {
             CloudPalette pal = CloudPalette.compute(sunY[i], morning[i], rain[i], thunder[i]);
-            // Light direction in sprite space: sun to the left of the view and slightly behind the cloud at dusk.
-            float[] l = i == 2 || i == 5 ? new float[]{-0.8f, 0.2f, -0.55f} : i == 4 ? new float[]{0.4f, 0.5f, 0.75f} : new float[]{-0.5f, 0.3f + sunY[i] * 0.4f, 0.65f};
-            for (int j = 0; j < variants.length; j++) {
-                for (int y = 0; y < h; y++) {
-                    for (int x = 0; x < w; x++) {
-                        sheet.setRGB(i * w + x, j * h + y, sky[i]);
+            float[] l = (i == 2 || i == 5) ? norm(-0.8f, 0.2f, -0.55f) : i == 4 ? norm(0.4f, 0.5f, 0.75f) : norm(-0.5f, 0.3f + sunY[i] * 0.4f, 0.65f);
+            for (int j = 0; j < picks.length; j++) {
+                for (int y = 0; y < ch * scale; y++) {
+                    for (int x = 0; x < cw * scale; x++) {
+                        sheet.setRGB(i * cw * scale + x, j * ch * scale + y, sky[i]);
                     }
                 }
-                drawSprite(sheet, atlas, variants[j], 4, i * w, j * h, pal, l, 1f, j == 3 ? -0.1f : 0f);
+                draw(sheet, atlas, picks[j], 4, i * cw * scale, j * ch * scale, scale, pal, l, 0.5f, 0f, rgb(sky[i]));
             }
         }
-        ImageIO.write(upscale(sheet, 2), "png", new File(out, "lighting.png"));
+        ImageIO.write(sheet, "png", new File(out, "lighting.png"));
         System.out.println("wrote " + out);
+    }
+
+    static void draw(BufferedImage img, CloudAtlas atlas, int variant, int bin, int ox, int oy, int scale,
+                     CloudPalette pal, float[] light, float bias, float haze, float[] hazeColour) {
+        int w = atlas.canvasWidth(variant);
+        int h = atlas.canvasHeight(variant);
+        int sx = atlas.slotX(variant, bin);
+        int sy = atlas.slotY(variant, bin);
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
+                float[] c = ShadeCpu.shade(atlas.pixels[(sy + y) * atlas.width + sx + x], light, bias, haze, pal, hazeColour);
+                if (c == null) {
+                    continue;
+                }
+                int rgb = (Math.round(c[0] * 255) << 16) | (Math.round(c[1] * 255) << 8) | Math.round(c[2] * 255);
+                for (int dy = 0; dy < scale; dy++) {
+                    for (int dx = 0; dx < scale; dx++) {
+                        int px = ox + x * scale + dx;
+                        int py = oy + y * scale + dy;
+                        if (px < img.getWidth() && py < img.getHeight()) {
+                            img.setRGB(px, py, rgb);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private static float[] norm(float x, float y, float z) {
+        float l = (float) Math.sqrt(x * x + y * y + z * z);
+        return new float[]{x / l, y / l, z / l};
+    }
+
+    private static float[] rgb(int c) {
+        return new float[]{((c >> 16) & 0xFF) / 255f, ((c >> 8) & 0xFF) / 255f, (c & 0xFF) / 255f};
     }
 
     private static void fill(BufferedImage img, int rgb) {
@@ -83,59 +122,5 @@ public final class Preview {
                 img.setRGB(x, y, rgb);
             }
         }
-    }
-
-    private static BufferedImage upscale(BufferedImage src, int k) {
-        BufferedImage dst = new BufferedImage(src.getWidth() * k, src.getHeight() * k, BufferedImage.TYPE_INT_RGB);
-        for (int y = 0; y < dst.getHeight(); y++) {
-            for (int x = 0; x < dst.getWidth(); x++) {
-                dst.setRGB(x, y, src.getRGB(x / k, y / k));
-            }
-        }
-        return dst;
-    }
-
-    /** CPU twin of assets/pixel_clouds/shaders/core/pixel_cloud.fsh. Keep the two in step. */
-    private static void drawSprite(BufferedImage img, CloudAtlas atlas, int variant, int bin, int ox, int oy,
-                                   CloudPalette pal, float[] lightRaw, float fade, float bias) {
-        float ll = (float) Math.sqrt(lightRaw[0] * lightRaw[0] + lightRaw[1] * lightRaw[1] + lightRaw[2] * lightRaw[2]);
-        float lx = lightRaw[0] / ll;
-        float ly = lightRaw[1] / ll;
-        float lz = lightRaw[2] / ll;
-        int slot = variant * CloudSprites.BINS + bin;
-        int sx = (slot % CloudAtlas.COLUMNS) * CloudSprites.SPRITE_W;
-        int sy = (slot / CloudAtlas.COLUMNS) * CloudSprites.SPRITE_H;
-        for (int y = 0; y < CloudSprites.SPRITE_H; y++) {
-            for (int x = 0; x < CloudSprites.SPRITE_W; x++) {
-                int p = atlas.pixels[(sy + y) * atlas.width + sx + x];
-                float a = (p >>> 24) / 255f;
-                if (a < 0.5f) {
-                    continue;
-                }
-                float nx = (p & 0xFF) / 255f * 2f - 1f;
-                float ny = ((p >> 8) & 0xFF) / 255f * 2f - 1f;
-                float ao = ((p >> 16) & 0xFF) / 255f;
-                float nz = (float) Math.sqrt(Math.max(0f, 1f - nx * nx - ny * ny));
-                float lit = clamp(((nx * lx + ny * ly + nz * 0.5f * lz) * 0.5f + 0.5f), 0f, 1f);
-                lit *= 0.62f + 0.38f * ao;
-                lit += bias;
-                float back = clamp(-lz, 0f, 1f);
-                float nl = (float) Math.sqrt(nx * nx + ny * ny) + 1e-5f;
-                float ll2 = (float) Math.sqrt(lx * lx + ly * ly) + 1e-5f;
-                float towards = clamp((nx * lx + ny * ly) / (nl * ll2), 0f, 1f);
-                float rim = back * (float) Math.pow(1f - nz, 1.5) * 1.6f * (0.35f + 0.65f * towards);
-                lit += rim * 0.4f;
-                float[] c = lit < T0 ? pal.shade[0] : lit < T1 ? pal.shade[1] : lit < T2 ? pal.shade[2] : pal.shade[3];
-                if (rim > 0.40f) {
-                    c = pal.rim;
-                }
-                int rgb = (Math.round(c[0] * 255) << 16) | (Math.round(c[1] * 255) << 8) | Math.round(c[2] * 255);
-                img.setRGB(ox + x, oy + y, rgb);
-            }
-        }
-    }
-
-    private static float clamp(float v, float lo, float hi) {
-        return v < lo ? lo : Math.min(v, hi);
     }
 }

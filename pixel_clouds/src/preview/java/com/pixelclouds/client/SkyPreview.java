@@ -2,6 +2,7 @@ package com.pixelclouds.client;
 
 import com.pixelclouds.gen.CloudAtlas;
 import com.pixelclouds.gen.CloudSprites;
+import com.pixelclouds.preview.ShadeCpu;
 import com.pixelclouds.sky.CloudPalette;
 
 import java.awt.image.BufferedImage;
@@ -103,28 +104,27 @@ public final class SkyPreview {
 
         CloudField field = new CloudField();
         float range = 1100f;
-        field.update(s.x, s.y, s.z, s.seconds, s.rain, s.thunder, 0.55f, 1.3f, 2f, 190f, range);
+        field.update(atlas, s.x, s.y, s.z, s.seconds, s.rain, s.thunder, 0.55f, 1.2f, 2f, 190f, range);
         System.out.println(s.name + ": " + field.count + " clouds placed");
         Billboard bb = new Billboard();
-        float canvasPerWidth = (CloudSprites.SPRITE_W / CloudSprites.PX_PER_UNIT) / 2f;
         for (int i = 0; i < field.count; i++) {
             CloudField.Cloud c = field.clouds[i];
             float rx = (float) (c.x - s.x);
             float ry = (float) (c.y - s.y);
             float rz = (float) (c.z - s.z);
             float dist = (float) Math.sqrt(rx * rx + ry * ry + rz * rz);
-            float fade = c.presence * Billboard.distanceFade(dist, c.width, range);
+            float fade = c.presence * Billboard.distanceFade(dist, c.bodyW, range);
             if (fade <= 0.01f || !bb.set(rx, ry, rz, light[0], light[1])) {
                 continue;
             }
             double cosAng = (rx * f[0] + ry * f[1] + rz * f[2]) / dist;
-            double angRadius = Math.atan2(c.width, dist);
+            double angRadius = Math.atan2(c.bodyW, dist);
             if (Math.acos(Math.max(-1, Math.min(1, cosAng))) > Math.toRadians(FOV) * 0.95 + angRadius) {
                 continue;
             }
             float haze = Billboard.haze(dist, range);
-            float halfW = c.width * 0.5f * canvasPerWidth;
-            float halfH = halfW * CloudSprites.SPRITE_H / CloudSprites.SPRITE_W;
+            float halfW = atlas.canvasWidth(c.variant) * c.pixel * 0.5f;
+            float halfH = atlas.canvasHeight(c.variant) * c.pixel * 0.5f;
             for (int k = 0; k < 2; k++) {
                 int bin = bb.bin + k;
                 float q = k == 0 ? 1f - bb.mix : bb.mix;
@@ -149,9 +149,10 @@ public final class SkyPreview {
                                float rx, float ry, float rz, float halfW, float halfH, float fade, float haze,
                                CloudPalette pal, float[] hazeColour, double[][] rays, float[] color, float[] depth,
                                double[] f) {
-        int slot = c.variant * CloudSprites.BINS + bin;
-        int sx = (slot % CloudAtlas.COLUMNS) * CloudSprites.SPRITE_W;
-        int sy = (slot / CloudAtlas.COLUMNS) * CloudSprites.SPRITE_H;
+        int sx = atlas.slotX(c.variant, bin);
+        int sy = atlas.slotY(c.variant, bin);
+        int cw = atlas.canvasWidth(c.variant);
+        int ch = atlas.canvasHeight(c.variant);
 
         float ll = (float) Math.sqrt(bb.lr * bb.lr + bb.lu * bb.lu + bb.lc * bb.lc);
         float lx = bb.lr / ll;
@@ -217,10 +218,10 @@ public final class SkyPreview {
                 if (Math.abs(a) >= halfW || Math.abs(b) >= halfH) {
                     continue;
                 }
-                int tx = (int) ((a / halfW + 1) / 2 * CloudSprites.SPRITE_W);
-                int ty = (int) ((halfH - b) / (2 * halfH) * CloudSprites.SPRITE_H);
+                int tx = Math.min(cw - 1, (int) ((a / halfW + 1) / 2 * cw));
+                int ty = Math.min(ch - 1, (int) ((halfH - b) / (2 * halfH) * ch));
                 int p = atlas.pixels[(sy + ty) * atlas.width + sx + tx];
-                if ((p >>> 24) < 128) {
+                if ((p >>> 24) < 1) {
                     continue;
                 }
                 float bayer = (BAYER[(py & 3) * 4 + (px & 3)] + 0.5f) / 16f;
@@ -230,27 +231,9 @@ public final class SkyPreview {
                 if (bayer >= fade) {
                     continue;
                 }
-                float nx = (p & 0xFF) / 255f * 2f - 1f;
-                float ny = ((p >> 8) & 0xFF) / 255f * 2f - 1f;
-                float ao = ((p >> 16) & 0xFF) / 255f;
-                float nz = (float) Math.sqrt(Math.max(0f, 1f - nx * nx - ny * ny));
-                float lit = clamp((nx * lx + ny * ly + nz * 0.5f * lz) * 0.5f + 0.5f);
-                lit *= 0.62f + 0.38f * ao;
-                lit += (c.bias - 0.5f) * 0.7f;
-                float back = clamp(-lz);
-                float nl = (float) Math.sqrt(nx * nx + ny * ny) + 1e-5f;
-                float ll2 = (float) Math.sqrt(lx * lx + ly * ly) + 1e-5f;
-                float towards = clamp((nx * lx + ny * ly) / (nl * ll2));
-                float rim = back * (float) Math.pow(1f - nz, 1.5) * 1.6f * (0.35f + 0.65f * towards);
-                lit += rim * 0.4f;
-                float[] col = lit < 0.28f ? pal.shade[0] : lit < 0.50f ? pal.shade[1] : lit < 0.72f ? pal.shade[2] : pal.shade[3];
-                if (rim > 0.40f) {
-                    col = pal.rim;
-                }
+                float[] col = ShadeCpu.shade(p, new float[]{lx, ly, lz}, c.bias, haze, pal, hazeColour);
                 int o = (py * W + px) * 3;
-                for (int i = 0; i < 3; i++) {
-                    color[o + i] = col[i] + (hazeColour[i] - col[i]) * haze;
-                }
+                System.arraycopy(col, 0, color, o, 3);
                 depth[py * W + px] = (float) t;
             }
         }

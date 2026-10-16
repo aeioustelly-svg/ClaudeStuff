@@ -85,8 +85,8 @@ final class Billboard {
     }
 
     /** Fade from dissolving next to the camera and at the edge of the draw range. */
-    static float distanceFade(float dist, float cloudWidth, float range) {
-        float half = cloudWidth * 0.5f;
+    static float distanceFade(float dist, float bodyWidth, float range) {
+        float half = bodyWidth * 0.5f;
         return smooth(half * 0.30f, half * 0.80f, dist) * (1f - smooth(range * 0.85f, range, dist));
     }
 
