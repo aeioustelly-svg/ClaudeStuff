@@ -83,6 +83,21 @@
         "32": "navy block in the underside"
       },
       "notes": "the dark blue on the bottom messes up in many places: blocks and vertical strips where the underside thickness jumps"
+    },
+    {
+      "commit": "7ced991",
+      "layout": "0-16 heap, 17-20 stratus, 21-25 tower, 26-34 small",
+      "flawed": {
+        "0": "lavender high on the top",
+        "1": "lavender high on the top",
+        "2": "lavender high on the top",
+        "3": "lavender high on the top",
+        "4": "lavender high on the top",
+        "12": "lavender in the upper middle",
+        "9": "large lavender area with a straight top edge (too straight)",
+        "24": "navy messed up at the bottom"
+      },
+      "notes": "lavender should not occur high up; the navy underside messed up in one case"
     }
   ]
 }

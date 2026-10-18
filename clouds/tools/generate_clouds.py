@@ -42,6 +42,8 @@ MAX_SEED = 45       # white cells per seed before a puff top is split in two (ke
 PUFFY = {0, 1, 2, 3, 6, 8, 9, 11, 12}
 THIN = {1}          # the long thin cloud: its lobes are puffy but too flat to build with
 MIN_ROUND = 0.5     # smallest top-third fill for a puff lobe (keeps pointed tops out)
+LAVENDER_FROM = 0.45  # lavender only below this fraction of a column's height (round 4: none high on the tops)
+MAX_SLAB = 16       # longest straight top edge of a lavender area (round 4: 26 read as too straight, 14 passed)
 MAX_NAVY = 4        # thickest the navy underside may be, in cells
 MAX_FLAT_SIDE = 7   # longest near-vertical run (within one column) allowed on either side of a sprite
 WISPY = {4, 7, 10}
@@ -350,6 +352,19 @@ def side_runs(c, tol=1):
     return best
 
 
+def slab(c):
+    """Longest horizontal run of lavender cells with a lighter cell directly above each: a straight-topped slab."""
+    above = np.pad(c, ((1, 0), (0, 0)))[:-1]
+    edge = (c == 2) & ((above == 3) | (above == 4))
+    best = 0
+    for row in edge:
+        run = 0
+        for v in row:
+            run = run + 1 if v else 0
+            best = max(best, run)
+    return best
+
+
 def measures(c):
     """Sprite measures that separated the liked from the disliked sprites in the user's ratings
     (clouds/feedback/ratings.json)."""
@@ -370,7 +385,8 @@ def measures(c):
         "speckle": ((differ == 4) & solid).sum() / n,   # lone cells of another shade: liked <= 0.033
         "navy": (c == 1).sum() / n,                 # liked >= 0.11: a cloud needs its dark underside
         "lavender": (c == 2).sum() / n,             # above 0.25 the folds read as stripes
-        "white": (c == 4).sum() / n,                # above 0.5 the cloud looks flat and washed out
+        "white": (c == 4).sum() / n,
+        "slab": slab(c),                            # longest straight top edge of a lavender area, in cells                # above 0.5 the cloud looks flat and washed out
     }
 
 
@@ -386,7 +402,7 @@ def acceptable(c, kind):
     m = measures(c)
     lo, hi = ASPECT[kind]
     return (lo <= m["aspect"] <= hi and m["fill"] >= 0.62 and m["gaps"] <= 0.02 and m["speckle"] <= 0.033
-            and m["navy"] >= 0.11 and m["lavender"] <= 0.25 and m["white"] <= 0.5)
+            and m["navy"] >= 0.11 and m["lavender"] <= 0.25 and m["white"] <= 0.5 and m["slab"] <= MAX_SLAB)
 
 
 # ---------------------------------------------------------------------------------------------- cleanup
@@ -480,6 +496,15 @@ def smooth_underside(c):
     # A navy cell with open sky directly above is the rim of the band seen edge-on: lavender.
     pad = np.pad(c, 1)
     c[(c == 1) & (pad[:-2, 1:-1] == 0)] = 2
+    # Lavender is a shadow colour: in the upper part of a column (lit tops) it becomes light blue.
+    for x in range(w):
+        ys = np.nonzero(c[:, x])[0]
+        if len(ys) < 3:
+            continue
+        top, span = ys[0], ys[-1] - ys[0]
+        for y in ys:
+            if c[y, x] == 2 and (y - top) < LAVENDER_FROM * span:
+                c[y, x] = 3
     ys, xs = np.nonzero(c)
     return c[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
 

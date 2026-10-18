@@ -50,10 +50,12 @@ Every pixel is from the sheet, nothing is drawn procedurally.
   median-filtered over 5 columns, allowed to change by at most one cell per column and capped at 4. Navy above
   the band becomes lavender, light cells inside it become navy, and light blue resting on it becomes the lavender
   lip. Upper lobes lose their navy for the same reason.
+- Lavender only appears in the lower 55 percent of each column. Higher up it becomes light blue, so the lit tops
+  carry no shadow colour (the sheet itself has some lavender there).
 - Cleanup closes row gaps of up to 2 cells, fills small enclosed sky pockets, trims one-cell spurs and drips under the base.
 - Rejection sampling, with limits taken from the user's ratings in `feedback/ratings.json`: a candidate must have
   sky gaps inside rows of at most 2 percent, a navy share of at least 11 percent, at least 62 percent fill of its
-  bounding box, at most 25 percent lavender, at most 50 percent white, little speckle, and a width/height ratio
+  bounding box, at most 25 percent lavender with no straight-topped lavender slab longer than 16 cells, at most 50 percent white, little speckle, and a width/height ratio
   suited to its layout (heap 1.0 to 1.9, tower 0.7 to 1.0, small 1.3 to 1.9, stratus 2.4 to 3.2). These limits
   reject every sprite rated down in round 2 and keep 12 of the 14 liked ones.
 - Earlier rejection rule, still applied: a candidate is rebuilt when either side stays within one column for more than 7 rows (or
