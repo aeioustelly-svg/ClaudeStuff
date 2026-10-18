@@ -365,6 +365,22 @@ def slab(c):
     return best
 
 
+def seam(c):
+    """Longest straight vertical boundary between two shades, and the share of side-by-side neighbours two or more
+    bands apart. Together they mark lobes whose shading does not blend into their neighbour's."""
+    a, b = c[:, :-1].astype(int), c[:, 1:].astype(int)
+    both = (a > 0) & (b > 0)
+    jumps = (both & (np.abs(a - b) >= 2)).sum() / max((c > 0).sum(), 1)
+    edge = both & (a != b)
+    longest = 0
+    for x in range(edge.shape[1]):
+        run = 0
+        for v in edge[:, x]:
+            run = run + 1 if v else 0
+            longest = max(longest, run)
+    return longest, jumps
+
+
 def measures(c):
     """Sprite measures that separated the liked from the disliked sprites in the user's ratings
     (clouds/feedback/ratings.json)."""
@@ -386,6 +402,7 @@ def measures(c):
         "navy": (c == 1).sum() / n,                 # liked >= 0.11: a cloud needs its dark underside
         "lavender": (c == 2).sum() / n,             # above 0.25 the folds read as stripes
         "white": (c == 4).sum() / n,
+        "seam": seam(c),                            # round 5: all four "do not blend" had (>= 8, >= 0.006)
         "slab": slab(c),                            # longest straight top edge of a lavender area, in cells                # above 0.5 the cloud looks flat and washed out
     }
 
@@ -402,7 +419,8 @@ def acceptable(c, kind):
     m = measures(c)
     lo, hi = ASPECT[kind]
     return (lo <= m["aspect"] <= hi and m["fill"] >= 0.62 and m["gaps"] <= 0.02 and m["speckle"] <= 0.033
-            and m["navy"] >= 0.11 and m["lavender"] <= 0.25 and m["white"] <= 0.5 and m["slab"] <= MAX_SLAB)
+            and m["navy"] >= 0.11 and m["lavender"] <= 0.25 and m["white"] <= 0.5 and m["slab"] <= MAX_SLAB
+            and not (m["seam"][0] >= 8 and m["seam"][1] >= 0.006))
 
 
 # ---------------------------------------------------------------------------------------------- cleanup
@@ -496,6 +514,11 @@ def smooth_underside(c):
     # A navy cell with open sky directly above is the rim of the band seen edge-on: lavender.
     pad = np.pad(c, 1)
     c[(c == 1) & (pad[:-2, 1:-1] == 0)] = 2
+    # On the source clouds light blue never touches navy, and white hardly ever does: lavender always sits between.
+    # Any lighter cell touching the band (above or beside it) becomes lavender, so lobes blend into the underside.
+    pad = np.pad(c, 1)
+    touches = ((pad[2:, 1:-1] == 1) | (pad[:-2, 1:-1] == 1) | (pad[1:-1, 2:] == 1) | (pad[1:-1, :-2] == 1))
+    c[touches & (c >= 3)] = 2
     # Lavender is a shadow colour: in the upper part of a column (lit tops) it becomes light blue.
     for x in range(w):
         ys = np.nonzero(c[:, x])[0]

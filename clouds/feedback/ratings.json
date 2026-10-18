@@ -98,6 +98,17 @@
         "24": "navy messed up at the bottom"
       },
       "notes": "lavender should not occur high up; the navy underside messed up in one case"
+    },
+    {
+      "commit": "9b87bbe",
+      "layout": "0-16 heap, 17-20 stratus, 21-25 tower, 26-34 small",
+      "disliked": [
+        10,
+        14,
+        20,
+        32
+      ],
+      "notes": "everything else acceptable; these do not blend well (10 lower left, 14 left side, 20 and 32 throughout): white puffs reach down onto the navy or lavender without light blue between"
     }
   ]
 }
