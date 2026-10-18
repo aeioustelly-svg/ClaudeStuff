@@ -9,7 +9,7 @@ Lobes
   which are cuts, so the ends of a new cloud can be given lobes whose outer side is a drawn edge.
 
 Sprites
-  A recipe picks a silhouette type (heap, stratus, tower, small puff, trailing wisp, broken cluster), then lays
+  A recipe picks a silhouette type (heap, low stratus, tower, small puff, twin heap), then lays
   lobes on a baseline with overlap: upper lobes first, front lobes last, so each later lobe covers the seams of
   the ones behind it. Each placed lobe may be flipped horizontally and rescaled by nearest neighbour with
   separate x and y factors (0.8 to 1.25). Nothing is drawn procedurally: every pixel comes from the sheet.
@@ -40,6 +40,9 @@ MIN_LOBE = 30       # lobes smaller than this are merged into a neighbour
 MAX_SEED = 45       # white cells per seed before a puff top is split in two (keeps lobes puff-sized)
 # Source clouds by kind (indices into shaded/cloud_NN.png, see extract_clouds.py for the order).
 PUFFY = {0, 1, 2, 3, 6, 8, 9, 11, 12}
+THIN = {1}          # the long thin cloud: its lobes are puffy but too flat to build with
+MIN_ROUND = 0.5     # smallest top-third fill for a puff lobe (keeps pointed tops out)
+MAX_FLAT_SIDE = 7   # longest near-vertical run (within one column) allowed on either side of a sprite
 WISPY = {4, 7, 10}
 SCATTERED = {5}
 N8 = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
@@ -188,6 +191,8 @@ def cut_lobes(shaded, src_id):
             "rel_y": ((y0 + y1) / 2) / shaded.shape[0],
             "navy": float((idx == 1).sum()) / m.sum(),
             "area": int(m.sum()),
+            # Fill of the top third of the bounding box: round puff tops score high, pointed shards low.
+            "round": float(m[:max(2, (y1 - y0) // 3)].mean()),
             "w": int(x1 - x0),
             "h": int(y1 - y0),
         })
@@ -238,11 +243,15 @@ def pick(pool, rng, key=None, k=6):
 def plan_row(rng, pool, n, cx, base_y, target_h, spacing=(0.45, 0.65), base=True, squash=1.0):
     """Placements for n lobes centred on cx, bottoms on base_y. Ends get lobes whose outer side is drawn."""
     # A lobe that is mostly navy (the slab under the flat-bottomed source cloud) reads as a block when cut loose.
-    cands = fit_pool([L for L in pool if L["navy"] <= 0.35], target_h)
+    # Taper: the end lobes of a row are smaller, so the sides step down in puffs instead of standing as a wall.
+    th = [target_h * (0.78 + 0.22 * np.sin(np.pi * (i + 0.5) / n)) if n >= 3 else target_h * (1.0 - 0.15 * i)
+          for i in range(n)]
+    pools = [fit_pool([L for L in pool if L["navy"] <= 0.35], t) for t in th]
     row = []
     for i in range(n):
+        cands = pools[i]
         if base:
-            score = lambda L: L["navy"] * 2 + L["rel_y"]
+            score = lambda L: min(L["navy"], 0.25) * 6 + L["rel_y"]
         else:
             score = lambda L: L["edges"]["top"] - L["navy"] * 2
         if n > 1 and i == 0:
@@ -254,7 +263,7 @@ def plan_row(rng, pool, n, cx, base_y, target_h, spacing=(0.45, 0.65), base=True
         else:
             lobe = pick(cands, rng, key=score, k=8)
             flip = None
-        sy = np.clip(target_h / lobe["h"] * rng.uniform(0.92, 1.08), 0.8, 1.25) * squash
+        sy = np.clip(th[i] / lobe["h"] * rng.uniform(0.92, 1.08), 0.8, 1.25) * squash
         sx = np.clip(sy / squash * rng.uniform(0.85, 1.18), 0.8, 1.25)
         idx, _ = transform(lobe, rng, flip=flip, sx=sx, sy=sy)
         if not base:
@@ -293,12 +302,10 @@ def stack(rng, pool, levels, cx=160, base_y=170, lean=0, squash=1.0):
 
 
 def recipe(kind, rng, lib):
-    # Puffs must be roundish: solidity (area over bounding box) keeps out crescent horns and wisp shards.
-    puffs = [L for L in lib if L["kind"] == "puff" and L["w"] <= 2.2 * L["h"] and L["area"] >= 30
-             and L["area"] >= 0.55 * L["w"] * L["h"]]
-    flats = [L for L in lib if L["kind"] == "puff" and L["w"] >= 1.3 * L["h"] and L["area"] >= 20]
-    wisps = [L for L in lib if L["kind"] == "wisp" and L["area"] >= 20]
-    bits = [L for L in lib if L["area"] >= 15 and L["area"] <= 90]
+    # Puffs only, and roundish ones: solidity (area over bounding box) keeps out crescent horns and wisp shards.
+    # Lobes cut from the long thin cloud and the wisps made ragged, smeared sprites, so they are not used.
+    puffs = [L for L in lib if L["kind"] == "puff" and L["src"] not in THIN and L["w"] <= 2.2 * L["h"]
+             and L["area"] >= 30 and L["area"] >= 0.55 * L["w"] * L["h"] and L["round"] >= MIN_ROUND]
     C = np.zeros((240, 320), np.uint8)
     lean = int(rng.choice([-2, -1, 0, 1, 2]))
     if kind == "heap":
@@ -308,10 +315,10 @@ def recipe(kind, rng, lib):
             levels.append((int(rng.integers(1, 3)), b - 5))
         stamp_rows(C, stack(rng, puffs, levels, lean=lean))
     elif kind == "stratus":
-        rows = stack(rng, flats + puffs, [(int(rng.integers(5, 9)), int(rng.integers(9, 13)))], squash=0.8)
-        if rng.random() < 0.6:
-            rows += stack(rng, puffs, [(int(rng.integers(1, 3)), 9)], base_y=164, lean=lean)
-        stamp_rows(C, rows)
+        # Low and wide: a long row of squashed puffs with a few lower humps on top.
+        b = int(rng.integers(12, 16))
+        levels = [(int(rng.integers(5, 8)), b), (int(rng.integers(2, 4)), b - 3)]
+        stamp_rows(C, stack(rng, puffs, levels, squash=0.8))
     elif kind == "tower":
         b = int(rng.integers(15, 19))
         levels = [(2, b), (2, b - 1), (int(rng.integers(1, 3)), b - 2), (1, b - 3)]
@@ -320,37 +327,51 @@ def recipe(kind, rng, lib):
         stamp_rows(C, stack(rng, puffs, levels, lean=lean))
     elif kind == "small":
         b = int(rng.integers(11, 15))
-        levels = [(int(rng.integers(2, 4)), b), (1, b - 2)]
+        levels = [(int(rng.integers(3, 5)), b), (int(rng.integers(1, 3)), b - 2)]
         stamp_rows(C, stack(rng, puffs, levels, lean=lean))
-    elif kind == "trail":
-        b = int(rng.integers(12, 17))
-        rows = stack(rng, puffs, [(int(rng.integers(2, 4)), b), (int(rng.integers(1, 3)), b - 3)], cx=180, lean=lean)
-        x0 = min(r[1] for r in rows[0])
-        tail = []
-        for k in range(int(rng.integers(1, 3))):
-            idx, _ = transform(pick(wisps, rng), rng, flip=bool(rng.random() < 0.5))
-            tail.append([idx, x0 - idx.shape[1] + idx.shape[1] // 3 - 5 * k, 170 - int(rng.integers(0, 5))])
-        for t in tail:
-            stamp(C, *t)
-        stamp_rows(C, rows)
+    elif kind == "twin":
+        # Two heaps that have drifted together: the smaller one behind, its base a little higher.
+        b = int(rng.integers(13, 19))
+        back = stack(rng, puffs, [(int(rng.integers(2, 4)), b - 3), (1, b - 5)], cx=146, base_y=167)
+        front = stack(rng, puffs, [(int(rng.integers(3, 5)), b), (int(rng.integers(1, 3)), b - 3)], cx=165, lean=lean)
+        stamp_rows(C, back)
+        stamp_rows(C, front)
         if rng.random() < 0.5:
             C = C[:, ::-1].copy()
-    elif kind == "broken":
-        rows = []
-        cx = 120
-        for _ in range(int(rng.integers(4, 8))):
-            r = stack(rng, puffs + bits, [(int(rng.integers(1, 3)), int(rng.integers(6, 11)))],
-                      cx=cx, base_y=170 - int(rng.integers(0, 8)))
-            rows += r
-            cx += int(rng.integers(7, 13))
-        stamp_rows(C, rows)
     return C
+
+
+# ---------------------------------------------------------------------------------------------- quality
+
+def side_runs(c, tol=1):
+    """Longest run of rows whose leftmost (or rightmost) cell stays inside a band tol+1 columns wide: a flat side."""
+    best = 0
+    for side in (0, -1):
+        xs = [np.nonzero(r)[0][side] for r in c if r.any()]
+        for i in range(len(xs)):
+            lo = hi = xs[i]
+            j = i
+            while j < len(xs) and max(hi, xs[j]) - min(lo, xs[j]) <= tol:
+                lo, hi = min(lo, xs[j]), max(hi, xs[j])
+                j += 1
+            best = max(best, j - i)
+    return best
+
+
+def acceptable(c, kind):
+    h, w = c.shape
+    if side_runs(c) > min(MAX_FLAT_SIDE, max(4, 0.3 * h)):
+        return False
+    if kind in ("small", "stratus", "twin") and w < 1.4 * h:
+        return False
+    return True
 
 
 # ---------------------------------------------------------------------------------------------- cleanup
 
 def cleanup(c):
-    c = c.copy()
+    ys, xs = np.nonzero(c)
+    c = np.pad(c[ys.min():ys.max() + 1, xs.min():xs.max() + 1], 1)
     solid = c > 0
     h, w = c.shape
     # Fill sky enclosed by the cloud (slits left between lobes) from the most common neighbour shade.
@@ -372,7 +393,25 @@ def cleanup(c):
         n8 = n4 + pad[:-2, :-2] + pad[:-2, 2:] + pad[2:, :-2] + pad[2:, 2:]
         spur = solid & (n4 <= 1) & (n8 <= 1) & (c != 4)
         c[spur] = 0
-    # Navy only belongs on undersides: a navy cell with open sky directly above becomes lavender.
+    # Drips: cells with nothing left, right or below them, hanging off the underside.
+    for _ in range(2):
+        pad = np.pad(c, 1)
+        drip = (c > 0) & (pad[1:-1, :-2] == 0) & (pad[1:-1, 2:] == 0) & (pad[2:, 1:-1] == 0)
+        c[drip] = 0
+    # Navy only belongs on undersides. In each column only the bottom run of navy stays (with at most one
+    # lighter cell inside it). Navy higher up, or with open sky directly above, becomes lavender.
+    for x in range(w):
+        col = c[:, x]
+        ys = np.nonzero(col)[0]
+        if not len(ys):
+            continue
+        y = ys[-1]
+        light = 0
+        while y >= 0 and col[y] and (col[y] == 1 or light == 0):
+            if col[y] != 1:
+                light += 1
+            y -= 1
+        col[:y + 1][col[:y + 1] == 1] = 2
     pad = np.pad(c, 1)
     c[(c == 1) & (pad[:-2, 1:-1] == 0)] = 2
     ys, xs = np.nonzero(c)
@@ -392,12 +431,18 @@ def main():
     print(len(lib), "lobes:", {k: sum(L["kind"] == k for L in lib) for k in ("puff", "wisp", "scatter")})
 
     rng = np.random.default_rng(SEED)
-    kinds = (["heap"] * 12 + ["stratus"] * 6 + ["tower"] * 5 + ["small"] * 5 + ["trail"] * 4 + ["broken"] * 3)
+    kinds = (["heap"] * 13 + ["stratus"] * 5 + ["tower"] * 5 + ["small"] * 6 + ["twin"] * 6)
     os.makedirs(os.path.join(OUT, "generated"), exist_ok=True)
     sprites = []
     for i in range(COUNT):
         kind = kinds[i % len(kinds)]
-        sprite = cleanup(recipe(kind, rng, lib))
+        # Rejection sampling: build candidates until one has no flat side (and the right proportions).
+        for attempt in range(400):
+            sprite = cleanup(recipe(kind, rng, lib))
+            if acceptable(sprite, kind):
+                break
+        else:
+            print(f"cloud_gen_{i:02d}: no candidate passed, keeping the last one")
         save_indexed(sprite, os.path.join(OUT, "generated", f"cloud_gen_{i:02d}.png"))
         sprites.append(sprite)
         print(f"cloud_gen_{i:02d} {kind:8s} {sprite.shape[1]} x {sprite.shape[0]}")

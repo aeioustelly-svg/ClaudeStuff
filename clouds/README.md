@@ -39,15 +39,20 @@ Every pixel is from the sheet, nothing is drawn procedurally.
 - Lobes: each white highlight cluster (eroded by one cell, split when large) seeds a lobe. Cloud cells join the
   nearest seed by a walk inside the cloud, so cuts run along the drawn folds. Each lobe records which of its
   sides are the artist's own outline.
-- Layouts: heap, stratus, tower, small, trailing wisp and broken cluster. Rows of lobes sit on a baseline, upper
-  rows are drawn first and lower rows in front, so seams are covered. Row ends get lobes with a drawn outer edge.
+- Lobe pool: only round puffs (solid enough, with a filled top third). Lobes from the long thin cloud, the wisps,
+  the scattered cloud and the crescent horns are not used, as they gave ragged, smeared sprites.
+- Layouts: heap (13), low stratus (5), tower (5), small (6) and twin heap (6). Rows of lobes sit on a baseline,
+  upper rows are drawn first and lower rows in front, so seams are covered. Lobes at the ends of a row are
+  smaller, so the sides step down in puffs. Row ends get lobes with a drawn outer edge.
 - Each lobe may be flipped and rescaled by nearest neighbour with separate x and y factors (0.8 to 1.25).
-- Upper lobes have their navy underside turned to lavender, since they rest on a puff and not on open sky.
-- Cleanup fills small enclosed sky pockets, trims one-cell spurs, and turns navy with sky directly above into
-  lavender.
+- Navy stays only in the bottom run of each column. Navy higher up, or with open sky directly above, becomes
+  lavender. Upper lobes lose their navy for the same reason.
+- Cleanup fills small enclosed sky pockets, trims one-cell spurs and drips under the base.
+- Rejection sampling: a candidate is rebuilt when either side stays within one column for more than 7 rows (or
+  30 percent of its height), or when a small, stratus or twin cloud is not at least 1.4 times wider than tall.
 
 ## Known issues
 
-- Some seams still show a straight cut or a patch of mixed texture where lobes from different source clouds meet.
-- The broken clusters are the weakest layout.
+- Some seams still show a patch of mixed texture where lobes from different source clouds meet.
+- A few low stratus clouds have only a faint navy underside.
 - The sheet's origin and licence are unknown. Check before shipping sprites derived from it.
