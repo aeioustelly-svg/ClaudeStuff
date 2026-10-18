@@ -381,6 +381,36 @@ def seam(c):
     return longest, jumps
 
 
+def flat_top(c, tol=1):
+    """Longest run of columns whose top cell stays within tol+1 rows, in cells and as a share of the width."""
+    s = c > 0
+    ys = [np.nonzero(s[:, x])[0][0] for x in range(s.shape[1]) if s[:, x].any()]
+    best = 0
+    for i in range(len(ys)):
+        lo = hi = ys[i]
+        j = i
+        while j < len(ys) and max(hi, ys[j]) - min(lo, ys[j]) <= tol:
+            lo, hi = min(lo, ys[j]), max(hi, ys[j])
+            j += 1
+        best = max(best, j - i)
+    return best, best / max(len(ys), 1)
+
+
+def block_corner(c, bw=4, bh=3):
+    """True if an all-lavender bw x bh rectangle has lighter cells along its whole top and along a whole side: a
+    square-cornered block. None of the sheet's clouds has one at 4 x 3."""
+    h, w = c.shape
+    lav = c == 2
+    light = c >= 3
+    for y in range(1, h - bh + 1):
+        for x in range(0, w - bw + 1):
+            if not lav[y:y + bh, x:x + bw].all() or not light[y - 1, x:x + bw].all():
+                continue
+            if (x > 0 and light[y:y + bh, x - 1].all()) or (x + bw < w and light[y:y + bh, x + bw].all()):
+                return True
+    return False
+
+
 def thick_lip(c, cells=4):
     """Share of underside columns whose lavender band above the navy is at least `cells` thick."""
     cols = thick = 0
@@ -435,9 +465,14 @@ def acceptable(c, kind):
         return False
     m = measures(c)
     lo, hi = ASPECT[kind]
+    flat, flat_share = flat_top(c)
     return (lo <= m["aspect"] <= hi and m["fill"] >= 0.62 and m["gaps"] <= 0.02 and m["speckle"] <= 0.033
-            and m["navy"] >= 0.11 and m["lavender"] <= 0.25 and m["white"] <= 0.5 and m["slab"] <= MAX_SLAB and m["thick_lip"] <= 0.45
-            and not (m["seam"][0] >= 8 and m["seam"][1] >= 0.006))
+            and m["navy"] >= 0.11 and m["lavender"] <= 0.25 and m["white"] <= 0.5 and m["slab"] <= MAX_SLAB
+            and m["thick_lip"] <= 0.45
+            and not (m["seam"][0] >= 8 and m["seam"][1] >= 0.006)
+            and not block_corner(c)
+            and not (flat >= 10 and flat_share >= 0.5)
+            and not (m["fill"] >= 0.72 and flat_share >= 0.4))    # a box: full bounding box and a level top
 
 
 # ---------------------------------------------------------------------------------------------- cleanup
@@ -447,12 +482,31 @@ def cleanup(c):
     c = np.pad(c[ys.min():ys.max() + 1, xs.min():xs.max() + 1], 1)
     solid = c > 0
     h, w = c.shape
-    # Close short gaps along rows (notches between two lobes' bases), then fill what is left enclosed.
+    # Close short gaps along rows (notches between two lobes' bases) and along columns (slits of sky one or two
+    # cells tall cutting sideways into the cloud, which read as a broken line), then fill what is left enclosed.
     for y in range(h):
         xs = np.nonzero(solid[y])[0]
         for a, b in zip(xs, xs[1:]):
             if 1 < b - a <= 3:
                 solid[y, a + 1:b] = True
+    sandwich = np.zeros_like(solid)
+    for x in range(w):
+        ys = np.nonzero(solid[:, x])[0]
+        for a, b in zip(ys, ys[1:]):
+            if 1 < b - a <= 3:
+                sandwich[a + 1:b, x] = True
+    for y in range(h):          # only long thin slits; short notches between stacked puffs keep the outline
+        x = 0
+        while x < w:
+            if sandwich[y, x]:
+                e = x
+                while e < w and sandwich[y, e]:
+                    e += 1
+                if e - x >= 3:
+                    solid[y, x:e] = True
+                x = e
+            else:
+                x += 1
     gap = solid & (c == 0)
     while gap.any():
         for y, x in zip(*np.nonzero(gap)):
@@ -557,7 +611,8 @@ def smooth_underside(c):
     near_white = np.zeros_like(solid)
     for dy in range(5):
         for dx in range(5):
-            near_white |= white[dy:dy + h, dx:dx + w]
+            if abs(dy - 2) + abs(dx - 2) <= 2:  # a diamond, not a square: square corners made square blocks
+                near_white |= white[dy:dy + h, dx:dx + w]
     sp = np.pad(solid, 2)
     enclosed = sp[2:-2, :-4] & sp[2:-2, 4:] & sp[4:, 2:-2]
     c[(c == 3) & ~near_white & enclosed] = 2

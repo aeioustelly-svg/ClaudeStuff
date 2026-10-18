@@ -52,17 +52,21 @@ Every pixel is from the sheet, nothing is drawn procedurally.
   the band becomes lavender, light cells inside it become navy, and light blue resting on it becomes the lavender
   lip. Upper lobes lose their navy for the same reason.
 - Lavender is re-derived on the finished sprite with the stage 2 rules (the sheet has no lavender of its own):
-  light blue or white touching the navy, and light blue deep in a fold with no white within 2 cells. Lavender
+  light blue or white touching the navy, and light blue deep in a fold with no white within 2 cells (measured
+  in a diamond, as a square neighbourhood gave the folds square corners). Lavender
   carried in from the lobes kept their cut lines and showed as square blocks.
 - A lavender patch whose centre lies in the upper 45 percent of the cloud becomes light blue as a whole, so the
   lit tops carry no shadow colour. Patches are judged whole: cutting cell by cell at a fixed height left
   straight-topped blocks.
 - Last, nothing lighter than lavender may touch the navy. On the source clouds light blue never does and white
   hardly ever does.
-- Cleanup closes row gaps of up to 2 cells, fills small enclosed sky pockets, trims one-cell spurs and drips under the base.
+- Cleanup closes slits of sky 1 or 2 cells tall and at least 3 long (they read as a broken line), closes row gaps
+  of up to 2 cells, fills small enclosed sky pockets, trims one-cell spurs and drips under the base.
 - Rejection sampling, with limits taken from the user's ratings in `feedback/ratings.json`: a candidate must have
   sky gaps inside rows of at most 2 percent, a navy share of at least 11 percent, at least 62 percent fill of its
-  bounding box, at most 25 percent lavender with no straight-topped lavender slab longer than 16 cells, at most 45 percent of underside columns with a lavender
+  bounding box, at most 25 percent lavender with no straight-topped lavender slab longer than 16 cells, no all-lavender 4 x 3 block with a straight lighter top and side, no top level (within one row) for half the
+  width and 10 cells, no box shape (fill at least 72 percent with a top level for 40 percent of the width),
+  at most 45 percent of underside columns with a lavender
   band 4 or more cells thick (the sheet's clouds reach 38 percent), no
   combination of a straight vertical shade boundary of 8 or more cells with a 0.6 percent share of shade jumps
   of two bands or more (the four "do not blend" sprites of round 5), at most 50 percent white, little speckle, and a width/height ratio
