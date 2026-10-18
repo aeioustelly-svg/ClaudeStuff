@@ -146,6 +146,14 @@
         "25": "square lavender block, lower right"
       },
       "notes": "avoid straight angles and blocks"
+    },
+    {
+      "commit": "78c679c",
+      "layout": "0-16 heap, 17-20 stratus, 21-25 tower, 26-34 small",
+      "flawed": {
+        "18": "straight vertical white edge of a lobe against lavender and light blue (7 cells)"
+      },
+      "notes": "only one sprite circled"
     }
   ]
 }

@@ -44,6 +44,7 @@ THIN = {1}          # the long thin cloud: its lobes are puffy but too flat to b
 MIN_ROUND = 0.5     # smallest top-third fill for a puff lobe (keeps pointed tops out)
 LAVENDER_FROM = 0.45  # lavender patches centred above this fraction of the cloud's height go (round 4)
 MAX_SLAB = 16       # longest straight top edge of a lavender area (round 4: 26 read as too straight, 14 passed)
+MAX_WHITE_WALL = 5  # longest straight vertical white edge (the sheet's clouds: at most 5; round 9 flagged a 7)
 MAX_NAVY = 4        # thickest the navy underside may be, in cells
 MAX_FLAT_SIDE = 7   # longest near-vertical run (within one column) allowed on either side of a sprite
 WISPY = {4, 7, 10}
@@ -381,6 +382,25 @@ def seam(c):
     return longest, jumps
 
 
+def white_wall(c):
+    """Longest straight vertical edge of white against a darker shade: a lobe's white side cut off flat."""
+    a, b = c[:, :-1], c[:, 1:]
+    edge = ((a == 4) & (b > 0) & (b < 4)) | ((b == 4) & (a > 0) & (a < 4))
+    best = 0
+    for x in range(edge.shape[1]):
+        run = 0
+        for v in edge[:, x]:
+            run = run + 1 if v else 0
+            best = max(best, run)
+    return best
+
+
+def navy_cover(c):
+    """Share of columns with navy in them. The sheet's puffy clouds: 0.89 to 1."""
+    cols = [x for x in range(c.shape[1]) if c[:, x].any()]
+    return sum(1 for x in cols if (c[:, x] == 1).any()) / max(len(cols), 1)
+
+
 def flat_top(c, tol=1):
     """Longest run of columns whose top cell stays within tol+1 rows, in cells and as a share of the width."""
     s = c > 0
@@ -471,6 +491,8 @@ def acceptable(c, kind):
             and m["thick_lip"] <= 0.45
             and not (m["seam"][0] >= 8 and m["seam"][1] >= 0.006)
             and not block_corner(c)
+            and white_wall(c) <= MAX_WHITE_WALL
+            and navy_cover(c) >= 0.85
             and not (flat >= 10 and flat_share >= 0.5)
             and not (m["fill"] >= 0.72 and flat_share >= 0.4))    # a box: full bounding box and a level top
 
@@ -564,10 +586,9 @@ def smooth_underside(c):
         thick[x] = 0 if not (run == 1).any() else bottom[x] - y - (1 if run[0] != 1 else 0)
     t = np.array([np.median(thick[max(0, x - 2):x + 3]) for x in range(w)]).round().astype(int)
     t = np.minimum(t, MAX_NAVY)
-    # The band is continuous: every column between the first and last navy column keeps at least one cell.
-    on = np.nonzero(t > 0)[0]
-    if len(on):
-        t[on[0]:on[-1] + 1] = np.maximum(t[on[0]:on[-1] + 1], 1)
+    # The band is continuous and runs under the whole cloud: every column keeps at least one cell. (A front lobe
+    # without navy of its own left the band stopping halfway.) The thin outer rim becomes lavender further down.
+    t[bottom >= 0] = np.maximum(t[bottom >= 0], 1)
     for _ in range(2):          # at most one cell of change between neighbouring columns
         for x in range(1, w):
             t[x] = min(t[x], t[x - 1] + 1)

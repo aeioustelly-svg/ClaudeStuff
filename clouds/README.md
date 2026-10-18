@@ -48,7 +48,8 @@ Every pixel is from the sheet, nothing is drawn procedurally.
 - Each lobe may be flipped and rescaled by nearest neighbour with separate x and y factors (0.8 to 1.25).
 - The navy underside is repainted as one band. Each column's navy thickness from its lobe is measured, then
   median-filtered over 5 columns, allowed to change by at most one cell per column and capped at 4. The band is
-  continuous (at least one cell in every column between its ends), and navy cut off from it becomes lavender. Navy above
+  continuous and runs under the whole cloud (at least one cell in every column), and navy cut off from it
+  becomes lavender. Navy above
   the band becomes lavender, light cells inside it become navy, and light blue resting on it becomes the lavender
   lip. Upper lobes lose their navy for the same reason.
 - Lavender is re-derived on the finished sprite with the stage 2 rules (the sheet has no lavender of its own):
@@ -64,7 +65,8 @@ Every pixel is from the sheet, nothing is drawn procedurally.
   of up to 2 cells, fills small enclosed sky pockets, trims one-cell spurs and drips under the base.
 - Rejection sampling, with limits taken from the user's ratings in `feedback/ratings.json`: a candidate must have
   sky gaps inside rows of at most 2 percent, a navy share of at least 11 percent, at least 62 percent fill of its
-  bounding box, at most 25 percent lavender with no straight-topped lavender slab longer than 16 cells, no all-lavender 4 x 3 block with a straight lighter top and side, no top level (within one row) for half the
+  bounding box, at most 25 percent lavender with no straight-topped lavender slab longer than 16 cells, no straight vertical white edge longer than 5 cells (the sheet's maximum), navy under at least 85 percent of
+  the columns (the sheet's puffy clouds: 89 to 100 percent), no all-lavender 4 x 3 block with a straight lighter top and side, no top level (within one row) for half the
   width and 10 cells, no box shape (fill at least 72 percent with a top level for 40 percent of the width),
   at most 45 percent of underside columns with a lavender
   band 4 or more cells thick (the sheet's clouds reach 38 percent), no
