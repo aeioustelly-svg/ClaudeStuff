@@ -46,8 +46,10 @@ Every pixel is from the sheet, nothing is drawn procedurally.
   upper rows are drawn first and lower rows in front, so seams are covered. Lobes at the ends of a row are
   smaller, so the sides step down in puffs. Row ends get lobes with a drawn outer edge.
 - Each lobe may be flipped and rescaled by nearest neighbour with separate x and y factors (0.8 to 1.25).
-- Navy stays only in the bottom run of each column. Navy higher up, or with open sky directly above, becomes
-  lavender. Upper lobes lose their navy for the same reason.
+- The navy underside is repainted as one band. Each column's navy thickness from its lobe is measured, then
+  median-filtered over 5 columns, allowed to change by at most one cell per column and capped at 4. Navy above
+  the band becomes lavender, light cells inside it become navy, and light blue resting on it becomes the lavender
+  lip. Upper lobes lose their navy for the same reason.
 - Cleanup closes row gaps of up to 2 cells, fills small enclosed sky pockets, trims one-cell spurs and drips under the base.
 - Rejection sampling, with limits taken from the user's ratings in `feedback/ratings.json`: a candidate must have
   sky gaps inside rows of at most 2 percent, a navy share of at least 11 percent, at least 62 percent fill of its

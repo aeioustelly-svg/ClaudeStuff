@@ -42,6 +42,7 @@ MAX_SEED = 45       # white cells per seed before a puff top is split in two (ke
 PUFFY = {0, 1, 2, 3, 6, 8, 9, 11, 12}
 THIN = {1}          # the long thin cloud: its lobes are puffy but too flat to build with
 MIN_ROUND = 0.5     # smallest top-third fill for a puff lobe (keeps pointed tops out)
+MAX_NAVY = 4        # thickest the navy underside may be, in cells
 MAX_FLAT_SIDE = 7   # longest near-vertical run (within one column) allowed on either side of a sprite
 WISPY = {4, 7, 10}
 SCATTERED = {5}
@@ -432,20 +433,51 @@ def cleanup(c):
         pad = np.pad(c, 1)
         drip = (c > 0) & (pad[1:-1, :-2] == 0) & (pad[1:-1, 2:] == 0) & (pad[2:, 1:-1] == 0)
         c[drip] = 0
-    # Navy only belongs on undersides. In each column only the bottom run of navy stays (with at most one
-    # lighter cell inside it). Navy higher up, or with open sky directly above, becomes lavender.
+    return smooth_underside(c)
+
+
+def smooth_underside(c):
+    """Navy only belongs on the underside, as one band whose thickness changes gently along the cloud.
+
+    The thickness each column's lobe brought with it is measured (bottom run of navy, one lighter cell allowed
+    inside it), then median-filtered over 5 columns, limited to change by one cell per column and capped. The band
+    is repainted at that thickness: navy above it becomes lavender, light cells inside it become navy, and
+    light blue resting on the band becomes the lavender lip, as on the source clouds."""
+    h, w = c.shape
+    bottom = np.full(w, -1)
+    thick = np.zeros(w, int)
     for x in range(w):
-        col = c[:, x]
-        ys = np.nonzero(col)[0]
+        ys = np.nonzero(c[:, x])[0]
         if not len(ys):
             continue
-        y = ys[-1]
+        bottom[x] = y = ys[-1]
         light = 0
-        while y >= 0 and col[y] and (col[y] == 1 or light == 0):
-            if col[y] != 1:
-                light += 1
+        while y >= 0 and c[y, x] and (c[y, x] == 1 or light == 0):
+            light += c[y, x] != 1
             y -= 1
-        col[:y + 1][col[:y + 1] == 1] = 2
+        run = c[y + 1:bottom[x] + 1, x]
+        thick[x] = 0 if not (run == 1).any() else bottom[x] - y - (1 if run[0] != 1 else 0)
+    t = np.array([np.median(thick[max(0, x - 2):x + 3]) for x in range(w)]).round().astype(int)
+    t = np.minimum(t, MAX_NAVY)
+    for _ in range(2):          # at most one cell of change between neighbouring columns
+        for x in range(1, w):
+            t[x] = min(t[x], t[x - 1] + 1)
+        for x in range(w - 2, -1, -1):
+            t[x] = min(t[x], t[x + 1] + 1)
+    for x in range(w):
+        col = c[:, x]
+        col[col == 1] = 2
+        if bottom[x] < 0:
+            continue
+        # Only fill navy over the solid cells at the column's bottom (not across a sky gap).
+        y, k = bottom[x], 0
+        while k < min(t[x], bottom[x] + 1) and col[y]:
+            col[y] = 1
+            y -= 1
+            k += 1
+        if k and y >= 0 and col[y] == 3:
+            col[y] = 2
+    # A navy cell with open sky directly above is the rim of the band seen edge-on: lavender.
     pad = np.pad(c, 1)
     c[(c == 1) & (pad[:-2, 1:-1] == 0)] = 2
     ys, xs = np.nonzero(c)

@@ -3,7 +3,19 @@
   "rounds": [
     {
       "commit": "4550ffd",
-      "disliked": [12, 13, 14, 15, 26, 27, 28, 29, 32, 33, 34],
+      "disliked": [
+        12,
+        13,
+        14,
+        15,
+        26,
+        27,
+        28,
+        29,
+        32,
+        33,
+        34
+      ],
       "notes": {
         "6": "good, but left side too flat",
         "23": "left side too flat",
@@ -13,14 +25,64 @@
     {
       "commit": "3de24db",
       "layout": "0-12 heap, 13-17 stratus, 18-22 tower, 23-28 small, 29-34 twin",
-      "liked": [0, 1, 2, 4, 5, 7, 11, 12, 15, 18, 21, 24, 25, 28],
-      "disliked": [14, 16, 17, 19, 20, 22, 23, 26, 27, 29, 30, 31, 32, 33],
+      "liked": [
+        0,
+        1,
+        2,
+        4,
+        5,
+        7,
+        11,
+        12,
+        15,
+        18,
+        21,
+        24,
+        25,
+        28
+      ],
+      "disliked": [
+        14,
+        16,
+        17,
+        19,
+        20,
+        22,
+        23,
+        26,
+        27,
+        29,
+        30,
+        31,
+        32,
+        33
+      ],
       "flawed": {
         "8": "colour does not transition well on the left side",
         "9": "gap",
         "10": "gap in the underside",
         "34": "weird colours in the lower left"
       }
+    },
+    {
+      "commit": "10e6991",
+      "layout": "0-16 heap, 17-20 stratus, 21-25 tower, 26-34 small",
+      "verdict": "mostly all acceptable",
+      "flawed": {
+        "5": "navy block in the underside",
+        "6": "navy strip on the lower left",
+        "11": "navy notch in the underside",
+        "17": "vertical navy strip",
+        "19": "navy block",
+        "20": "navy patch",
+        "21": "navy blocks in the underside",
+        "26": "navy speck at the lower left",
+        "27": "navy strip along the whole underside",
+        "28": "navy patch, lower left",
+        "30": "navy patch, lower left",
+        "32": "navy block in the underside"
+      },
+      "notes": "the dark blue on the bottom messes up in many places: blocks and vertical strips where the underside thickness jumps"
     }
   ]
 }
