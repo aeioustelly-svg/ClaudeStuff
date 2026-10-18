@@ -21,6 +21,7 @@ Writes sprites_dir/generated/cloud_gen_NN.png (palette PNG, pixel value = shade 
 sprites_dir/lobes/lobe_NNN.png for inspection.
 """
 import glob
+import json
 import os
 import sys
 from collections import deque
@@ -45,6 +46,8 @@ MIN_ROUND = 0.5     # smallest top-third fill for a puff lobe (keeps pointed top
 LAVENDER_FROM = 0.45  # lavender patches centred above this fraction of the cloud's height go (round 4)
 MAX_SLAB = 16       # longest straight top edge of a lavender area (round 4: 26 read as too straight, 14 passed)
 MAX_WHITE_WALL = 5  # longest straight vertical white edge (the sheet's clouds: at most 5; round 9 flagged a 7)
+MIST_COPIES = 3     # shifted copies of the silhouette that make up the mist
+MIST_REACH = 4      # how far (cells) the mist may reach out from the cloud
 MAX_BIT = 15        # largest loose piece from the sheet used as a broken-off bit, in cells
 MAX_NAVY = 4        # thickest the navy underside may be, in cells
 MAX_FLAT_SIDE = 7   # longest near-vertical run (within one column) allowed on either side of a sprite
@@ -684,12 +687,17 @@ def loose_bits(shaded_paths):
 
 def add_bits(sprite, rng, bits):
     """Now and then, one to three pieces that have broken off: beside the upper two thirds of a side, or above a
-    shoulder, 1 to 3 cells away and touching nothing. Added after the quality checks, which judge the cloud itself."""
+    shoulder, 1 to 3 cells away and touching nothing. Added after the quality checks, which judge the cloud itself.
+
+    Returns the cloud on a padded canvas and the pieces as (piece, y, x) on that canvas. The pieces stay separate
+    layers so that in game they can drift apart from the cloud."""
+    pad = 12
+    c = np.pad(sprite, pad)
+    placed = []
     n = int(rng.choice([0, 0, 0, 0, 1, 1, 2, 3]))
     if n == 0:
-        return sprite
-    pad = 10
-    c = np.pad(sprite, pad)
+        return c, placed
+    occupied = c > 0
     h, w = c.shape
     sh = sprite.shape[0]
     for _ in range(n):
@@ -716,12 +724,55 @@ def add_bits(sprite, rng, bits):
             if y0 < 1 or x0 < 1 or y0 + bh >= h - 1 or x0 + bw >= w - 1:
                 continue
             # Clear of everything by at least one cell, diagonals included.
-            if c[y0 - 1:y0 + bh + 1, x0 - 1:x0 + bw + 1].any():
+            if occupied[y0 - 1:y0 + bh + 1, x0 - 1:x0 + bw + 1].any():
                 continue
-            np.copyto(c[y0:y0 + bh, x0:x0 + bw], b, where=b > 0)
+            occupied[y0:y0 + bh, x0:x0 + bw] |= b > 0
+            placed.append((b, y0, x0))
             break
+    return c, placed
+
+
+def shift(mask, dy, dx):
+    out = np.zeros_like(mask)
+    h, w = mask.shape
+    out[max(0, dy):h + min(0, dy), max(0, dx):w + min(0, dx)] = \
+        mask[max(0, -dy):h + min(0, -dy), max(0, -dx):w + min(0, -dx)]
+    return out
+
+
+def add_mist(c, rng, reach):
+    """Translucent lumpy haze behind the cloud (shade 5). It is the union of a few copies of the cloud's own
+    silhouette, each shifted by up to `reach` cells, so its lumps follow the cloud's bumps instead of being drawn
+    as circles. Lone spikes are trimmed and pinholes filled so it reads as soft haze, not noise."""
+    solid = c > 0
+    m = solid.copy()
+    for _ in range(MIST_COPIES):
+        m |= shift(solid, int(rng.integers(-reach, reach + 1)), int(rng.integers(-reach - 1, reach + 2)))
+    for _ in range(2):
+        pad = np.pad(m, 1)
+        n4 = pad[:-2, 1:-1].astype(int) + pad[2:, 1:-1] + pad[1:-1, :-2] + pad[1:-1, 2:]
+        m = (m & (n4 >= 2)) | (~m & (n4 >= 3))
+    out = c.copy()
+    out[m & ~solid] = 5
+    return out
+
+
+def crop(c):
     ys, xs = np.nonzero(c)
-    return c[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
+    return c[ys.min():ys.max() + 1, xs.min():xs.max() + 1], ys.min(), xs.min()
+
+
+def layers(body_canvas, placed, mist_rng):
+    """The cloud and each piece as its own cropped layer with mist. Piece offsets are relative to the cloud
+    layer's top-left corner, in pixels."""
+    body, by, bx = crop(add_mist(body_canvas, mist_rng, MIST_REACH))
+    pieces = []
+    for b, y0, x0 in placed:
+        canvas = np.zeros_like(body_canvas)
+        canvas[y0:y0 + b.shape[0], x0:x0 + b.shape[1]] = b
+        piece, py, px = crop(add_mist(canvas, mist_rng, 1))
+        pieces.append((piece, int(py - by), int(px - bx)))
+    return body, pieces
 
 
 def main():
@@ -730,7 +781,8 @@ def main():
         src_id = int(os.path.basename(path)[6:8])
         lib += cut_lobes(np.asarray(Image.open(path)).astype(np.uint8), src_id)
     os.makedirs(os.path.join(OUT, "lobes"), exist_ok=True)
-    for f in glob.glob(os.path.join(OUT, "lobes", "*.png")) + glob.glob(os.path.join(OUT, "generated", "*.png")):
+    for f in glob.glob(os.path.join(OUT, "lobes", "*.png")) + glob.glob(os.path.join(OUT, "generated", "*.png")) + \
+            glob.glob(os.path.join(OUT, "generated", "*.json")):
         os.remove(f)
     for i, L in enumerate(lib):
         save_indexed(L["idx"], os.path.join(OUT, "lobes", f"lobe_{i:03d}.png"))
@@ -740,6 +792,8 @@ def main():
     # A separate stream for the broken-off bits, so adding them leaves every cloud itself unchanged.
     bit_rng = np.random.default_rng(SEED + 1)
     bits = loose_bits(sorted(glob.glob(os.path.join(OUT, "shaded", "cloud_*.png"))))
+    mist_rng = np.random.default_rng(SEED + 2)    # likewise for the mist
+    manifest = {}
     kinds = (["heap"] * 17 + ["stratus"] * 4 + ["tower"] * 5 + ["small"] * 9)
     os.makedirs(os.path.join(OUT, "generated"), exist_ok=True)
     sprites = []
@@ -752,28 +806,45 @@ def main():
                 break
         else:
             print(f"cloud_gen_{i:02d}: no candidate passed, keeping the last one")
-        sprite = add_bits(sprite, bit_rng, bits)
-        save_indexed(sprite, os.path.join(OUT, "generated", f"cloud_gen_{i:02d}.png"))
-        sprites.append(sprite)
-        print(f"cloud_gen_{i:02d} {kind:8s} {sprite.shape[1]} x {sprite.shape[0]}")
+        canvas, placed = add_bits(sprite, bit_rng, bits)
+        body, pieces = layers(canvas, placed, mist_rng)
+        name = f"cloud_gen_{i:02d}"
+        save_indexed(body, os.path.join(OUT, "generated", name + ".png"))
+        entry = {"file": name + ".png", "kind": kind, "size": [int(body.shape[1]), int(body.shape[0])], "bits": []}
+        for k, (piece, dy, dx) in enumerate(pieces):
+            save_indexed(piece, os.path.join(OUT, "generated", f"{name}_bit{k}.png"))
+            entry["bits"].append({"file": f"{name}_bit{k}.png", "x": dx, "y": dy,
+                                  "size": [int(piece.shape[1]), int(piece.shape[0])]})
+        manifest[name] = entry
+        sprites.append((body, pieces))
+        print(f"{name} {kind:8s} {body.shape[1]} x {body.shape[0]}, {len(pieces)} bits")
+    with open(os.path.join(OUT, "generated", "clouds.json"), "w") as f:
+        json.dump(manifest, f, indent=1)
     preview(sprites, os.path.join(OUT, "preview_generated.png"))
 
 
 def preview(sprites, path, scale=4, cols=7):
-    """Contact sheet in the daylight palette over the sheet's sky colour, for looking at, not for the mod."""
-    from shade_clouds import PALETTE
-    cw = max(s.shape[1] for s in sprites) * scale + 8
-    ch = max(s.shape[0] for s in sprites) * scale + 8
+    """Contact sheet in the daylight palette over the sheet's sky colour, for looking at, not for the mod.
+    Each entry is (cloud, [(piece, dy, dx), ...]); the mist is blended at its stored opacity."""
+    from shade_clouds import ALPHA, PALETTE
+    rgba = np.array([list(rgb) + [a] for rgb, a in zip(PALETTE, ALPHA)], np.uint8)
+    boxes = []
+    for body, pieces in sprites:
+        y0 = min([0] + [dy for _, dy, _ in pieces])
+        x0 = min([0] + [dx for _, _, dx in pieces])
+        y1 = max([body.shape[0]] + [dy + p.shape[0] for p, dy, _ in pieces])
+        x1 = max([body.shape[1]] + [dx + p.shape[1] for p, _, dx in pieces])
+        boxes.append((y0, x0, y1, x1))
+    cw = max(b[3] - b[1] for b in boxes) * scale + 8
+    ch = max(b[2] - b[0] for b in boxes) * scale + 8
     rows = (len(sprites) + cols - 1) // cols
-    sheet = np.zeros((ch * rows, cw * cols, 3), np.uint8)
-    sheet[:] = (55, 113, 238)
-    pal = np.array(PALETTE, np.uint8)
-    for k, s in enumerate(sprites):
-        big = np.kron(s, np.ones((scale, scale), np.uint8))
-        y, x = (k // cols) * ch + 4, (k % cols) * cw + 4
-        region = sheet[y:y + big.shape[0], x:x + big.shape[1]]
-        np.copyto(region, pal[big], where=(big > 0)[..., None])
-    Image.fromarray(sheet).save(path)
+    sheet = Image.new("RGBA", (cw * cols, ch * rows), (55, 113, 238, 255))
+    for k, ((body, pieces), (y0, x0, _, _)) in enumerate(zip(sprites, boxes)):
+        oy, ox = (k // cols) * ch + 4 - y0 * scale, (k % cols) * cw + 4 - x0 * scale
+        for layer, dy, dx in [(body, 0, 0)] + pieces:
+            img = Image.fromarray(rgba[np.kron(layer, np.ones((scale, scale), np.uint8))], "RGBA")
+            sheet.alpha_composite(img, (ox + dx * scale, oy + dy * scale))
+    sheet.convert("RGB").save(path)
 
 
 if __name__ == "__main__":

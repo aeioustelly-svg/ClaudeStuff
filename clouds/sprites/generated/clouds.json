@@ -1,0 +1,709 @@
+{
+ "cloud_gen_00": {
+  "file": "cloud_gen_00.png",
+  "kind": "heap",
+  "size": [
+   51,
+   35
+  ],
+  "bits": [
+   {
+    "file": "cloud_gen_00_bit0.png",
+    "x": 18,
+    "y": -3,
+    "size": [
+     5,
+     4
+    ]
+   },
+   {
+    "file": "cloud_gen_00_bit1.png",
+    "x": 13,
+    "y": 6,
+    "size": [
+     2,
+     2
+    ]
+   }
+  ]
+ },
+ "cloud_gen_01": {
+  "file": "cloud_gen_01.png",
+  "kind": "heap",
+  "size": [
+   34,
+   30
+  ],
+  "bits": [
+   {
+    "file": "cloud_gen_01_bit0.png",
+    "x": 31,
+    "y": 13,
+    "size": [
+     2,
+     2
+    ]
+   }
+  ]
+ },
+ "cloud_gen_02": {
+  "file": "cloud_gen_02.png",
+  "kind": "heap",
+  "size": [
+   34,
+   28
+  ],
+  "bits": [
+   {
+    "file": "cloud_gen_02_bit0.png",
+    "x": -1,
+    "y": 10,
+    "size": [
+     3,
+     3
+    ]
+   },
+   {
+    "file": "cloud_gen_02_bit1.png",
+    "x": 20,
+    "y": 2,
+    "size": [
+     7,
+     5
+    ]
+   },
+   {
+    "file": "cloud_gen_02_bit2.png",
+    "x": 3,
+    "y": 2,
+    "size": [
+     7,
+     7
+    ]
+   }
+  ]
+ },
+ "cloud_gen_03": {
+  "file": "cloud_gen_03.png",
+  "kind": "heap",
+  "size": [
+   42,
+   23
+  ],
+  "bits": [
+   {
+    "file": "cloud_gen_03_bit0.png",
+    "x": 35,
+    "y": 5,
+    "size": [
+     5,
+     4
+    ]
+   },
+   {
+    "file": "cloud_gen_03_bit1.png",
+    "x": 11,
+    "y": -2,
+    "size": [
+     4,
+     4
+    ]
+   }
+  ]
+ },
+ "cloud_gen_04": {
+  "file": "cloud_gen_04.png",
+  "kind": "heap",
+  "size": [
+   50,
+   29
+  ],
+  "bits": [
+   {
+    "file": "cloud_gen_04_bit0.png",
+    "x": 48,
+    "y": 14,
+    "size": [
+     4,
+     4
+    ]
+   }
+  ]
+ },
+ "cloud_gen_05": {
+  "file": "cloud_gen_05.png",
+  "kind": "heap",
+  "size": [
+   42,
+   25
+  ],
+  "bits": [
+   {
+    "file": "cloud_gen_05_bit0.png",
+    "x": 41,
+    "y": 10,
+    "size": [
+     3,
+     4
+    ]
+   }
+  ]
+ },
+ "cloud_gen_06": {
+  "file": "cloud_gen_06.png",
+  "kind": "heap",
+  "size": [
+   33,
+   31
+  ],
+  "bits": [
+   {
+    "file": "cloud_gen_06_bit0.png",
+    "x": -4,
+    "y": 13,
+    "size": [
+     6,
+     4
+    ]
+   },
+   {
+    "file": "cloud_gen_06_bit1.png",
+    "x": 4,
+    "y": -5,
+    "size": [
+     6,
+     5
+    ]
+   }
+  ]
+ },
+ "cloud_gen_07": {
+  "file": "cloud_gen_07.png",
+  "kind": "heap",
+  "size": [
+   36,
+   32
+  ],
+  "bits": []
+ },
+ "cloud_gen_08": {
+  "file": "cloud_gen_08.png",
+  "kind": "heap",
+  "size": [
+   38,
+   30
+  ],
+  "bits": []
+ },
+ "cloud_gen_09": {
+  "file": "cloud_gen_09.png",
+  "kind": "heap",
+  "size": [
+   38,
+   30
+  ],
+  "bits": [
+   {
+    "file": "cloud_gen_09_bit0.png",
+    "x": 16,
+    "y": 0,
+    "size": [
+     6,
+     5
+    ]
+   }
+  ]
+ },
+ "cloud_gen_10": {
+  "file": "cloud_gen_10.png",
+  "kind": "heap",
+  "size": [
+   38,
+   26
+  ],
+  "bits": [
+   {
+    "file": "cloud_gen_10_bit0.png",
+    "x": 22,
+    "y": 3,
+    "size": [
+     6,
+     4
+    ]
+   }
+  ]
+ },
+ "cloud_gen_11": {
+  "file": "cloud_gen_11.png",
+  "kind": "heap",
+  "size": [
+   38,
+   23
+  ],
+  "bits": [
+   {
+    "file": "cloud_gen_11_bit0.png",
+    "x": 10,
+    "y": 1,
+    "size": [
+     3,
+     2
+    ]
+   },
+   {
+    "file": "cloud_gen_11_bit1.png",
+    "x": 34,
+    "y": 7,
+    "size": [
+     6,
+     4
+    ]
+   },
+   {
+    "file": "cloud_gen_11_bit2.png",
+    "x": 26,
+    "y": 3,
+    "size": [
+     3,
+     2
+    ]
+   }
+  ]
+ },
+ "cloud_gen_12": {
+  "file": "cloud_gen_12.png",
+  "kind": "heap",
+  "size": [
+   40,
+   28
+  ],
+  "bits": []
+ },
+ "cloud_gen_13": {
+  "file": "cloud_gen_13.png",
+  "kind": "heap",
+  "size": [
+   45,
+   36
+  ],
+  "bits": [
+   {
+    "file": "cloud_gen_13_bit0.png",
+    "x": 27,
+    "y": 5,
+    "size": [
+     7,
+     4
+    ]
+   }
+  ]
+ },
+ "cloud_gen_14": {
+  "file": "cloud_gen_14.png",
+  "kind": "heap",
+  "size": [
+   32,
+   26
+  ],
+  "bits": []
+ },
+ "cloud_gen_15": {
+  "file": "cloud_gen_15.png",
+  "kind": "heap",
+  "size": [
+   44,
+   27
+  ],
+  "bits": []
+ },
+ "cloud_gen_16": {
+  "file": "cloud_gen_16.png",
+  "kind": "heap",
+  "size": [
+   41,
+   28
+  ],
+  "bits": [
+   {
+    "file": "cloud_gen_16_bit0.png",
+    "x": -4,
+    "y": 9,
+    "size": [
+     6,
+     4
+    ]
+   },
+   {
+    "file": "cloud_gen_16_bit1.png",
+    "x": 36,
+    "y": 12,
+    "size": [
+     6,
+     4
+    ]
+   },
+   {
+    "file": "cloud_gen_16_bit2.png",
+    "x": 24,
+    "y": 4,
+    "size": [
+     3,
+     3
+    ]
+   }
+  ]
+ },
+ "cloud_gen_17": {
+  "file": "cloud_gen_17.png",
+  "kind": "stratus",
+  "size": [
+   42,
+   18
+  ],
+  "bits": [
+   {
+    "file": "cloud_gen_17_bit0.png",
+    "x": 27,
+    "y": 1,
+    "size": [
+     5,
+     4
+    ]
+   },
+   {
+    "file": "cloud_gen_17_bit1.png",
+    "x": 10,
+    "y": 0,
+    "size": [
+     3,
+     2
+    ]
+   },
+   {
+    "file": "cloud_gen_17_bit2.png",
+    "x": -2,
+    "y": 5,
+    "size": [
+     6,
+     4
+    ]
+   }
+  ]
+ },
+ "cloud_gen_18": {
+  "file": "cloud_gen_18.png",
+  "kind": "stratus",
+  "size": [
+   39,
+   17
+  ],
+  "bits": []
+ },
+ "cloud_gen_19": {
+  "file": "cloud_gen_19.png",
+  "kind": "stratus",
+  "size": [
+   50,
+   23
+  ],
+  "bits": [
+   {
+    "file": "cloud_gen_19_bit0.png",
+    "x": 44,
+    "y": 9,
+    "size": [
+     3,
+     3
+    ]
+   },
+   {
+    "file": "cloud_gen_19_bit1.png",
+    "x": 32,
+    "y": 4,
+    "size": [
+     4,
+     3
+    ]
+   },
+   {
+    "file": "cloud_gen_19_bit2.png",
+    "x": 46,
+    "y": 12,
+    "size": [
+     2,
+     2
+    ]
+   }
+  ]
+ },
+ "cloud_gen_20": {
+  "file": "cloud_gen_20.png",
+  "kind": "stratus",
+  "size": [
+   52,
+   19
+  ],
+  "bits": [
+   {
+    "file": "cloud_gen_20_bit0.png",
+    "x": 32,
+    "y": -5,
+    "size": [
+     5,
+     5
+    ]
+   }
+  ]
+ },
+ "cloud_gen_21": {
+  "file": "cloud_gen_21.png",
+  "kind": "tower",
+  "size": [
+   30,
+   36
+  ],
+  "bits": [
+   {
+    "file": "cloud_gen_21_bit0.png",
+    "x": -3,
+    "y": 16,
+    "size": [
+     5,
+     3
+    ]
+   }
+  ]
+ },
+ "cloud_gen_22": {
+  "file": "cloud_gen_22.png",
+  "kind": "tower",
+  "size": [
+   29,
+   33
+  ],
+  "bits": []
+ },
+ "cloud_gen_23": {
+  "file": "cloud_gen_23.png",
+  "kind": "tower",
+  "size": [
+   30,
+   39
+  ],
+  "bits": [
+   {
+    "file": "cloud_gen_23_bit0.png",
+    "x": 20,
+    "y": -2,
+    "size": [
+     5,
+     4
+    ]
+   }
+  ]
+ },
+ "cloud_gen_24": {
+  "file": "cloud_gen_24.png",
+  "kind": "tower",
+  "size": [
+   31,
+   35
+  ],
+  "bits": []
+ },
+ "cloud_gen_25": {
+  "file": "cloud_gen_25.png",
+  "kind": "tower",
+  "size": [
+   28,
+   35
+  ],
+  "bits": [
+   {
+    "file": "cloud_gen_25_bit0.png",
+    "x": 21,
+    "y": 6,
+    "size": [
+     4,
+     3
+    ]
+   }
+  ]
+ },
+ "cloud_gen_26": {
+  "file": "cloud_gen_26.png",
+  "kind": "small",
+  "size": [
+   33,
+   23
+  ],
+  "bits": []
+ },
+ "cloud_gen_27": {
+  "file": "cloud_gen_27.png",
+  "kind": "small",
+  "size": [
+   36,
+   22
+  ],
+  "bits": [
+   {
+    "file": "cloud_gen_27_bit0.png",
+    "x": -1,
+    "y": 10,
+    "size": [
+     2,
+     2
+    ]
+   }
+  ]
+ },
+ "cloud_gen_28": {
+  "file": "cloud_gen_28.png",
+  "kind": "small",
+  "size": [
+   33,
+   27
+  ],
+  "bits": [
+   {
+    "file": "cloud_gen_28_bit0.png",
+    "x": 29,
+    "y": 16,
+    "size": [
+     2,
+     2
+    ]
+   },
+   {
+    "file": "cloud_gen_28_bit1.png",
+    "x": 25,
+    "y": 6,
+    "size": [
+     6,
+     5
+    ]
+   },
+   {
+    "file": "cloud_gen_28_bit2.png",
+    "x": -7,
+    "y": 10,
+    "size": [
+     5,
+     6
+    ]
+   }
+  ]
+ },
+ "cloud_gen_29": {
+  "file": "cloud_gen_29.png",
+  "kind": "small",
+  "size": [
+   33,
+   24
+  ],
+  "bits": []
+ },
+ "cloud_gen_30": {
+  "file": "cloud_gen_30.png",
+  "kind": "small",
+  "size": [
+   37,
+   22
+  ],
+  "bits": [
+   {
+    "file": "cloud_gen_30_bit0.png",
+    "x": 25,
+    "y": 3,
+    "size": [
+     2,
+     2
+    ]
+   },
+   {
+    "file": "cloud_gen_30_bit1.png",
+    "x": -2,
+    "y": 8,
+    "size": [
+     7,
+     4
+    ]
+   }
+  ]
+ },
+ "cloud_gen_31": {
+  "file": "cloud_gen_31.png",
+  "kind": "small",
+  "size": [
+   37,
+   23
+  ],
+  "bits": []
+ },
+ "cloud_gen_32": {
+  "file": "cloud_gen_32.png",
+  "kind": "small",
+  "size": [
+   35,
+   25
+  ],
+  "bits": []
+ },
+ "cloud_gen_33": {
+  "file": "cloud_gen_33.png",
+  "kind": "small",
+  "size": [
+   40,
+   23
+  ],
+  "bits": [
+   {
+    "file": "cloud_gen_33_bit0.png",
+    "x": 10,
+    "y": 1,
+    "size": [
+     4,
+     4
+    ]
+   },
+   {
+    "file": "cloud_gen_33_bit1.png",
+    "x": 4,
+    "y": 10,
+    "size": [
+     2,
+     2
+    ]
+   },
+   {
+    "file": "cloud_gen_33_bit2.png",
+    "x": 35,
+    "y": 11,
+    "size": [
+     6,
+     4
+    ]
+   }
+  ]
+ },
+ "cloud_gen_34": {
+  "file": "cloud_gen_34.png",
+  "kind": "small",
+  "size": [
+   29,
+   24
+  ],
+  "bits": [
+   {
+    "file": "cloud_gen_34_bit0.png",
+    "x": -1,
+    "y": 1,
+    "size": [
+     5,
+     4
+    ]
+   }
+  ]
+ }
+}

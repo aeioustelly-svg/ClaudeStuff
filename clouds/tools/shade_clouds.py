@@ -34,7 +34,10 @@ PALETTE = [
     (138, 150, 222),    # 2 lavender crevice shadow
     (164, 196, 250),    # 3 light-blue midtone
     (255, 255, 255),    # 4 white highlight
+    (176, 204, 250),    # 5 mist: the translucent lumpy haze behind a cloud (generated sprites only)
 ]
+# Opacity per index, stored in the PNG's transparency chunk. Only the mist is partly see-through.
+ALPHA = [0, 255, 255, 255, 255, 96]
 
 
 def luminance(rgb):
@@ -83,8 +86,7 @@ def save_indexed(idx, path):
     im = Image.fromarray(idx, "P")
     flat = [c for rgb in PALETTE for c in rgb]
     im.putpalette(flat + [0] * (768 - len(flat)))
-    im.info["transparency"] = 0
-    im.save(path, transparency=0)
+    im.save(path, transparency=bytes(ALPHA))
 
 
 def main():

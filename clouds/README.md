@@ -28,6 +28,7 @@ only makes the files viewable, the mod will colour by index.
 | 2 | lavender crevice shadow | `#8A96DE` |
 | 3 | light-blue midtone | `#A4C4FA` |
 | 4 | white highlight | `#FFFFFF` |
+| 5 | mist (generated sprites only), opacity 96/255 | `#B0CCFA` |
 
 The sheet only has three solid tones. Band 2 is taken from the source's blend pixels between navy and light blue,
 from light blue touching the navy underside, and from light blue in deep folds with no white nearby.
@@ -76,6 +77,22 @@ Every pixel is from the sheet, nothing is drawn procedurally.
   reject every sprite rated down in round 2 and keep 12 of the 14 liked ones.
 - Earlier rejection rule, still applied: a candidate is rebuilt when either side stays within one column for more than 7 rows (or
   30 percent of its height), or when a small, stratus or twin cloud is not at least 1.4 times wider than tall.
+
+## Layers and manifest
+
+Each generated cloud is written as separate layers so that in game the broken-off pieces can float on their own:
+
+- `generated/cloud_gen_NN.png`: the cloud with its mist.
+- `generated/cloud_gen_NN_bitK.png`: each broken-off piece with its own thin mist.
+- `generated/clouds.json`: for every cloud its file, layout kind, size and its pieces, each with `x` and `y` in
+  pixels relative to the cloud layer's top-left corner (where the piece starts out; the mod may let it drift).
+
+## Mist
+
+A translucent lumpy haze (shade 5) sits behind each cloud. It is the union of 3 copies of the cloud's own
+silhouette, each shifted by up to 4 cells, so it is thicker on some sides than others and its lumps follow the
+cloud's bumps. Lone spikes are trimmed and pinholes filled. Pieces get a mist reaching 1 cell. Mist and pieces use
+their own random streams, so the clouds are the same with or without them.
 
 ## Broken-off bits
 
