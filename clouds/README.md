@@ -50,10 +50,14 @@ Every pixel is from the sheet, nothing is drawn procedurally.
   median-filtered over 5 columns, allowed to change by at most one cell per column and capped at 4. Navy above
   the band becomes lavender, light cells inside it become navy, and light blue resting on it becomes the lavender
   lip. Upper lobes lose their navy for the same reason.
-- Any light-blue or white cell touching the navy band (above or beside it) becomes lavender. On the source
-  clouds light blue never touches navy and white hardly ever does.
-- Lavender only appears in the lower 55 percent of each column. Higher up it becomes light blue, so the lit tops
-  carry no shadow colour (the sheet itself has some lavender there).
+- Lavender is re-derived on the finished sprite with the stage 2 rules (the sheet has no lavender of its own):
+  light blue or white touching the navy, and light blue deep in a fold with no white within 2 cells. Lavender
+  carried in from the lobes kept their cut lines and showed as square blocks.
+- A lavender patch whose centre lies in the upper 45 percent of the cloud becomes light blue as a whole, so the
+  lit tops carry no shadow colour. Patches are judged whole: cutting cell by cell at a fixed height left
+  straight-topped blocks.
+- Last, nothing lighter than lavender may touch the navy. On the source clouds light blue never does and white
+  hardly ever does.
 - Cleanup closes row gaps of up to 2 cells, fills small enclosed sky pockets, trims one-cell spurs and drips under the base.
 - Rejection sampling, with limits taken from the user's ratings in `feedback/ratings.json`: a candidate must have
   sky gaps inside rows of at most 2 percent, a navy share of at least 11 percent, at least 62 percent fill of its

@@ -42,7 +42,7 @@ MAX_SEED = 45       # white cells per seed before a puff top is split in two (ke
 PUFFY = {0, 1, 2, 3, 6, 8, 9, 11, 12}
 THIN = {1}          # the long thin cloud: its lobes are puffy but too flat to build with
 MIN_ROUND = 0.5     # smallest top-third fill for a puff lobe (keeps pointed tops out)
-LAVENDER_FROM = 0.45  # lavender only below this fraction of a column's height (round 4: none high on the tops)
+LAVENDER_FROM = 0.45  # lavender patches centred above this fraction of the cloud's height go (round 4)
 MAX_SLAB = 16       # longest straight top edge of a lavender area (round 4: 26 read as too straight, 14 passed)
 MAX_NAVY = 4        # thickest the navy underside may be, in cells
 MAX_FLAT_SIDE = 7   # longest near-vertical run (within one column) allowed on either side of a sprite
@@ -519,15 +519,40 @@ def smooth_underside(c):
     pad = np.pad(c, 1)
     touches = ((pad[2:, 1:-1] == 1) | (pad[:-2, 1:-1] == 1) | (pad[1:-1, 2:] == 1) | (pad[1:-1, :-2] == 1))
     c[touches & (c >= 3)] = 2
-    # Lavender is a shadow colour: in the upper part of a column (lit tops) it becomes light blue.
+    # Re-derive lavender from the finished cloud with the stage 2 rules (the sheet has no lavender of its own):
+    # light blue or white touching the navy, and light blue deep in a fold with no white within 2 cells. Lavender carried
+    # in from the lobes kept their cut lines and showed as square blocks.
+    c[c == 2] = 3
+    solid = c > 0
+    pad = np.pad(c, 1)
+    touches = ((pad[2:, 1:-1] == 1) | (pad[1:-1, 2:] == 1) | (pad[1:-1, :-2] == 1))
+    c[touches & (c >= 3)] = 2
+    white = np.pad(c == 4, 2)
+    near_white = np.zeros_like(solid)
+    for dy in range(5):
+        for dx in range(5):
+            near_white |= white[dy:dy + h, dx:dx + w]
+    sp = np.pad(solid, 2)
+    enclosed = sp[2:-2, :-4] & sp[2:-2, 4:] & sp[4:, 2:-2]
+    c[(c == 3) & ~near_white & enclosed] = 2
+    # Lavender is a shadow colour and does not belong on the lit tops. It is judged per lavender patch, not per
+    # cell: a patch whose centre lies in the upper part of the cloud becomes light blue as a whole, any other patch
+    # stays whole. (Cutting cell by cell at a fixed height left straight-topped, square-cornered blocks.)
+    top = np.full(w, -1)
+    span = np.ones(w)
     for x in range(w):
         ys = np.nonzero(c[:, x])[0]
-        if len(ys) < 3:
-            continue
-        top, span = ys[0], ys[-1] - ys[0]
-        for y in ys:
-            if c[y, x] == 2 and (y - top) < LAVENDER_FROM * span:
-                c[y, x] = 3
+        if len(ys):
+            top[x], span[x] = ys[0], max(ys[-1] - ys[0], 1)
+    patches, n = label(c == 2, N4)
+    for k in range(1, n + 1):
+        ys, xs = np.nonzero(patches == k)
+        if np.mean((ys - top[xs]) / span[xs]) < LAVENDER_FROM:
+            c[ys, xs] = 3
+    # Last: nothing lighter than lavender may touch the navy, whatever the patch rule decided.
+    pad = np.pad(c, 1)
+    touches = ((pad[2:, 1:-1] == 1) | (pad[:-2, 1:-1] == 1) | (pad[1:-1, 2:] == 1) | (pad[1:-1, :-2] == 1))
+    c[touches & (c >= 3)] = 2
     ys, xs = np.nonzero(c)
     return c[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
 

@@ -109,6 +109,21 @@
         32
       ],
       "notes": "everything else acceptable; these do not blend well (10 lower left, 14 left side, 20 and 32 throughout): white puffs reach down onto the navy or lavender without light blue between"
+    },
+    {
+      "commit": "4d6c097",
+      "layout": "0-16 heap, 17-20 stratus, 21-25 tower, 26-34 small",
+      "flawed": {
+        "2": "lavender block, lower left",
+        "4": "light-blue square near the top",
+        "8": "lavender block, lower left",
+        "9": "lavender block",
+        "11": "large lavender block in the lower half",
+        "13": "lavender patch on the right",
+        "21": "lavender square, lower left",
+        "22": "lavender block, lower right"
+      },
+      "notes": "circled square, straight-edged patches of lavender (once light blue)"
     }
   ]
 }
