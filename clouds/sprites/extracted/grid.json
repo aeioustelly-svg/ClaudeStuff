@@ -1,0 +1,101 @@
+{
+ "sky": [
+  55.0,
+  113.0,
+  238.0
+ ],
+ "pitch": 8.612500000000097,
+ "clouds": [
+  {
+   "file": "cloud_00.png",
+   "size": [
+    77,
+    50
+   ]
+  },
+  {
+   "file": "cloud_01.png",
+   "size": [
+    84,
+    17
+   ]
+  },
+  {
+   "file": "cloud_02.png",
+   "size": [
+    31,
+    21
+   ]
+  },
+  {
+   "file": "cloud_03.png",
+   "size": [
+    55,
+    39
+   ]
+  },
+  {
+   "file": "cloud_04.png",
+   "size": [
+    44,
+    33
+   ]
+  },
+  {
+   "file": "cloud_05.png",
+   "size": [
+    60,
+    27
+   ]
+  },
+  {
+   "file": "cloud_06.png",
+   "size": [
+    60,
+    28
+   ]
+  },
+  {
+   "file": "cloud_07.png",
+   "size": [
+    44,
+    31
+   ]
+  },
+  {
+   "file": "cloud_08.png",
+   "size": [
+    40,
+    28
+   ]
+  },
+  {
+   "file": "cloud_09.png",
+   "size": [
+    37,
+    43
+   ]
+  },
+  {
+   "file": "cloud_10.png",
+   "size": [
+    54,
+    30
+   ]
+  },
+  {
+   "file": "cloud_11.png",
+   "size": [
+    55,
+    35
+   ]
+  },
+  {
+   "file": "cloud_12.png",
+   "size": [
+    42,
+    36
+   ]
+  }
+ ]
+}

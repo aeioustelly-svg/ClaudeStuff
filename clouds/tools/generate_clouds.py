@@ -1,0 +1,425 @@
+#!/usr/bin/env python3
+"""Stage 3: build new cloud sprites out of puff lobes cut from the shaded source clouds.
+
+Lobes
+  Every white highlight cluster (band 4, at least MIN_SEED cells) on a source cloud seeds one lobe. Each cloud
+  cell joins the seed it reaches first by a walk that stays inside the cloud, so the cuts between lobes run
+  through the lavender and light-blue folds between puffs, where the artist already drew a break. Tiny lobes are
+  folded into their neighbour. For every lobe the script records which sides are the source's own outline and
+  which are cuts, so the ends of a new cloud can be given lobes whose outer side is a drawn edge.
+
+Sprites
+  A recipe picks a silhouette type (heap, stratus, tower, small puff, trailing wisp, broken cluster), then lays
+  lobes on a baseline with overlap: upper lobes first, front lobes last, so each later lobe covers the seams of
+  the ones behind it. Each placed lobe may be flipped horizontally and rescaled by nearest neighbour with
+  separate x and y factors (0.8 to 1.25). Nothing is drawn procedurally: every pixel comes from the sheet.
+  A cleanup pass fills single-cell holes and trims single cells hanging off a cut edge.
+
+    python3 -I clouds/tools/generate_clouds.py [sprites_dir] [count] [seed]
+
+Writes sprites_dir/generated/cloud_gen_NN.png (palette PNG, pixel value = shade index) and
+sprites_dir/lobes/lobe_NNN.png for inspection.
+"""
+import glob
+import os
+import sys
+from collections import deque
+
+import numpy as np
+from PIL import Image
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from shade_clouds import save_indexed  # noqa: E402
+
+OUT = sys.argv[1] if len(sys.argv) > 1 else "clouds/sprites"
+COUNT = int(sys.argv[2]) if len(sys.argv) > 2 else 35
+SEED = int(sys.argv[3]) if len(sys.argv) > 3 else 1977
+
+MIN_SEED = 5        # smallest white cluster that counts as a puff top
+MIN_LOBE = 30       # lobes smaller than this are merged into a neighbour
+MAX_SEED = 45       # white cells per seed before a puff top is split in two (keeps lobes puff-sized)
+# Source clouds by kind (indices into shaded/cloud_NN.png, see extract_clouds.py for the order).
+PUFFY = {0, 1, 2, 3, 6, 8, 9, 11, 12}
+WISPY = {4, 7, 10}
+SCATTERED = {5}
+N8 = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
+N4 = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+
+
+# ----------------------------------------------------------------------------------------------- lobes
+
+def label(mask, nbrs=N8):
+    lab = np.zeros(mask.shape, int)
+    n = 0
+    h, w = mask.shape
+    for y, x in zip(*np.nonzero(mask)):
+        if lab[y, x]:
+            continue
+        n += 1
+        lab[y, x] = n
+        stack = [(y, x)]
+        while stack:
+            cy, cx = stack.pop()
+            for dy, dx in nbrs:
+                ny, nx = cy + dy, cx + dx
+                if 0 <= ny < h and 0 <= nx < w and mask[ny, nx] and not lab[ny, nx]:
+                    lab[ny, nx] = n
+                    stack.append((ny, nx))
+    return lab, n
+
+
+def geodesic_voronoi(solid, seeds):
+    """Assign every solid cell to the nearest seed label by a breadth-first walk inside the cloud."""
+    own = np.where(seeds > 0, seeds, 0)
+    q = deque(zip(*np.nonzero(own)))
+    h, w = solid.shape
+    while q:
+        y, x = q.popleft()
+        for dy, dx in N4:
+            ny, nx = y + dy, x + dx
+            if 0 <= ny < h and 0 <= nx < w and solid[ny, nx] and not own[ny, nx]:
+                own[ny, nx] = own[y, x]
+                q.append((ny, nx))
+    return own
+
+
+def merge_small(own, solid):
+    while True:
+        ids, counts = np.unique(own[own > 0], return_counts=True)
+        small = [i for i, c in zip(ids, counts) if c < MIN_LOBE]
+        if not small or len(ids) == 1:
+            return own
+        k = small[0]
+        ys, xs = np.nonzero(own == k)
+        votes = {}
+        for y, x in zip(ys, xs):
+            for dy, dx in N4:
+                ny, nx = y + dy, x + dx
+                if 0 <= ny < own.shape[0] and 0 <= nx < own.shape[1]:
+                    o = own[ny, nx]
+                    if o and o != k:
+                        votes[o] = votes.get(o, 0) + 1
+        if not votes:      # an island: keep it as its own lobe even if small
+            own[own == k] = -k
+            continue
+        own[own == k] = max(votes, key=votes.get)
+
+
+def side_edges(mask, src_solid, oy, ox):
+    """Fraction of each side's outermost cells whose outward neighbour is outside the source cloud (a drawn edge)."""
+    h, w = mask.shape
+    H, W = src_solid.shape
+
+    def drawn(y, x):
+        y, x = y + oy, x + ox
+        return not (0 <= y < H and 0 <= x < W) or not src_solid[y, x]
+
+    res = {}
+    for name, rows, dy, dx in (("left", True, 0, -1), ("right", True, 0, 1), ("top", False, -1, 0)):
+        hits = tot = 0
+        for i in range(h if rows else w):
+            line = mask[i] if rows else mask[:, i]
+            nz = np.nonzero(line)[0]
+            if not len(nz):
+                continue
+            j = nz[0] if (dx < 0 or dy < 0) else nz[-1]
+            y, x = (i, j) if rows else (j, i)
+            tot += 1
+            hits += drawn(y + dy, x + dx)
+        res[name] = hits / max(tot, 1)
+    return res
+
+
+def erode4(mask):
+    pad = np.pad(mask, 1)
+    return mask & pad[:-2, 1:-1] & pad[2:, 1:-1] & pad[1:-1, :-2] & pad[1:-1, 2:]
+
+
+def split_seeds(tops, solid):
+    """Split a seed whose geodesic lobe would be too big: k-means on its white cells, farthest-point start."""
+    out = np.zeros_like(tops)
+    n = 0
+    for k in np.unique(tops[tops > 0]):
+        pts = np.argwhere(tops == k).astype(float)
+        parts = max(1, int(round(len(pts) / MAX_SEED)))
+        centres = [pts[0]]
+        while len(centres) < parts:
+            d = np.min([((pts - c) ** 2).sum(1) for c in centres], axis=0)
+            centres.append(pts[int(np.argmax(d))])
+        centres = np.array(centres)
+        for _ in range(20):
+            lab = np.argmin([((pts - c) ** 2).sum(1) for c in centres], axis=0)
+            centres = np.array([pts[lab == i].mean(0) if (lab == i).any() else centres[i] for i in range(parts)])
+        for i in range(parts):
+            n += 1
+            for y, x in pts[lab == i].astype(int):
+                out[y, x] = n
+    return out
+
+
+def cut_lobes(shaded, src_id):
+    solid = shaded > 0
+    # Erode the white first: neighbouring puff tops often touch through a one-cell bridge.
+    tops, n = label(erode4(shaded == 4), N4)
+    for k in range(1, n + 1):
+        if (tops == k).sum() < MIN_SEED:
+            tops[tops == k] = 0
+    if tops.max() == 0:
+        tops = solid.astype(int)
+    tops = split_seeds(tops, solid)
+    own = geodesic_voronoi(solid, tops)
+    # Cells not reached (islands without a white seed) get their own label.
+    rest, rn = label(solid & (own == 0), N8)
+    own[rest > 0] = rest[rest > 0] + own.max()
+    own = np.abs(merge_small(own, solid))
+    lobes = []
+    for k in np.unique(own[own > 0]):
+        ys, xs = np.nonzero(own == k)
+        y0, y1, x0, x1 = ys.min(), ys.max() + 1, xs.min(), xs.max() + 1
+        m = own[y0:y1, x0:x1] == k
+        idx = np.where(m, shaded[y0:y1, x0:x1], 0).astype(np.uint8)
+        if m.sum() < 8:
+            continue
+        lobes.append({
+            "idx": idx,
+            "src": src_id,
+            "kind": "wisp" if src_id in WISPY else "scatter" if src_id in SCATTERED else "puff",
+            "edges": side_edges(m, solid, y0, x0),
+            "rel_y": ((y0 + y1) / 2) / shaded.shape[0],
+            "navy": float((idx == 1).sum()) / m.sum(),
+            "area": int(m.sum()),
+            "w": int(x1 - x0),
+            "h": int(y1 - y0),
+        })
+    return lobes
+
+
+# ---------------------------------------------------------------------------------------------- sprites
+
+def transform(lobe, rng, flip=None, sx=None, sy=None):
+    idx = lobe["idx"]
+    edges = dict(lobe["edges"])
+    if flip is None:
+        flip = rng.random() < 0.5
+    if flip:
+        idx = idx[:, ::-1]
+        edges["left"], edges["right"] = edges["right"], edges["left"]
+    sx = rng.uniform(0.8, 1.25) if sx is None else sx
+    sy = rng.uniform(0.8, 1.2) if sy is None else sy
+    h, w = idx.shape
+    nw, nh = max(2, int(round(w * sx))), max(2, int(round(h * sy)))
+    # Nearest neighbour: sample the centre of each destination cell.
+    ys = np.minimum(((np.arange(nh) + 0.5) * h / nh).astype(int), h - 1)
+    xs = np.minimum(((np.arange(nw) + 0.5) * w / nw).astype(int), w - 1)
+    return idx[ys][:, xs], edges
+
+
+def stamp(canvas, idx, x, y):
+    """Paint idx with its bottom-left cell at (x, y) on the canvas (y = bottom row). Later stamps sit in front."""
+    h, w = idx.shape
+    top = y - h + 1
+    region = canvas[top:top + h, x:x + w]
+    np.copyto(region, idx, where=idx > 0)
+
+
+def fit_pool(pool, target_h, lo=0.8, hi=1.25):
+    """Lobes that reach target_h within the allowed rescale. Falls back to the closest heights."""
+    ok = [L for L in pool if lo <= target_h / L["h"] <= hi]
+    return ok if len(ok) >= 3 else sorted(pool, key=lambda L: abs(np.log(target_h / L["h"])))[:6]
+
+
+def pick(pool, rng, key=None, k=6):
+    """Random choice biased towards the k best by key (higher is better)."""
+    if key is not None:
+        pool = sorted(pool, key=key, reverse=True)[:max(k, 1)]
+    return pool[rng.integers(len(pool))]
+
+
+def plan_row(rng, pool, n, cx, base_y, target_h, spacing=(0.45, 0.65), base=True, squash=1.0):
+    """Placements for n lobes centred on cx, bottoms on base_y. Ends get lobes whose outer side is drawn."""
+    # A lobe that is mostly navy (the slab under the flat-bottomed source cloud) reads as a block when cut loose.
+    cands = fit_pool([L for L in pool if L["navy"] <= 0.35], target_h)
+    row = []
+    for i in range(n):
+        if base:
+            score = lambda L: L["navy"] * 2 + L["rel_y"]
+        else:
+            score = lambda L: L["edges"]["top"] - L["navy"] * 2
+        if n > 1 and i == 0:
+            lobe = pick(cands, rng, key=lambda L: score(L) + max(L["edges"]["left"], L["edges"]["right"]) * 4, k=5)
+            flip = lobe["edges"]["right"] > lobe["edges"]["left"]
+        elif n > 1 and i == n - 1:
+            lobe = pick(cands, rng, key=lambda L: score(L) + max(L["edges"]["left"], L["edges"]["right"]) * 4, k=5)
+            flip = lobe["edges"]["left"] > lobe["edges"]["right"]
+        else:
+            lobe = pick(cands, rng, key=score, k=8)
+            flip = None
+        sy = np.clip(target_h / lobe["h"] * rng.uniform(0.92, 1.08), 0.8, 1.25) * squash
+        sx = np.clip(sy / squash * rng.uniform(0.85, 1.18), 0.8, 1.25)
+        idx, _ = transform(lobe, rng, flip=flip, sx=sx, sy=sy)
+        if not base:
+            # A puff resting on another one shows a lavender fold where it meets it, not the navy underside.
+            idx = np.where(idx == 1, 2, idx).astype(np.uint8)
+        row.append([idx, 0, base_y + int(rng.integers(-1, 2))])
+    x = 0
+    for i, r in enumerate(row):
+        r[1] = x
+        x += max(3, int(r[0].shape[1] * rng.uniform(*spacing)))
+    width = row[-1][1] + row[-1][0].shape[1]
+    for r in row:
+        r[1] += cx - width // 2
+    return row
+
+
+def stamp_rows(canvas, rows):
+    """Top rows first, then lower rows in front of them. Inside a row: ends first, centre last."""
+    for row in reversed(rows):
+        n = len(row)
+        for i in sorted(range(n), key=lambda i: -abs(i - (n - 1) / 2)):
+            stamp(canvas, *row[i])
+
+
+def stack(rng, pool, levels, cx=160, base_y=170, lean=0, squash=1.0):
+    """levels: list of (lobe count, target lobe height). Each level sits on the upper half of the one below."""
+    rows = []
+    y = base_y
+    for li, (n, th) in enumerate(levels):
+        row = plan_row(rng, pool, n, cx, y, th, base=(li == 0), squash=squash)
+        rows.append(row)
+        h = int(np.median([r[0].shape[0] for r in row]))
+        y -= max(2, int(h * rng.uniform(0.4, 0.55)))
+        cx += lean + int(rng.integers(-2, 3))
+    return rows
+
+
+def recipe(kind, rng, lib):
+    # Puffs must be roundish: solidity (area over bounding box) keeps out crescent horns and wisp shards.
+    puffs = [L for L in lib if L["kind"] == "puff" and L["w"] <= 2.2 * L["h"] and L["area"] >= 30
+             and L["area"] >= 0.55 * L["w"] * L["h"]]
+    flats = [L for L in lib if L["kind"] == "puff" and L["w"] >= 1.3 * L["h"] and L["area"] >= 20]
+    wisps = [L for L in lib if L["kind"] == "wisp" and L["area"] >= 20]
+    bits = [L for L in lib if L["area"] >= 15 and L["area"] <= 90]
+    C = np.zeros((240, 320), np.uint8)
+    lean = int(rng.choice([-2, -1, 0, 1, 2]))
+    if kind == "heap":
+        b = int(rng.integers(16, 25))
+        levels = [(int(rng.integers(3, 6)), b), (int(rng.integers(2, 4)), b - 3)]
+        if rng.random() < 0.5:
+            levels.append((int(rng.integers(1, 3)), b - 5))
+        stamp_rows(C, stack(rng, puffs, levels, lean=lean))
+    elif kind == "stratus":
+        rows = stack(rng, flats + puffs, [(int(rng.integers(5, 9)), int(rng.integers(9, 13)))], squash=0.8)
+        if rng.random() < 0.6:
+            rows += stack(rng, puffs, [(int(rng.integers(1, 3)), 9)], base_y=164, lean=lean)
+        stamp_rows(C, rows)
+    elif kind == "tower":
+        b = int(rng.integers(15, 19))
+        levels = [(2, b), (2, b - 1), (int(rng.integers(1, 3)), b - 2), (1, b - 3)]
+        if rng.random() < 0.5:
+            levels.append((1, b - 5))
+        stamp_rows(C, stack(rng, puffs, levels, lean=lean))
+    elif kind == "small":
+        b = int(rng.integers(11, 15))
+        levels = [(int(rng.integers(2, 4)), b), (1, b - 2)]
+        stamp_rows(C, stack(rng, puffs, levels, lean=lean))
+    elif kind == "trail":
+        b = int(rng.integers(12, 17))
+        rows = stack(rng, puffs, [(int(rng.integers(2, 4)), b), (int(rng.integers(1, 3)), b - 3)], cx=180, lean=lean)
+        x0 = min(r[1] for r in rows[0])
+        tail = []
+        for k in range(int(rng.integers(1, 3))):
+            idx, _ = transform(pick(wisps, rng), rng, flip=bool(rng.random() < 0.5))
+            tail.append([idx, x0 - idx.shape[1] + idx.shape[1] // 3 - 5 * k, 170 - int(rng.integers(0, 5))])
+        for t in tail:
+            stamp(C, *t)
+        stamp_rows(C, rows)
+        if rng.random() < 0.5:
+            C = C[:, ::-1].copy()
+    elif kind == "broken":
+        rows = []
+        cx = 120
+        for _ in range(int(rng.integers(4, 8))):
+            r = stack(rng, puffs + bits, [(int(rng.integers(1, 3)), int(rng.integers(6, 11)))],
+                      cx=cx, base_y=170 - int(rng.integers(0, 8)))
+            rows += r
+            cx += int(rng.integers(7, 13))
+        stamp_rows(C, rows)
+    return C
+
+
+# ---------------------------------------------------------------------------------------------- cleanup
+
+def cleanup(c):
+    c = c.copy()
+    solid = c > 0
+    h, w = c.shape
+    # Fill sky enclosed by the cloud (slits left between lobes) from the most common neighbour shade.
+    # Small enclosed pockets only: a large gap is a deliberate opening in the silhouette.
+    sky, n = label(~solid, N4)
+    border = set(np.unique(np.concatenate([sky[0], sky[-1], sky[:, 0], sky[:, -1]])))
+    holes = np.isin(sky, [k for k in range(1, n + 1) if k not in border and (sky == k).sum() <= 12])
+    while holes.any():
+        for y, x in zip(*np.nonzero(holes)):
+            nb = [c[y + dy, x + dx] for dy, dx in N4 if 0 <= y + dy < h and 0 <= x + dx < w and c[y + dy, x + dx]]
+            if nb:
+                c[y, x] = max(set(nb), key=nb.count)
+                holes[y, x] = False
+    # Trim cells hanging by a single 4-neighbour that are part of a one-cell-wide spur (rescale artefacts).
+    for _ in range(2):
+        solid = c > 0
+        pad = np.pad(solid, 1).astype(int)
+        n4 = pad[:-2, 1:-1] + pad[2:, 1:-1] + pad[1:-1, :-2] + pad[1:-1, 2:]
+        n8 = n4 + pad[:-2, :-2] + pad[:-2, 2:] + pad[2:, :-2] + pad[2:, 2:]
+        spur = solid & (n4 <= 1) & (n8 <= 1) & (c != 4)
+        c[spur] = 0
+    # Navy only belongs on undersides: a navy cell with open sky directly above becomes lavender.
+    pad = np.pad(c, 1)
+    c[(c == 1) & (pad[:-2, 1:-1] == 0)] = 2
+    ys, xs = np.nonzero(c)
+    return c[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
+
+
+def main():
+    lib = []
+    for path in sorted(glob.glob(os.path.join(OUT, "shaded", "cloud_*.png"))):
+        src_id = int(os.path.basename(path)[6:8])
+        lib += cut_lobes(np.asarray(Image.open(path)).astype(np.uint8), src_id)
+    os.makedirs(os.path.join(OUT, "lobes"), exist_ok=True)
+    for f in glob.glob(os.path.join(OUT, "lobes", "*.png")) + glob.glob(os.path.join(OUT, "generated", "*.png")):
+        os.remove(f)
+    for i, L in enumerate(lib):
+        save_indexed(L["idx"], os.path.join(OUT, "lobes", f"lobe_{i:03d}.png"))
+    print(len(lib), "lobes:", {k: sum(L["kind"] == k for L in lib) for k in ("puff", "wisp", "scatter")})
+
+    rng = np.random.default_rng(SEED)
+    kinds = (["heap"] * 12 + ["stratus"] * 6 + ["tower"] * 5 + ["small"] * 5 + ["trail"] * 4 + ["broken"] * 3)
+    os.makedirs(os.path.join(OUT, "generated"), exist_ok=True)
+    sprites = []
+    for i in range(COUNT):
+        kind = kinds[i % len(kinds)]
+        sprite = cleanup(recipe(kind, rng, lib))
+        save_indexed(sprite, os.path.join(OUT, "generated", f"cloud_gen_{i:02d}.png"))
+        sprites.append(sprite)
+        print(f"cloud_gen_{i:02d} {kind:8s} {sprite.shape[1]} x {sprite.shape[0]}")
+    preview(sprites, os.path.join(OUT, "preview_generated.png"))
+
+
+def preview(sprites, path, scale=4, cols=7):
+    """Contact sheet in the daylight palette over the sheet's sky colour, for looking at, not for the mod."""
+    from shade_clouds import PALETTE
+    cw = max(s.shape[1] for s in sprites) * scale + 8
+    ch = max(s.shape[0] for s in sprites) * scale + 8
+    rows = (len(sprites) + cols - 1) // cols
+    sheet = np.zeros((ch * rows, cw * cols, 3), np.uint8)
+    sheet[:] = (55, 113, 238)
+    pal = np.array(PALETTE, np.uint8)
+    for k, s in enumerate(sprites):
+        big = np.kron(s, np.ones((scale, scale), np.uint8))
+        y, x = (k // cols) * ch + 4, (k % cols) * cw + 4
+        region = sheet[y:y + big.shape[0], x:x + big.shape[1]]
+        np.copyto(region, pal[big], where=(big > 0)[..., None])
+    Image.fromarray(sheet).save(path)
+
+
+if __name__ == "__main__":
+    main()
