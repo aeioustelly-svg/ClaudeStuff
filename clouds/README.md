@@ -41,18 +41,26 @@ Every pixel is from the sheet, nothing is drawn procedurally.
   sides are the artist's own outline.
 - Lobe pool: only round puffs (solid enough, with a filled top third). Lobes from the long thin cloud, the wisps,
   the scattered cloud and the crescent horns are not used, as they gave ragged, smeared sprites.
-- Layouts: heap (13), low stratus (5), tower (5), small (6) and twin heap (6). Rows of lobes sit on a baseline,
+- Layouts: heap (17), low stratus (4), tower (5) and small (9). Twin heaps were dropped after all six were rated
+  down. Rows of lobes sit on a baseline,
   upper rows are drawn first and lower rows in front, so seams are covered. Lobes at the ends of a row are
   smaller, so the sides step down in puffs. Row ends get lobes with a drawn outer edge.
 - Each lobe may be flipped and rescaled by nearest neighbour with separate x and y factors (0.8 to 1.25).
 - Navy stays only in the bottom run of each column. Navy higher up, or with open sky directly above, becomes
   lavender. Upper lobes lose their navy for the same reason.
-- Cleanup fills small enclosed sky pockets, trims one-cell spurs and drips under the base.
-- Rejection sampling: a candidate is rebuilt when either side stays within one column for more than 7 rows (or
+- Cleanup closes row gaps of up to 2 cells, fills small enclosed sky pockets, trims one-cell spurs and drips under the base.
+- Rejection sampling, with limits taken from the user's ratings in `feedback/ratings.json`: a candidate must have
+  sky gaps inside rows of at most 2 percent, a navy share of at least 11 percent, at least 62 percent fill of its
+  bounding box, at most 25 percent lavender, at most 50 percent white, little speckle, and a width/height ratio
+  suited to its layout (heap 1.0 to 1.9, tower 0.7 to 1.0, small 1.3 to 1.9, stratus 2.4 to 3.2). These limits
+  reject every sprite rated down in round 2 and keep 12 of the 14 liked ones.
+- Earlier rejection rule, still applied: a candidate is rebuilt when either side stays within one column for more than 7 rows (or
   30 percent of its height), or when a small, stratus or twin cloud is not at least 1.4 times wider than tall.
 
 ## Known issues
 
 - Some seams still show a patch of mixed texture where lobes from different source clouds meet.
-- A few low stratus clouds have only a faint navy underside.
+- The quality limits make the set more uniform than before.
+- Some small and stratus sprites flare out at the base into thin navy points. The ratings so far do not show
+  whether that is liked or disliked.
 - The sheet's origin and licence are unknown. Check before shipping sprites derived from it.

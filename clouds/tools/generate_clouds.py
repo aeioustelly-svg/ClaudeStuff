@@ -9,7 +9,7 @@ Lobes
   which are cuts, so the ends of a new cloud can be given lobes whose outer side is a drawn edge.
 
 Sprites
-  A recipe picks a silhouette type (heap, low stratus, tower, small puff, twin heap), then lays
+  A recipe picks a silhouette type (heap, low stratus, tower, small puff), then lays
   lobes on a baseline with overlap: upper lobes first, front lobes last, so each later lobe covers the seams of
   the ones behind it. Each placed lobe may be flipped horizontally and rescaled by nearest neighbour with
   separate x and y factors (0.8 to 1.25). Nothing is drawn procedurally: every pixel comes from the sheet.
@@ -315,10 +315,10 @@ def recipe(kind, rng, lib):
             levels.append((int(rng.integers(1, 3)), b - 5))
         stamp_rows(C, stack(rng, puffs, levels, lean=lean))
     elif kind == "stratus":
-        # Low and wide: a long row of squashed puffs with a few lower humps on top.
-        b = int(rng.integers(12, 16))
-        levels = [(int(rng.integers(5, 8)), b), (int(rng.integers(2, 4)), b - 3)]
-        stamp_rows(C, stack(rng, puffs, levels, squash=0.8))
+        # Low and wide, but not thin: the one stratus that was liked was 16 rows tall at 3 to 1.
+        b = int(rng.integers(15, 19))
+        levels = [(int(rng.integers(4, 6)), b), (int(rng.integers(2, 4)), b - 3)]
+        stamp_rows(C, stack(rng, puffs, levels, squash=0.85))
     elif kind == "tower":
         b = int(rng.integers(15, 19))
         levels = [(2, b), (2, b - 1), (int(rng.integers(1, 3)), b - 2), (1, b - 3)]
@@ -329,15 +329,6 @@ def recipe(kind, rng, lib):
         b = int(rng.integers(11, 15))
         levels = [(int(rng.integers(3, 5)), b), (int(rng.integers(1, 3)), b - 2)]
         stamp_rows(C, stack(rng, puffs, levels, lean=lean))
-    elif kind == "twin":
-        # Two heaps that have drifted together: the smaller one behind, its base a little higher.
-        b = int(rng.integers(13, 19))
-        back = stack(rng, puffs, [(int(rng.integers(2, 4)), b - 3), (1, b - 5)], cx=146, base_y=167)
-        front = stack(rng, puffs, [(int(rng.integers(3, 5)), b), (int(rng.integers(1, 3)), b - 3)], cx=165, lean=lean)
-        stamp_rows(C, back)
-        stamp_rows(C, front)
-        if rng.random() < 0.5:
-            C = C[:, ::-1].copy()
     return C
 
 
@@ -358,13 +349,43 @@ def side_runs(c, tol=1):
     return best
 
 
+def measures(c):
+    """Sprite measures that separated the liked from the disliked sprites in the user's ratings
+    (clouds/feedback/ratings.json)."""
+    h, w = c.shape
+    solid = c > 0
+    n = solid.sum()
+    gaps = 0
+    for row in solid:
+        xs = np.nonzero(row)[0]
+        if len(xs):
+            gaps += (~row[xs[0]:xs[-1] + 1]).sum()
+    pad = np.pad(c, 1)
+    differ = sum((pad[1 + dy:h + 1 + dy, 1 + dx:w + 1 + dx] != c).astype(int) for dy, dx in N4)
+    return {
+        "aspect": w / h,
+        "fill": n / (h * w),                        # liked >= 0.62, thin and straggly ones below
+        "gaps": gaps / n,                           # sky inside rows: liked <= 0.02, gappy ones 0.03 to 0.16
+        "speckle": ((differ == 4) & solid).sum() / n,   # lone cells of another shade: liked <= 0.033
+        "navy": (c == 1).sum() / n,                 # liked >= 0.11: a cloud needs its dark underside
+        "lavender": (c == 2).sum() / n,             # above 0.25 the folds read as stripes
+        "white": (c == 4).sum() / n,                # above 0.5 the cloud looks flat and washed out
+    }
+
+
+# Width over height allowed per layout (liked heaps 1.06 to 1.87, liked towers 0.8, liked small 1.4 to 1.9,
+# the one liked stratus 3.06; the twins at 2.1 to 2.3 and the long stratus at 4.8 to 5.5 were all rejected).
+ASPECT = {"heap": (1.0, 1.9), "tower": (0.7, 1.0), "small": (1.3, 1.9), "stratus": (2.4, 3.2)}
+
+
 def acceptable(c, kind):
     h, w = c.shape
     if side_runs(c) > min(MAX_FLAT_SIDE, max(4, 0.3 * h)):
         return False
-    if kind in ("small", "stratus", "twin") and w < 1.4 * h:
-        return False
-    return True
+    m = measures(c)
+    lo, hi = ASPECT[kind]
+    return (lo <= m["aspect"] <= hi and m["fill"] >= 0.62 and m["gaps"] <= 0.02 and m["speckle"] <= 0.033
+            and m["navy"] >= 0.11 and m["lavender"] <= 0.25 and m["white"] <= 0.5)
 
 
 # ---------------------------------------------------------------------------------------------- cleanup
@@ -374,6 +395,19 @@ def cleanup(c):
     c = np.pad(c[ys.min():ys.max() + 1, xs.min():xs.max() + 1], 1)
     solid = c > 0
     h, w = c.shape
+    # Close short gaps along rows (notches between two lobes' bases), then fill what is left enclosed.
+    for y in range(h):
+        xs = np.nonzero(solid[y])[0]
+        for a, b in zip(xs, xs[1:]):
+            if 1 < b - a <= 3:
+                solid[y, a + 1:b] = True
+    gap = solid & (c == 0)
+    while gap.any():
+        for y, x in zip(*np.nonzero(gap)):
+            nb = [c[y + dy, x + dx] for dy, dx in N4 if 0 <= y + dy < h and 0 <= x + dx < w and c[y + dy, x + dx]]
+            if nb:
+                c[y, x] = max(set(nb), key=nb.count)
+                gap[y, x] = False
     # Fill sky enclosed by the cloud (slits left between lobes) from the most common neighbour shade.
     # Small enclosed pockets only: a large gap is a deliberate opening in the silhouette.
     sky, n = label(~solid, N4)
@@ -431,13 +465,13 @@ def main():
     print(len(lib), "lobes:", {k: sum(L["kind"] == k for L in lib) for k in ("puff", "wisp", "scatter")})
 
     rng = np.random.default_rng(SEED)
-    kinds = (["heap"] * 13 + ["stratus"] * 5 + ["tower"] * 5 + ["small"] * 6 + ["twin"] * 6)
+    kinds = (["heap"] * 17 + ["stratus"] * 4 + ["tower"] * 5 + ["small"] * 9)
     os.makedirs(os.path.join(OUT, "generated"), exist_ok=True)
     sprites = []
     for i in range(COUNT):
         kind = kinds[i % len(kinds)]
         # Rejection sampling: build candidates until one has no flat side (and the right proportions).
-        for attempt in range(400):
+        for attempt in range(3000):
             sprite = cleanup(recipe(kind, rng, lib))
             if acceptable(sprite, kind):
                 break

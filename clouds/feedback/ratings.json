@@ -1,0 +1,26 @@
+{
+  "_comment": "User ratings of generated sprites. Ids are cloud_gen_NN in the commit named for each round. Notes are the user's remarks, paraphrased.",
+  "rounds": [
+    {
+      "commit": "4550ffd",
+      "disliked": [12, 13, 14, 15, 26, 27, 28, 29, 32, 33, 34],
+      "notes": {
+        "6": "good, but left side too flat",
+        "23": "left side too flat",
+        "general": "bad ones are built from parts of the long clouds; navy inside the clouds should be at the bottom; many lateral sides too flat"
+      }
+    },
+    {
+      "commit": "3de24db",
+      "layout": "0-12 heap, 13-17 stratus, 18-22 tower, 23-28 small, 29-34 twin",
+      "liked": [0, 1, 2, 4, 5, 7, 11, 12, 15, 18, 21, 24, 25, 28],
+      "disliked": [14, 16, 17, 19, 20, 22, 23, 26, 27, 29, 30, 31, 32, 33],
+      "flawed": {
+        "8": "colour does not transition well on the left side",
+        "9": "gap",
+        "10": "gap in the underside",
+        "34": "weird colours in the lower left"
+      }
+    }
+  ]
+}
