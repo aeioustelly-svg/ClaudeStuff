@@ -381,6 +381,22 @@ def seam(c):
     return longest, jumps
 
 
+def thick_lip(c, cells=4):
+    """Share of underside columns whose lavender band above the navy is at least `cells` thick."""
+    cols = thick = 0
+    for x in range(c.shape[1]):
+        ys = np.nonzero(c[:, x] == 1)[0]
+        if not len(ys):
+            continue
+        y, k = ys[0] - 1, 0
+        while y >= 0 and c[y, x] == 2:
+            k += 1
+            y -= 1
+        cols += 1
+        thick += k >= cells
+    return thick / max(cols, 1)
+
+
 def measures(c):
     """Sprite measures that separated the liked from the disliked sprites in the user's ratings
     (clouds/feedback/ratings.json)."""
@@ -403,6 +419,7 @@ def measures(c):
         "lavender": (c == 2).sum() / n,             # above 0.25 the folds read as stripes
         "white": (c == 4).sum() / n,
         "seam": seam(c),                            # round 5: all four "do not blend" had (>= 8, >= 0.006)
+        "thick_lip": thick_lip(c),                  # round 7: "too much lavender" at 0.66, others <= 0.40
         "slab": slab(c),                            # longest straight top edge of a lavender area, in cells                # above 0.5 the cloud looks flat and washed out
     }
 
@@ -419,7 +436,7 @@ def acceptable(c, kind):
     m = measures(c)
     lo, hi = ASPECT[kind]
     return (lo <= m["aspect"] <= hi and m["fill"] >= 0.62 and m["gaps"] <= 0.02 and m["speckle"] <= 0.033
-            and m["navy"] >= 0.11 and m["lavender"] <= 0.25 and m["white"] <= 0.5 and m["slab"] <= MAX_SLAB
+            and m["navy"] >= 0.11 and m["lavender"] <= 0.25 and m["white"] <= 0.5 and m["slab"] <= MAX_SLAB and m["thick_lip"] <= 0.45
             and not (m["seam"][0] >= 8 and m["seam"][1] >= 0.006))
 
 
@@ -493,6 +510,10 @@ def smooth_underside(c):
         thick[x] = 0 if not (run == 1).any() else bottom[x] - y - (1 if run[0] != 1 else 0)
     t = np.array([np.median(thick[max(0, x - 2):x + 3]) for x in range(w)]).round().astype(int)
     t = np.minimum(t, MAX_NAVY)
+    # The band is continuous: every column between the first and last navy column keeps at least one cell.
+    on = np.nonzero(t > 0)[0]
+    if len(on):
+        t[on[0]:on[-1] + 1] = np.maximum(t[on[0]:on[-1] + 1], 1)
     for _ in range(2):          # at most one cell of change between neighbouring columns
         for x in range(1, w):
             t[x] = min(t[x], t[x - 1] + 1)
@@ -514,6 +535,11 @@ def smooth_underside(c):
     # A navy cell with open sky directly above is the rim of the band seen edge-on: lavender.
     pad = np.pad(c, 1)
     c[(c == 1) & (pad[:-2, 1:-1] == 0)] = 2
+    # Only the main band stays navy. Bits cut off from it (under a puff hanging at the side) become lavender.
+    pieces, n = label(c == 1, N8)
+    if n > 1:
+        sizes = [(pieces == k).sum() for k in range(1, n + 1)]
+        c[(pieces > 0) & (pieces != 1 + int(np.argmax(sizes)))] = 2
     # On the source clouds light blue never touches navy, and white hardly ever does: lavender always sits between.
     # Any lighter cell touching the band (above or beside it) becomes lavender, so lobes blend into the underside.
     pad = np.pad(c, 1)

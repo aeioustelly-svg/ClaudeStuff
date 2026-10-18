@@ -47,7 +47,8 @@ Every pixel is from the sheet, nothing is drawn procedurally.
   smaller, so the sides step down in puffs. Row ends get lobes with a drawn outer edge.
 - Each lobe may be flipped and rescaled by nearest neighbour with separate x and y factors (0.8 to 1.25).
 - The navy underside is repainted as one band. Each column's navy thickness from its lobe is measured, then
-  median-filtered over 5 columns, allowed to change by at most one cell per column and capped at 4. Navy above
+  median-filtered over 5 columns, allowed to change by at most one cell per column and capped at 4. The band is
+  continuous (at least one cell in every column between its ends), and navy cut off from it becomes lavender. Navy above
   the band becomes lavender, light cells inside it become navy, and light blue resting on it becomes the lavender
   lip. Upper lobes lose their navy for the same reason.
 - Lavender is re-derived on the finished sprite with the stage 2 rules (the sheet has no lavender of its own):
@@ -61,7 +62,8 @@ Every pixel is from the sheet, nothing is drawn procedurally.
 - Cleanup closes row gaps of up to 2 cells, fills small enclosed sky pockets, trims one-cell spurs and drips under the base.
 - Rejection sampling, with limits taken from the user's ratings in `feedback/ratings.json`: a candidate must have
   sky gaps inside rows of at most 2 percent, a navy share of at least 11 percent, at least 62 percent fill of its
-  bounding box, at most 25 percent lavender with no straight-topped lavender slab longer than 16 cells, no
+  bounding box, at most 25 percent lavender with no straight-topped lavender slab longer than 16 cells, at most 45 percent of underside columns with a lavender
+  band 4 or more cells thick (the sheet's clouds reach 38 percent), no
   combination of a straight vertical shade boundary of 8 or more cells with a 0.6 percent share of shade jumps
   of two bands or more (the four "do not blend" sprites of round 5), at most 50 percent white, little speckle, and a width/height ratio
   suited to its layout (heap 1.0 to 1.9, tower 0.7 to 1.0, small 1.3 to 1.9, stratus 2.4 to 3.2). These limits

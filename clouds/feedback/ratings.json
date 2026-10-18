@@ -124,6 +124,17 @@
         "22": "lavender block, lower right"
       },
       "notes": "circled square, straight-edged patches of lavender (once light blue)"
+    },
+    {
+      "commit": "af254d9",
+      "layout": "0-16 heap, 17-20 stratus, 21-25 tower, 26-34 small",
+      "verdict": "almost perfect, loved",
+      "flawed": {
+        "8": "too much lavender (thick band above the navy)",
+        "10": "too much lavender",
+        "21": "detached bit of navy and lavender on the right side",
+        "25": "the dark blue should be continuous"
+      }
     }
   ]
 }
