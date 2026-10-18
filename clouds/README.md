@@ -28,7 +28,8 @@ only makes the files viewable, the mod will colour by index.
 | 2 | lavender crevice shadow | `#8A96DE` |
 | 3 | light-blue midtone | `#A4C4FA` |
 | 4 | white highlight | `#FFFFFF` |
-| 5 | mist (generated sprites only), opacity 96/255 | `#B0CCFA` |
+| 5 | mist, one layer (generated sprites only), opacity 40/255 | `#B0CCFA` |
+| 6 | mist, two layers overlapping, opacity 74/255 (two layers of 5 stacked) | `#B0CCFA` |
 
 The sheet only has three solid tones. Band 2 is taken from the source's blend pixels between navy and light blue,
 from light blue touching the navy underside, and from light blue in deep folds with no white nearby.
@@ -89,9 +90,11 @@ Each generated cloud is written as separate layers so that in game the broken-of
 
 ## Mist
 
-A translucent lumpy haze (shade 5) sits behind each cloud. It is the union of 3 copies of the cloud's own
-silhouette, each shifted by up to 4 cells, so it is thicker on some sides than others and its lumps follow the
-cloud's bumps. Lone spikes are trimmed and pinholes filled. Pieces get a mist reaching 1 cell. Mist and pieces use
+Two independent translucent layers sit behind each cloud, as in the reference: shade 5 where one layer covers,
+shade 6 where both overlap. Each layer is made of lumps (outlines of the sheet's puff lobes, rescaled to 3 to 8
+cells tall and widened up to 1.6 times) scattered along the cloud's edge, one per 10 edge cells, and pushed a
+little outwards. Mist reaches at most 3 cells beyond the cloud, and stretches of edge without a lump stay clear,
+so it does not repeat the cloud's outline. Pieces get the same two layers, reaching 1 cell. Mist and pieces use
 their own random streams, so the clouds are the same with or without them.
 
 ## Broken-off bits
