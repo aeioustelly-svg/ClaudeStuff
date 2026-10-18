@@ -45,6 +45,7 @@ MIN_ROUND = 0.5     # smallest top-third fill for a puff lobe (keeps pointed top
 LAVENDER_FROM = 0.45  # lavender patches centred above this fraction of the cloud's height go (round 4)
 MAX_SLAB = 16       # longest straight top edge of a lavender area (round 4: 26 read as too straight, 14 passed)
 MAX_WHITE_WALL = 5  # longest straight vertical white edge (the sheet's clouds: at most 5; round 9 flagged a 7)
+MAX_BIT = 15        # largest loose piece from the sheet used as a broken-off bit, in cells
 MAX_NAVY = 4        # thickest the navy underside may be, in cells
 MAX_FLAT_SIDE = 7   # longest near-vertical run (within one column) allowed on either side of a sprite
 WISPY = {4, 7, 10}
@@ -659,6 +660,70 @@ def smooth_underside(c):
     return c[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
 
 
+# ------------------------------------------------------------------------------------------- broken-off bits
+
+def loose_bits(shaded_paths):
+    """The small pieces floating beside the sheet's clouds (every component but the main body), 2 to 15 cells.
+    Navy becomes lavender: on a loose piece there is no underside band for it to belong to."""
+    bits = []
+    for path in shaded_paths:
+        c = np.asarray(Image.open(path)).astype(np.uint8)
+        lab, n = label(c > 0, N8)
+        if n < 2:
+            continue
+        main = 1 + int(np.argmax([(lab == k).sum() for k in range(1, n + 1)]))
+        for k in range(1, n + 1):
+            area = int((lab == k).sum())
+            if k == main or not 2 <= area <= MAX_BIT:
+                continue
+            ys, xs = np.nonzero(lab == k)
+            b = np.where(lab == k, c, 0)[ys.min():ys.max() + 1, xs.min():xs.max() + 1].astype(np.uint8)
+            bits.append(np.where(b == 1, 2, b).astype(np.uint8))
+    return bits
+
+
+def add_bits(sprite, rng, bits):
+    """Now and then, one to three pieces that have broken off: beside the upper two thirds of a side, or above a
+    shoulder, 1 to 3 cells away and touching nothing. Added after the quality checks, which judge the cloud itself."""
+    n = int(rng.choice([0, 0, 0, 0, 1, 1, 2, 3]))
+    if n == 0:
+        return sprite
+    pad = 10
+    c = np.pad(sprite, pad)
+    h, w = c.shape
+    sh = sprite.shape[0]
+    for _ in range(n):
+        for _attempt in range(30):
+            b = bits[rng.integers(len(bits))]
+            if rng.random() < 0.5:
+                b = b[:, ::-1]
+            bh, bw = b.shape
+            gap = int(rng.integers(1, 4))
+            side = rng.choice(["left", "right", "top"], p=[0.4, 0.4, 0.2])
+            if side == "top":
+                cols = [x for x in range(w) if c[:, x].any()]
+                cols = cols[len(cols) // 5:max(len(cols) // 5 + 1, len(cols) * 4 // 5)]   # the shoulders, not the ends
+                x = cols[rng.integers(len(cols))]
+                y_top = np.nonzero(c[:, x])[0][0]
+                y0, x0 = y_top - gap - bh, x - bw // 2 + int(rng.integers(-2, 3))
+            else:
+                y = pad + int(rng.integers(0, max(1, sh * 2 // 3)))
+                xs = np.nonzero(c[y])[0]
+                if not len(xs):
+                    continue
+                y0 = y - bh // 2 + int(rng.integers(-1, 2))
+                x0 = xs[0] - gap - bw if side == "left" else xs[-1] + gap + 1
+            if y0 < 1 or x0 < 1 or y0 + bh >= h - 1 or x0 + bw >= w - 1:
+                continue
+            # Clear of everything by at least one cell, diagonals included.
+            if c[y0 - 1:y0 + bh + 1, x0 - 1:x0 + bw + 1].any():
+                continue
+            np.copyto(c[y0:y0 + bh, x0:x0 + bw], b, where=b > 0)
+            break
+    ys, xs = np.nonzero(c)
+    return c[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
+
+
 def main():
     lib = []
     for path in sorted(glob.glob(os.path.join(OUT, "shaded", "cloud_*.png"))):
@@ -672,6 +737,9 @@ def main():
     print(len(lib), "lobes:", {k: sum(L["kind"] == k for L in lib) for k in ("puff", "wisp", "scatter")})
 
     rng = np.random.default_rng(SEED)
+    # A separate stream for the broken-off bits, so adding them leaves every cloud itself unchanged.
+    bit_rng = np.random.default_rng(SEED + 1)
+    bits = loose_bits(sorted(glob.glob(os.path.join(OUT, "shaded", "cloud_*.png"))))
     kinds = (["heap"] * 17 + ["stratus"] * 4 + ["tower"] * 5 + ["small"] * 9)
     os.makedirs(os.path.join(OUT, "generated"), exist_ok=True)
     sprites = []
@@ -684,6 +752,7 @@ def main():
                 break
         else:
             print(f"cloud_gen_{i:02d}: no candidate passed, keeping the last one")
+        sprite = add_bits(sprite, bit_rng, bits)
         save_indexed(sprite, os.path.join(OUT, "generated", f"cloud_gen_{i:02d}.png"))
         sprites.append(sprite)
         print(f"cloud_gen_{i:02d} {kind:8s} {sprite.shape[1]} x {sprite.shape[0]}")

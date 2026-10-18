@@ -77,6 +77,14 @@ Every pixel is from the sheet, nothing is drawn procedurally.
 - Earlier rejection rule, still applied: a candidate is rebuilt when either side stays within one column for more than 7 rows (or
   30 percent of its height), or when a small, stratus or twin cloud is not at least 1.4 times wider than tall.
 
+## Broken-off bits
+
+After a sprite passes the checks, about half get one to three small loose pieces, as some of the sheet's clouds
+have. The pieces are the sheet's own loose components of 2 to 15 cells (navy turned lavender, as a loose piece
+has no underside band), flipped at random but never rescaled. They sit beside the upper two thirds of a side or
+above a shoulder, 1 to 3 cells away, touching nothing. They use their own random stream, so the clouds
+themselves are the same with or without them.
+
 ## Known issues
 
 - Some seams still show a patch of mixed texture where lobes from different source clouds meet.
