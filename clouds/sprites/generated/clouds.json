@@ -3,26 +3,26 @@
   "file": "cloud_gen_00.png",
   "kind": "heap",
   "size": [
-   49,
-   32
+   43,
+   28
   ],
   "bits": [
    {
     "file": "cloud_gen_00_bit0.png",
-    "x": 17,
-    "y": -4,
+    "x": 15,
+    "y": -5,
     "size": [
-     4,
-     4
+     2,
+     2
     ]
    },
    {
     "file": "cloud_gen_00_bit1.png",
-    "x": 10,
-    "y": 4,
+    "x": 8,
+    "y": 3,
     "size": [
-     4,
-     4
+     2,
+     2
     ]
    }
   ]
@@ -31,17 +31,17 @@
   "file": "cloud_gen_01.png",
   "kind": "heap",
   "size": [
-   33,
-   30
+   30,
+   24
   ],
   "bits": [
    {
     "file": "cloud_gen_01_bit0.png",
-    "x": 31,
-    "y": 13,
+    "x": 28,
+    "y": 11,
     "size": [
-     3,
-     4
+     2,
+     2
     ]
    }
   ]
@@ -50,35 +50,35 @@
   "file": "cloud_gen_02.png",
   "kind": "heap",
   "size": [
-   36,
-   31
+   31,
+   25
   ],
   "bits": [
    {
     "file": "cloud_gen_02_bit0.png",
-    "x": -1,
-    "y": 11,
+    "x": -3,
+    "y": 8,
     "size": [
-     3,
-     3
+     2,
+     2
     ]
    },
    {
     "file": "cloud_gen_02_bit1.png",
-    "x": 22,
-    "y": 2,
+    "x": 19,
+    "y": 0,
     "size": [
      5,
-     5
+     3
     ]
    },
    {
     "file": "cloud_gen_02_bit2.png",
-    "x": 4,
-    "y": 2,
+    "x": 1,
+    "y": 0,
     "size": [
-     6,
-     6
+     5,
+     5
     ]
    }
   ]
@@ -87,26 +87,26 @@
   "file": "cloud_gen_03.png",
   "kind": "heap",
   "size": [
-   37,
-   24
+   34,
+   20
   ],
   "bits": [
    {
     "file": "cloud_gen_03_bit0.png",
     "x": 31,
-    "y": 6,
+    "y": 5,
     "size": [
-     4,
-     3
+     3,
+     2
     ]
    },
    {
     "file": "cloud_gen_03_bit1.png",
-    "x": 6,
-    "y": -1,
+    "x": 7,
+    "y": -2,
     "size": [
-     5,
-     5
+     3,
+     3
     ]
    }
   ]
@@ -115,17 +115,17 @@
   "file": "cloud_gen_04.png",
   "kind": "heap",
   "size": [
-   45,
-   29
+   43,
+   24
   ],
   "bits": [
    {
     "file": "cloud_gen_04_bit0.png",
-    "x": 47,
-    "y": 14,
+    "x": 46,
+    "y": 12,
     "size": [
-     5,
-     5
+     3,
+     4
     ]
    }
   ]
@@ -134,17 +134,17 @@
   "file": "cloud_gen_05.png",
   "kind": "heap",
   "size": [
-   40,
-   27
+   34,
+   21
   ],
   "bits": [
    {
     "file": "cloud_gen_05_bit0.png",
-    "x": 39,
-    "y": 13,
+    "x": 37,
+    "y": 11,
     "size": [
-     5,
-     3
+     3,
+     2
     ]
    }
   ]
@@ -153,25 +153,25 @@
   "file": "cloud_gen_06.png",
   "kind": "heap",
   "size": [
-   31,
-   31
+   27,
+   26
   ],
   "bits": [
    {
     "file": "cloud_gen_06_bit0.png",
-    "x": -4,
-    "y": 14,
+    "x": -5,
+    "y": 12,
     "size": [
-     5,
-     5
+     3,
+     3
     ]
    },
    {
     "file": "cloud_gen_06_bit1.png",
-    "x": 4,
-    "y": -4,
+    "x": 2,
+    "y": -7,
     "size": [
-     5,
+     4,
      5
     ]
    }
@@ -181,8 +181,8 @@
   "file": "cloud_gen_07.png",
   "kind": "heap",
   "size": [
-   34,
-   30
+   30,
+   24
   ],
   "bits": []
  },
@@ -190,8 +190,8 @@
   "file": "cloud_gen_08.png",
   "kind": "heap",
   "size": [
-   36,
-   29
+   30,
+   25
   ],
   "bits": []
  },
@@ -199,17 +199,17 @@
   "file": "cloud_gen_09.png",
   "kind": "heap",
   "size": [
-   34,
-   30
+   33,
+   25
   ],
   "bits": [
    {
     "file": "cloud_gen_09_bit0.png",
     "x": 17,
-    "y": -3,
+    "y": -4,
     "size": [
-     6,
-     6
+     4,
+     5
     ]
    }
   ]
@@ -218,17 +218,17 @@
   "file": "cloud_gen_10.png",
   "kind": "heap",
   "size": [
-   38,
-   25
+   34,
+   22
   ],
   "bits": [
    {
     "file": "cloud_gen_10_bit0.png",
-    "x": 25,
-    "y": 1,
+    "x": 24,
+    "y": 0,
     "size": [
-     5,
-     5
+     3,
+     3
     ]
    }
   ]
@@ -237,35 +237,35 @@
   "file": "cloud_gen_11.png",
   "kind": "heap",
   "size": [
-   37,
-   24
+   31,
+   20
   ],
   "bits": [
    {
     "file": "cloud_gen_11_bit0.png",
-    "x": 11,
-    "y": 1,
+    "x": 8,
+    "y": 0,
     "size": [
-     3,
-     4
+     2,
+     2
     ]
    },
    {
     "file": "cloud_gen_11_bit1.png",
-    "x": 35,
-    "y": 8,
+    "x": 33,
+    "y": 7,
     "size": [
-     5,
-     5
+     3,
+     3
     ]
    },
    {
     "file": "cloud_gen_11_bit2.png",
-    "x": 27,
-    "y": 3,
+    "x": 25,
+    "y": 2,
     "size": [
-     4,
-     4
+     2,
+     2
     ]
    }
   ]
@@ -274,8 +274,8 @@
   "file": "cloud_gen_12.png",
   "kind": "heap",
   "size": [
-   43,
-   30
+   38,
+   24
   ],
   "bits": []
  },
@@ -283,16 +283,16 @@
   "file": "cloud_gen_13.png",
   "kind": "heap",
   "size": [
-   39,
-   39
+   36,
+   33
   ],
   "bits": [
    {
     "file": "cloud_gen_13_bit0.png",
     "x": 22,
-    "y": 6,
+    "y": 3,
     "size": [
-     6,
+     5,
      3
     ]
    }
@@ -302,8 +302,8 @@
   "file": "cloud_gen_14.png",
   "kind": "heap",
   "size": [
-   33,
-   26
+   29,
+   23
   ],
   "bits": []
  },
@@ -311,8 +311,8 @@
   "file": "cloud_gen_15.png",
   "kind": "heap",
   "size": [
-   40,
-   26
+   37,
+   21
   ],
   "bits": []
  },
@@ -320,35 +320,35 @@
   "file": "cloud_gen_16.png",
   "kind": "heap",
   "size": [
-   39,
-   30
+   34,
+   24
   ],
   "bits": [
    {
     "file": "cloud_gen_16_bit0.png",
-    "x": -2,
-    "y": 13,
+    "x": -5,
+    "y": 10,
     "size": [
      3,
-     4
+     3
     ]
    },
    {
     "file": "cloud_gen_16_bit1.png",
-    "x": 36,
-    "y": 15,
+    "x": 34,
+    "y": 12,
     "size": [
-     6,
+     5,
      3
     ]
    },
    {
     "file": "cloud_gen_16_bit2.png",
-    "x": 23,
-    "y": 6,
+    "x": 21,
+    "y": 4,
     "size": [
-     4,
-     3
+     2,
+     2
     ]
    }
   ]
@@ -357,35 +357,35 @@
   "file": "cloud_gen_17.png",
   "kind": "stratus",
   "size": [
-   41,
-   20
+   37,
+   15
   ],
   "bits": [
    {
     "file": "cloud_gen_17_bit0.png",
-    "x": 28,
-    "y": 1,
+    "x": 26,
+    "y": -1,
     "size": [
-     4,
-     4
+     2,
+     2
     ]
    },
    {
     "file": "cloud_gen_17_bit1.png",
-    "x": 9,
-    "y": 0,
+    "x": 7,
+    "y": -2,
     "size": [
-     4,
-     3
+     2,
+     1
     ]
    },
    {
     "file": "cloud_gen_17_bit2.png",
-    "x": -1,
-    "y": 5,
+    "x": -3,
+    "y": 3,
     "size": [
-     3,
-     3
+     2,
+     2
     ]
    }
   ]
@@ -394,8 +394,8 @@
   "file": "cloud_gen_18.png",
   "kind": "stratus",
   "size": [
-   40,
-   20
+   35,
+   14
   ],
   "bits": []
  },
@@ -403,35 +403,35 @@
   "file": "cloud_gen_19.png",
   "kind": "stratus",
   "size": [
-   50,
-   23
+   46,
+   17
   ],
   "bits": [
    {
     "file": "cloud_gen_19_bit0.png",
     "x": 45,
-    "y": 8,
+    "y": 5,
     "size": [
-     4,
-     3
+     2,
+     2
     ]
    },
    {
     "file": "cloud_gen_19_bit1.png",
-    "x": 33,
-    "y": 3,
+    "x": 32,
+    "y": 1,
     "size": [
-     3,
-     4
+     2,
+     2
     ]
    },
    {
     "file": "cloud_gen_19_bit2.png",
     "x": 46,
-    "y": 11,
+    "y": 9,
     "size": [
-     3,
-     3
+     2,
+     1
     ]
    }
   ]
@@ -440,17 +440,17 @@
   "file": "cloud_gen_20.png",
   "kind": "stratus",
   "size": [
-   49,
-   22
+   44,
+   17
   ],
   "bits": [
    {
     "file": "cloud_gen_20_bit0.png",
-    "x": 30,
-    "y": -3,
+    "x": 28,
+    "y": -5,
     "size": [
-     6,
-     6
+     4,
+     5
     ]
    }
   ]
@@ -459,17 +459,17 @@
   "file": "cloud_gen_21.png",
   "kind": "tower",
   "size": [
-   30,
-   36
+   25,
+   32
   ],
   "bits": [
    {
     "file": "cloud_gen_21_bit0.png",
-    "x": 0,
-    "y": 17,
+    "x": -2,
+    "y": 16,
     "size": [
-     4,
-     4
+     2,
+     2
     ]
    }
   ]
@@ -478,8 +478,8 @@
   "file": "cloud_gen_22.png",
   "kind": "tower",
   "size": [
-   28,
-   35
+   23,
+   30
   ],
   "bits": []
  },
@@ -487,17 +487,17 @@
   "file": "cloud_gen_23.png",
   "kind": "tower",
   "size": [
-   30,
-   40
+   25,
+   35
   ],
   "bits": [
    {
     "file": "cloud_gen_23_bit0.png",
-    "x": 19,
-    "y": -3,
+    "x": 17,
+    "y": -5,
     "size": [
-     5,
-     5
+     3,
+     3
     ]
    }
   ]
@@ -506,8 +506,8 @@
   "file": "cloud_gen_24.png",
   "kind": "tower",
   "size": [
-   31,
-   38
+   25,
+   33
   ],
   "bits": []
  },
@@ -515,17 +515,17 @@
   "file": "cloud_gen_25.png",
   "kind": "tower",
   "size": [
-   27,
-   36
+   23,
+   31
   ],
   "bits": [
    {
     "file": "cloud_gen_25_bit0.png",
-    "x": 23,
-    "y": 5,
+    "x": 21,
+    "y": 4,
     "size": [
-     4,
-     4
+     2,
+     2
     ]
    }
   ]
@@ -534,8 +534,8 @@
   "file": "cloud_gen_26.png",
   "kind": "small",
   "size": [
-   30,
-   23
+   24,
+   17
   ],
   "bits": []
  },
@@ -543,17 +543,17 @@
   "file": "cloud_gen_27.png",
   "kind": "small",
   "size": [
-   35,
-   25
+   29,
+   19
   ],
   "bits": [
    {
     "file": "cloud_gen_27_bit0.png",
-    "x": -1,
-    "y": 13,
+    "x": -3,
+    "y": 10,
     "size": [
-     3,
-     2
+     2,
+     1
     ]
    }
   ]
@@ -562,34 +562,34 @@
   "file": "cloud_gen_28.png",
   "kind": "small",
   "size": [
-   32,
-   25
+   27,
+   20
   ],
   "bits": [
    {
     "file": "cloud_gen_28_bit0.png",
-    "x": 29,
-    "y": 15,
+    "x": 28,
+    "y": 12,
     "size": [
-     4,
-     3
+     2,
+     2
     ]
    },
    {
     "file": "cloud_gen_28_bit1.png",
-    "x": 26,
-    "y": 5,
+    "x": 24,
+    "y": 3,
     "size": [
-     6,
-     5
+     5,
+     3
     ]
    },
    {
     "file": "cloud_gen_28_bit2.png",
-    "x": -6,
-    "y": 10,
+    "x": -7,
+    "y": 7,
     "size": [
-     5,
+     4,
      5
     ]
    }
@@ -599,8 +599,8 @@
   "file": "cloud_gen_29.png",
   "kind": "small",
   "size": [
-   31,
-   22
+   25,
+   18
   ],
   "bits": []
  },
@@ -608,26 +608,26 @@
   "file": "cloud_gen_30.png",
   "kind": "small",
   "size": [
-   32,
-   24
+   28,
+   18
   ],
   "bits": [
    {
     "file": "cloud_gen_30_bit0.png",
-    "x": 23,
-    "y": 3,
+    "x": 21,
+    "y": 1,
     "size": [
-     3,
-     3
+     2,
+     2
     ]
    },
    {
     "file": "cloud_gen_30_bit1.png",
-    "x": -4,
-    "y": 9,
+    "x": -6,
+    "y": 7,
     "size": [
-     7,
-     5
+     5,
+     3
     ]
    }
   ]
@@ -636,8 +636,8 @@
   "file": "cloud_gen_31.png",
   "kind": "small",
   "size": [
-   33,
-   23
+   27,
+   19
   ],
   "bits": []
  },
@@ -645,8 +645,8 @@
   "file": "cloud_gen_32.png",
   "kind": "small",
   "size": [
-   36,
-   24
+   31,
+   21
   ],
   "bits": []
  },
@@ -654,34 +654,34 @@
   "file": "cloud_gen_33.png",
   "kind": "small",
   "size": [
-   35,
-   23
+   31,
+   19
   ],
   "bits": [
    {
     "file": "cloud_gen_33_bit0.png",
     "x": 6,
-    "y": 0,
+    "y": -2,
     "size": [
-     5,
-     4
+     3,
+     2
     ]
    },
    {
     "file": "cloud_gen_33_bit1.png",
     "x": -1,
-    "y": 8,
+    "y": 6,
     "size": [
-     4,
-     4
+     2,
+     2
     ]
    },
    {
     "file": "cloud_gen_33_bit2.png",
-    "x": 33,
-    "y": 10,
+    "x": 32,
+    "y": 7,
     "size": [
-     4,
+     3,
      4
     ]
    }
@@ -691,16 +691,16 @@
   "file": "cloud_gen_34.png",
   "kind": "small",
   "size": [
-   31,
-   23
+   26,
+   17
   ],
   "bits": [
    {
     "file": "cloud_gen_34_bit0.png",
-    "x": 3,
-    "y": 2,
+    "x": 1,
+    "y": -1,
     "size": [
-     4,
+     2,
      2
     ]
    }

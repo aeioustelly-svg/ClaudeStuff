@@ -112,3 +112,11 @@ mod marked "personal reference only"). They are not copied into this repo becaus
 ## Ideas not done
 
 Custom howl sound, a proper Dacian cap model, a collar or naming for tamed Draco, mounting.
+
+## Second mod: Pixel Clouds (`clouds/`)
+
+A separate Forge mod (`clouds/mod`, mod id `pixel_clouds`) with its own Gradle wrapper, plus the Python sprite
+pipeline in `clouds/tools`. Read `clouds/README.md` first; the user's ratings of past sprite batches are in
+`clouds/feedback/ratings.json`. The user asked for in-game screenshots, and the client does run headless here:
+`LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a -s "-screen 0 1280x720x24" ./gradlew runClient -Pautoshot=true` (a client
+and its integrated server need no EULA file). The user rejected any mist or halo around the clouds.

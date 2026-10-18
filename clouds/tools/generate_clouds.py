@@ -46,8 +46,6 @@ MIN_ROUND = 0.5     # smallest top-third fill for a puff lobe (keeps pointed top
 LAVENDER_FROM = 0.45  # lavender patches centred above this fraction of the cloud's height go (round 4)
 MAX_SLAB = 16       # longest straight top edge of a lavender area (round 4: 26 read as too straight, 14 passed)
 MAX_WHITE_WALL = 5  # longest straight vertical white edge (the sheet's clouds: at most 5; round 9 flagged a 7)
-MIST_REACH = 3      # how far (cells) the mist may reach out from the cloud
-MIST_SPACING = 10   # one mist lump per this many edge cells, per layer
 MAX_BIT = 15        # largest loose piece from the sheet used as a broken-off bit, in cells
 MAX_NAVY = 4        # thickest the navy underside may be, in cells
 MAX_FLAT_SIDE = 7   # longest near-vertical run (within one column) allowed on either side of a sprite
@@ -732,78 +730,18 @@ def add_bits(sprite, rng, bits):
     return c, placed
 
 
-def shift(mask, dy, dx):
-    out = np.zeros_like(mask)
-    h, w = mask.shape
-    out[max(0, dy):h + min(0, dy), max(0, dx):w + min(0, dx)] = \
-        mask[max(0, -dy):h + min(0, -dy), max(0, -dx):w + min(0, -dx)]
-    return out
-
-
-def mist_layer(solid, rng, lumps, reach, per_lump):
-    """One translucent layer: puff-lobe outlines from the sheet, rescaled, scattered along the cloud's edge and
-    pushed a little outwards, cut off `reach` cells from the cloud. Stretches of edge without a lump stay clear,
-    so the layer is uneven and does not repeat the cloud's own outline."""
-    h, w = solid.shape
-    pad = np.pad(solid, 1)
-    edge = solid & ~(pad[:-2, 1:-1] & pad[2:, 1:-1] & pad[1:-1, :-2] & pad[1:-1, 2:])
-    pts = np.argwhere(edge)
-    cy, cx = np.argwhere(solid).mean(0)
-    layer = np.zeros_like(solid)
-    for _ in range(max(1, len(pts) // per_lump)):
-        y, x = pts[rng.integers(len(pts))]
-        m = lumps[rng.integers(len(lumps))]
-        if rng.random() < 0.5:
-            m = m[:, ::-1]
-        th = int(rng.integers(3, 9))
-        sy, sx = th / m.shape[0], th / m.shape[0] * rng.uniform(0.9, 1.6)
-        ys = np.minimum(((np.arange(max(2, int(m.shape[0] * sy))) + 0.5) / sy).astype(int), m.shape[0] - 1)
-        xs = np.minimum(((np.arange(max(2, int(m.shape[1] * sx))) + 0.5) / sx).astype(int), m.shape[1] - 1)
-        m = m[ys][:, xs]
-        # Centre on the edge point, nudged away from the cloud's centre so the lump pokes out.
-        d = np.array([y - cy, x - cx])
-        d = d / (np.linalg.norm(d) + 1e-9) * rng.uniform(0.5, 2.0)
-        y0 = int(round(y + d[0])) - m.shape[0] // 2
-        x0 = int(round(x + d[1])) - m.shape[1] // 2
-        ya, xa = max(0, y0), max(0, x0)
-        yb, xb = min(h, y0 + m.shape[0]), min(w, x0 + m.shape[1])
-        if ya < yb and xa < xb:
-            layer[ya:yb, xa:xb] |= m[ya - y0:yb - y0, xa - x0:xb - x0]
-    near = np.zeros_like(solid)
-    sp = np.pad(solid, reach)
-    for dy in range(2 * reach + 1):
-        for dx in range(2 * reach + 1):
-            if abs(dy - reach) + abs(dx - reach) <= reach:
-                near |= sp[dy:dy + h, dx:dx + w]
-    return layer & near & ~solid
-
-
-def add_mist(c, rng, lumps, reach, per_lump):
-    """Two independent mist layers behind the cloud: shade 5 where one covers, shade 6 where both overlap."""
-    solid = c > 0
-    a = mist_layer(solid, rng, lumps, reach, per_lump)
-    b = mist_layer(solid, rng, lumps, reach, per_lump)
-    out = c.copy()
-    out[a ^ b] = 5
-    out[a & b] = 6
-    return out
-
-
 def crop(c):
     ys, xs = np.nonzero(c)
     return c[ys.min():ys.max() + 1, xs.min():xs.max() + 1], ys.min(), xs.min()
 
 
-def layers(body_canvas, placed, mist_rng, lumps):
-    """The cloud and each piece as its own cropped layer with mist. Piece offsets are relative to the cloud
-    layer's top-left corner, in pixels."""
-    body, by, bx = crop(add_mist(body_canvas, mist_rng, lumps, MIST_REACH, MIST_SPACING))
+def layers(body_canvas, placed):
+    """The cloud and each piece as its own cropped layer. Piece offsets are relative to the cloud layer's top-left
+    corner, in pixels."""
+    body, by, bx = crop(body_canvas)
     pieces = []
     for b, y0, x0 in placed:
-        canvas = np.zeros_like(body_canvas)
-        canvas[y0:y0 + b.shape[0], x0:x0 + b.shape[1]] = b
-        piece, py, px = crop(add_mist(canvas, mist_rng, lumps, 1, 6))
-        pieces.append((piece, int(py - by), int(px - bx)))
+        pieces.append((b, int(y0 - by), int(x0 - bx)))
     return body, pieces
 
 
@@ -824,8 +762,6 @@ def main():
     # A separate stream for the broken-off bits, so adding them leaves every cloud itself unchanged.
     bit_rng = np.random.default_rng(SEED + 1)
     bits = loose_bits(sorted(glob.glob(os.path.join(OUT, "shaded", "cloud_*.png"))))
-    mist_rng = np.random.default_rng(SEED + 2)    # likewise for the mist
-    lumps = [L["idx"] > 0 for L in lib if L["kind"] == "puff" and L["area"] >= 30]
     manifest = {}
     kinds = (["heap"] * 17 + ["stratus"] * 4 + ["tower"] * 5 + ["small"] * 9)
     os.makedirs(os.path.join(OUT, "generated"), exist_ok=True)
@@ -840,7 +776,7 @@ def main():
         else:
             print(f"cloud_gen_{i:02d}: no candidate passed, keeping the last one")
         canvas, placed = add_bits(sprite, bit_rng, bits)
-        body, pieces = layers(canvas, placed, mist_rng, lumps)
+        body, pieces = layers(canvas, placed)
         name = f"cloud_gen_{i:02d}"
         save_indexed(body, os.path.join(OUT, "generated", name + ".png"))
         entry = {"file": name + ".png", "kind": kind, "size": [int(body.shape[1]), int(body.shape[0])], "bits": []}
@@ -858,7 +794,7 @@ def main():
 
 def preview(sprites, path, scale=4, cols=7):
     """Contact sheet in the daylight palette over the sheet's sky colour, for looking at, not for the mod.
-    Each entry is (cloud, [(piece, dy, dx), ...]); the mist is blended at its stored opacity."""
+    Each entry is (cloud, [(piece, dy, dx), ...])."""
     from shade_clouds import ALPHA, PALETTE
     rgba = np.array([list(rgb) + [a] for rgb, a in zip(PALETTE, ALPHA)], np.uint8)
     boxes = []

@@ -34,12 +34,9 @@ PALETTE = [
     (138, 150, 222),    # 2 lavender crevice shadow
     (164, 196, 250),    # 3 light-blue midtone
     (255, 255, 255),    # 4 white highlight
-    (176, 204, 250),    # 5 mist, one layer: translucent haze behind a cloud (generated sprites only)
-    (176, 204, 250),    # 6 mist, two layers overlapping: same colour, denser
 ]
-# Opacity per index, stored in the PNG's transparency chunk. Only the mist is see-through: 6 is what two layers
-# of 5 give stacked (1 - (1 - 40/255)^2 = 74/255).
-ALPHA = [0, 255, 255, 255, 255, 40, 74]
+# Opacity per index, stored in the PNG's transparency chunk.
+ALPHA = [0, 255, 255, 255, 255]
 
 
 def luminance(rgb):

@@ -1,7 +1,35 @@
-# Pixel-art cloud sprites (groundwork for a cloud mod)
+# Pixel Clouds
 
-Sprite pipeline only. The mod itself (camera-facing billboard clouds that change colour at dusk, dawn and in
-storms) is not started yet.
+Flat pixel-art clouds for Minecraft 1.20.1 (Forge 47.4.26): camera-facing sprites that drift across the sky,
+change colour at dawn, dusk, night and in storms, and replace the vanilla clouds. The sprites are made by the
+Python pipeline below; the mod is in `mod/` (mod id `pixel_clouds`, package `com.pixelclouds`), a Gradle project
+of its own, separate from the Draco mod at the repository root.
+
+## The mod
+
+| Command (in `clouds/mod`) | Purpose |
+|---|---|
+| `./gradlew build` | Builds `build/libs/pixel_clouds-1.0.0.jar` |
+| `LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a -s "-screen 0 1280x720x24" ./gradlew runClient -Pautoshot=true` | Runs the client on a virtual display, creates or loads a test world, saves screenshots of several scenes to `run/screenshots/` and quits |
+
+- `client/PixelCloudEffects`: the overworld's sky effects with `renderClouds` overridden, registered through
+  `RegisterDimensionSpecialEffectsEvent`. Returning `true` stops the vanilla clouds. Turning clouds off in the
+  video settings turns these off too.
+- `client/CloudRenderer`: one quad per cloud and per broken-off piece, always facing the camera. 1 sprite pixel
+  = 3 blocks. Clouds are placed by a hash of 220-block cells in a frame that drifts with the wind (0.05 blocks a
+  tick towards +X), at the dimension's cloud height plus up to 24 blocks. 60 percent of cells hold a cloud in
+  clear weather, up to 90 percent in a storm. Clouds fade out between 55 and 95 percent of the far clipping
+  distance. Pieces drift a few blocks each way and bob, on their own phase.
+- `client/CloudAtlas`: reads the atlas of shade indices and repaints a dynamic texture from them whenever the
+  palette changes.
+- `client/CloudPalette`: day, night, pink dawn and dusk, and grey storm palettes, blended by sun height and
+  rain and thunder levels.
+- `src/screenshot` (dev only, not in the jar): `AutoShot`, the screenshot driver behind `-Pautoshot=true`.
+- Pitfall: when clouds are drawn, the level renderer has already put the camera rotation on the model-view
+  stack. Multiplying the pose on top rotated the clouds twice (they came out sheared); the renderer sets the
+  model-view to exactly the given pose.
+- Screenshots from the game are in `mod/screenshots/`. The client ran without sound (no audio device in the
+  sandbox).
 
 ## Pipeline
 
@@ -12,6 +40,7 @@ Run from the repository root, in order. Only numpy and Pillow are needed.
 | 1. Extract | `python3 -I clouds/tools/extract_clouds.py` | `sprites/extracted/cloud_NN.png`: RGBA, sky alpha 0, 1 art pixel = 1 image pixel |
 | 2. Shade | `python3 -I clouds/tools/shade_clouds.py` | `sprites/shaded/cloud_NN.png`: shade indices |
 | 3. Generate | `python3 -I clouds/tools/generate_clouds.py [dir] [count] [seed]` | `sprites/generated/cloud_gen_NN.png` (35 by default), `sprites/lobes/`, `sprites/preview_generated.png` |
+| 4. Export | `python3 -I clouds/tools/export_to_mod.py` | the mod's `atlas.png` (shade indices as grey, index x 60) and `clouds.json` (atlas rectangles, piece offsets) |
 
 The source is `reference/cloud_sheet.jpg`. Its pixel grid pitch is detected as about 8.61 source pixels per art
 pixel (a non-integer upscale), with the phase refitted per cloud. 13 clouds come out of the sheet.
@@ -28,8 +57,6 @@ only makes the files viewable, the mod will colour by index.
 | 2 | lavender crevice shadow | `#8A96DE` |
 | 3 | light-blue midtone | `#A4C4FA` |
 | 4 | white highlight | `#FFFFFF` |
-| 5 | mist, one layer (generated sprites only), opacity 40/255 | `#B0CCFA` |
-| 6 | mist, two layers overlapping, opacity 74/255 (two layers of 5 stacked) | `#B0CCFA` |
 
 The sheet only has three solid tones. Band 2 is taken from the source's blend pixels between navy and light blue,
 from light blue touching the navy underside, and from light blue in deep folds with no white nearby.
@@ -83,19 +110,10 @@ Every pixel is from the sheet, nothing is drawn procedurally.
 
 Each generated cloud is written as separate layers so that in game the broken-off pieces can float on their own:
 
-- `generated/cloud_gen_NN.png`: the cloud with its mist.
-- `generated/cloud_gen_NN_bitK.png`: each broken-off piece with its own thin mist.
+- `generated/cloud_gen_NN.png`: the cloud.
+- `generated/cloud_gen_NN_bitK.png`: each broken-off piece.
 - `generated/clouds.json`: for every cloud its file, layout kind, size and its pieces, each with `x` and `y` in
   pixels relative to the cloud layer's top-left corner (where the piece starts out; the mod may let it drift).
-
-## Mist
-
-Two independent translucent layers sit behind each cloud, as in the reference: shade 5 where one layer covers,
-shade 6 where both overlap. Each layer is made of lumps (outlines of the sheet's puff lobes, rescaled to 3 to 8
-cells tall and widened up to 1.6 times) scattered along the cloud's edge, one per 10 edge cells, and pushed a
-little outwards. Mist reaches at most 3 cells beyond the cloud, and stretches of edge without a lump stay clear,
-so it does not repeat the cloud's outline. Pieces get the same two layers, reaching 1 cell. Mist and pieces use
-their own random streams, so the clouds are the same with or without them.
 
 ## Broken-off bits
 
